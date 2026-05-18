@@ -28,7 +28,7 @@ else:
 
 ### 2. NewtonProjector Modulus Mismatch
 
-**Location**: `dyadic_math.operators` / `NewtonProjector._step`
+**Location**: `dyadic_math.operators` / `NewtonProjector._step` — module removed in refactor
 
 **Bug**: In v2, the modular inverse was computed modulo `k` (full ring) instead of `k-2` (exponent domain): `modinv_newton(df_unit, self.ctx.k)`. Since `df_unit` is masked to `k-2` bits, passing `k` as the modulus was incorrect.
 
@@ -38,7 +38,7 @@ else:
 
 ### 3. OperatorContext.g Attribute Missing
 
-**Location**: `dyadic_math.operators` / `OperatorContext`
+**Location**: `dyadic_math.operators` / `OperatorContext` — module removed in refactor
 
 **Bug**: The `g` (generator) attribute was computed inside the initialization but not stored as `self.g`, causing `AttributeError` when `NewtonProjector` accessed `ctx.g`.
 
@@ -50,7 +50,7 @@ else:
 
 ### 4. Average Operator O(N²) Performance
 
-**Location**: `dyadic_math.operators` / `OperatorContext.avg`
+**Location**: `dyadic_math.operators` / `OperatorContext.avg` — module removed in refactor
 
 **Bug**: The average operator was implemented as `(1/N) Σ Sⁱ`, where the `_Operator.__pow__` chained `N` shift operators, each adding a closure layer. For `N = 2^(k-2)`, this created `O(N²)` closures at construction time, which was fatal for `k ≥ 8` (256 closures → 65,536 compositions).
 

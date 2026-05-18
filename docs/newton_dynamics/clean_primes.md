@@ -1,4 +1,4 @@
-> This document is part of the dyadic (3-package monorepo) project, ported from dual-view.
+> This document is part of the dyadic (2-package library) project, ported from dual-view.
 
 # Clean Primes
 

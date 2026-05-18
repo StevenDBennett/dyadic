@@ -149,7 +149,7 @@ Randomised correlation test: correlates `v₂(prod)` with the change in `v₂` u
 ### `dyadic_math.nonabelian` Module
 
 #### `NonAbelianCRTDual(k: int, p: int)`
-GL(2) gauge theory on a cycle.
+GL(2) holonomy on a cycle.
 
 **Methods**:
 - `holonomy(mats)` — product of all matrices

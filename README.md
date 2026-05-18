@@ -59,7 +59,7 @@ from dyadic_math import SeedThermodynamics
 
 W = np.random.randint(0, 256, size=(8, 8), dtype=np.int64)
 thermo = SeedThermodynamics(k=8)
-result = thermo.analyze(W)
+result = thermo.analyse(W)
 print(f"Alpha fraction: {result['alpha_fraction']:.3f}")
 ```
 

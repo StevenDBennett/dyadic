@@ -1,6 +1,6 @@
 # Mersenne Ghost Theorem — Complete Proof
 
-> This is a dyadic (3-package monorepo) document, ported from the dual-view project.
+> This is a dyadic (2-package library) document, ported from the dual-view project.
 
 ## Theorem Statement
 

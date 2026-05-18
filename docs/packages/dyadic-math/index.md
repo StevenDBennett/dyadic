@@ -10,7 +10,7 @@
 |--------|-------------|
 | `dyadic_math.basin` | BasinExplorer, GhostHunt — Newton basin landscape analysis |
 | `dyadic_math.crt` | CRT extension to Z/(2^k·p)Z |
-| `dyadic_math.nonabelian` | GL(2) gauge theory with phase alignment |
+| `dyadic_math.nonabelian` | GL(2) holonomy with phase alignment |
 | `dyadic_math.separation` | Trajectory Separation Theorem — exact zero-variance |
 | `dyadic_math.fourier` | DFT of Newton step-count function, 2-adic Fourier uncertainty |
 | `dyadic_math.padic_roots` | Multi-order p-adic root finding (Newton, Halley, composed) |

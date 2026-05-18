@@ -3,8 +3,8 @@ nonabelian.py
 -------------
 Non-Abelian CRT-dual system with GL(2) holonomy.
 
-Extends the gauge-theoretic invariants to matrix-valued weights
-acting on a cycle over Z/(2^k · p)Z.  The holonomy H = Π M_i
+GL(2) holonomy over a cycle in Z/(2^k · p)Z with CRT-based
+crossed invariants.  The holonomy H = Π M_i
 lives in GL(2), and its determinant (mod 2^k) and trace (mod p)
 provide crossed invariants that combine via CRT.
 

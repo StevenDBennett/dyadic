@@ -1,6 +1,6 @@
 # Research Opportunities and Open Problems
 
-> This is a dyadic (3-package monorepo) document, ported from the dual-view project.
+> This is a dyadic (2-package library) document, ported from the dual-view project.
 
 ## Status Dashboard
 
@@ -38,7 +38,7 @@ Train a quantized MLP on MNIST with:
 
 The hypothesis is that weights with higher `v₂(e_true)` have higher quantization cliffs and should be more stable under training dynamics.
 
-**Implementation**: Use `dyadic_ml.training` and `dyadic_ml.thermodynamics`.
+**Implementation**: Adapt from the research code in `examples/03_seed_thermodynamics.py` using `SeedThermodynamics`.
 
 ### 1.3 Trace-mod-p Bridge
 

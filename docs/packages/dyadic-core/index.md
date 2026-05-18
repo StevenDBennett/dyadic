@@ -1,6 +1,6 @@
 # dyadic-core
 
-> This is a dyadic (3-package monorepo) document, ported from the dual-view project.
+> This is a dyadic (2-package library) document, ported from the dual-view project.
 
 **dyadic-core** is the 2-adic arithmetic foundation. It provides the dual-view decomposition of integers modulo powers of 2, fast modular arithmetic via Newton lifting, and the Mahler calculus for integer-valued functions.
 

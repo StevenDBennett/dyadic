@@ -53,6 +53,13 @@ Research code is not installed, not tested in CI, and not referenced in publishe
 - Full suite must pass before any commit: 212 tests (104 core + 108 math) as of May 2026.
 - Use `--tb=short` for concise output.
 
+## Workflow
+
+- Create a feature branch for each logical chunk of work (`git checkout -b topic/description`).
+- Commit early and often on the branch. One commit per logical change at merge time.
+- Squash or rebase before merging to `main` if the branch has many small commits.
+- Always run the full test suite (`python3 -m pytest --tb=short`) before merging.
+
 ## Commit Style
 
 - Describe what changed and why.

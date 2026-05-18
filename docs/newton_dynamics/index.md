@@ -1,4 +1,4 @@
-> This document is part of the dyadic (3-package monorepo) project, ported from dual-view.
+> This document is part of the dyadic (2-package library) project, ported from dual-view.
 
 # p-adic Newton Dynamics
 
@@ -26,30 +26,7 @@ which computes cube roots via Newton's method. The map has:
 
 ## Quick Start
 
-```python
-from dyadic_math.newton_dynamics import compute_iterates, dynatomic_polynomial
-
-# Compute Newton iterates
-iterates = compute_iterates(4)
-
-# Get period-2 dynatomic polynomial
-phi2 = dynatomic_polynomial(2, iterates)
-# → [2, 5, 20]  = 20u² + 5u + 2
-
-# Get period-4 dynatomic polynomial (degree 24 in u)
-phi4 = dynatomic_polynomial(4, iterates)
-# → 25 coefficients, constant = 4096 = 2¹²
-```
-
-```python
-from dyadic_math.newton_dynamics import is_cube, tonelli_shanks
-
-# Cube checking modulo p
-is_cube(8, 7)  # True: 2³ ≡ 1 (mod 7) → 8 ≡ 1, and 1 is a cube
-
-# Modular square root
-sqrt = tonelli_shanks(5, 11)  # 4² ≡ 5 (mod 11)
-```
+Code lives in `research/newton_dynamics/`. Import directly from the research tree or copy the modules to your project. The package no longer exposes `dyadic_math.newton_dynamics` as a subpackage.
 
 ## Key Results
 

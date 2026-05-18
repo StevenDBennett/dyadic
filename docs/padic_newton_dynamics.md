@@ -1,6 +1,6 @@
 # p-Adic Newton Dynamics
 
-> This is a dyadic (3-package monorepo) document, ported from the dual-view project.
+> This is a dyadic (2-package library) document, ported from the dual-view project.
 
 A computational laboratory for discrete logarithms, quadratic convergence,
 and the universal role of method order.
