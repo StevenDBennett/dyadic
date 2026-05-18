@@ -1,0 +1,52 @@
+name: Test
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Lint with ruff
+        run: |
+          pip install ruff
+          ruff check packages/
+          ruff format --check packages/
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install packages
+        run: |
+          pip install -e packages/dyadic-core
+          pip install -e packages/dyadic-math --no-deps
+          pip install -e 'packages/dyadic-ml[scipy]' --no-deps
+      - name: Type check with mypy
+        run: |
+          pip install mypy
+          mypy packages/dyadic-core/src packages/dyadic-math/src packages/dyadic-ml/src
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install packages
+        run: |
+          pip install -e packages/dyadic-core
+          pip install -e packages/dyadic-math --no-deps
+          pip install -e 'packages/dyadic-ml[scipy]' --no-deps
+      - name: Run tests
+        run: pytest packages/ -v --tb=short

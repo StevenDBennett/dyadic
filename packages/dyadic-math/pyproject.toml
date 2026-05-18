@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dyadic-math"
+version = "0.1.0"
+description = "dyadic-math: p-adic Newton dynamics for the discrete-log map — basin analysis, ghost detection, Mersenne theorems"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Steve", email = "steve@example.com"}]
+keywords = ["p-adic", "newton-dynamics", "number-theory", "adic-arithmetic"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+requires-python = ">=3.11"
+dependencies = [
+    "dyadic-core>=0.1",
+    "numpy>=1.26",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["dyadic_math*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --tb=short"
