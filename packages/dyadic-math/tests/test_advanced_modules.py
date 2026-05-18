@@ -232,11 +232,11 @@ class TestMersenneProofs(unittest.TestCase):
         result = cliff_formula(5)
         self.assertIn("5", result)
 
-    def test_mersenne_cliff_theorem(self):
-        from dyadic_math.mersenne import mersenne_cliff_theorem
+    def test_mersenne_cliff_conjecture(self):
+        from dyadic_math.mersenne import mersenne_cliff_conjecture
 
-        thm = mersenne_cliff_theorem()
-        self.assertTrue(thm["all_pass"], f"Theorem failed: {thm}")
+        thm = mersenne_cliff_conjecture()
+        self.assertTrue(thm["all_pass"], f"Conjecture verification failed: {thm}")
         self.assertEqual(thm["c"], 5)
 
     def test_cliff_constant_series_terms(self):

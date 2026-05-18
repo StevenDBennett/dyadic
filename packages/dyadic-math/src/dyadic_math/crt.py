@@ -55,8 +55,11 @@ def _prime_dlog_lut(p: int, g_p: int) -> dict[int, int]:
 
 
 def _prime_dlog(a: int, p: int, g_p: int) -> int:
-    """Discrete logarithm modulo prime p via cached LUT."""
-    return _prime_dlog_lut(p, g_p).get(a, 0)
+    """Discrete logarithm modulo prime p via cached LUT.
+
+    Raises KeyError if a is not a unit modulo p (including zero).
+    """
+    return _prime_dlog_lut(p, g_p)[a]
 
 
 class CRTDualNumber:
@@ -77,11 +80,22 @@ class CRTDualNumber:
         self.mod_full = (1 << k) * p
         self.component_2 = DualNumber(n % (1 << k), k)
         self.residue_p = n % p
-        self.dlog_p = _prime_dlog(self.residue_p, p, g_p) if self.residue_p != 0 else -1
+        if self.residue_p == 0:
+            self.dlog_p = -1
+        else:
+            try:
+                self.dlog_p = _prime_dlog(self.residue_p, p, g_p)
+            except KeyError:
+                self.dlog_p = -1
 
     def verify(self) -> bool:
-        """CRT round-trip check."""
-        return self.component_2.verify()
+        """CRT round-trip check: 2-adic component and p-dlog are consistent."""
+        if not self.component_2.verify():
+            return False
+        if self.residue_p == 0:
+            return True  # zero has no discrete log
+        expected = pow(self.g_p, self.dlog_p, self.p)
+        return expected == self.residue_p
 
     def __repr__(self) -> str:
         c2 = self.component_2
@@ -151,7 +165,7 @@ class CRTDualProcessor:
         if a_val == 0 or (a_val & 1) == 0:
             return 0.0
         try:
-            explorer = BasinExplorer(self.k, 5, a_val)
+            explorer = BasinExplorer(self.k, a_val)
             portrait = explorer.portrait()
             n_converged = len(portrait["converged"])
             total = n_converged + len(portrait["cycle"])

@@ -31,9 +31,9 @@ _MAX_K_ENUMERATE = 20  # hard limit: 2^18 = 262144 seeds
 
 
 @lru_cache(maxsize=128)
-def _cached_portrait(k: int, g: int, target_a: int) -> dict[str, list[int]]:
-    """LRU-cached basin portrait keyed by (k, g, target_a)."""
-    explorer = BasinExplorer(k, g, target_a)
+def _cached_portrait(k: int, target_a: int) -> dict[str, list[int]]:
+    """LRU-cached basin portrait keyed by (k, target_a).  Generator is always 5."""
+    explorer = BasinExplorer(k, target_a)
     result: dict[str, list[int]] = {"converged": [], "cycle": [], "diverged": []}
     for e0 in range(explorer.N):
         fate, val, _ = explorer.classify(e0)
@@ -53,29 +53,18 @@ class BasinExplorer:
     ----------
     k : int
         Bit precision (≥ 3).
-    g : int
-        Generator; must satisfy g ≡ 5 (mod 8).  Note: the discrete-log
-        infrastructure (``two_adic_dlog``) is hardcoded to base 5.
-        For g ≠ 5 the α-sector classification is correct but the
-        e-coordinate decomposition relative to the dlog is inconsistent
-        with the iteration generator — use g=5 for full consistency.
     target_a : int
         The target integer for which to solve 5^e ≡ target_a (mod 2^k).
+
+    Notes
+    -----
+    The generator is hardcoded to 5.  The discrete-log infrastructure
+    (``two_adic_dlog``) only supports base 5.
     """
 
-    def __init__(self, k: int, g: int, target_a: int) -> None:
+    def __init__(self, k: int, target_a: int) -> None:
         if k < 3:
             raise ValueError("k must be ≥ 3")
-        if g != 5:
-            raise ValueError(
-                "Only generator g=5 is supported. "
-                "The discrete-log infrastructure (two_adic_dlog) is hardcoded to base 5."
-            )
-        if k > _MAX_K_ENUMERATE:
-            raise ValueError(
-                f"k={k} exceeds the hard limit of {_MAX_K_ENUMERATE} "
-                f"(N=2^{k - 2} seeds). Portrait enumeration is O(2^k)."
-            )
         if k > _WARN_K_LIMIT:
             warnings.warn(
                 f"k={k} gives N=2^{k - 2} seeds; portrait enumeration is O(2^k). "
@@ -84,7 +73,6 @@ class BasinExplorer:
                 stacklevel=2,
             )
         self.k = k
-        self.g = g
         self.mask = bitmask(k)
         self.N = 1 << (k - 2)
 
@@ -104,7 +92,7 @@ class BasinExplorer:
 
     def newton_step(self, e: int) -> int:
         """Single Newton iteration for the map e ↦ e - f(e)/f'(e)."""
-        return newton_step_core(self.g, e, self.a, self.k, self.L, self.mask, self.N - 1)
+        return newton_step_core(5, e, self.a, self.k, self.L, self.mask, self.N - 1)
 
     def _trajectory(
         self, e0: int, max_steps: int = 64, track_period: bool = False
@@ -135,7 +123,7 @@ class BasinExplorer:
             path.append(e_next)
 
             if e_next == e:
-                if pow(self.g, e, 1 << self.k) == self.a:
+                if pow(5, e, 1 << self.k) == self.a:
                     return ("converged", step + 1 if track_period else e, path)
                 else:
                     period_or_point = 1 if track_period else e
@@ -158,12 +146,22 @@ class BasinExplorer:
         """
         return self._trajectory(e0, max_steps, track_period=False)
 
+    def _check_k_limit(self) -> None:
+        if self.k > _MAX_K_ENUMERATE:
+            raise ValueError(
+                f"k={self.k} exceeds the hard limit of {_MAX_K_ENUMERATE} "
+                f"(N=2^{self.k - 2} seeds). "
+                f"Use estimate_ghost_fraction() for approximate results."
+            )
+
     def portrait(self) -> dict[str, list[int]]:
         """Full basin portrait over all seeds in the exponent domain (cached)."""
-        return _cached_portrait(self.k, self.g, self._target_a)
+        self._check_k_limit()
+        return _cached_portrait(self.k, self._target_a)
 
     def fate_vector(self) -> list[int]:
         """Compact encoding: 0=converged, 1=cycle, 2=diverged."""
+        self._check_k_limit()
         vec = []
         for e0 in range(self.N):
             fate, _, _ = self.classify(e0)
@@ -182,6 +180,7 @@ class BasinExplorer:
             'diverged': [seed, ...],
         }
         """
+        self._check_k_limit()
         result: dict[str, Any] = {
             "converged": [],
             "cycles": {},
@@ -210,6 +209,7 @@ class BasinExplorer:
             -period → cycle of that period
             -1      → diverged
         """
+        self._check_k_limit()
         fates = []
         for e0 in range(self.N):
             fate, val, _ = self._classify_with_period(e0)
@@ -221,6 +221,35 @@ class BasinExplorer:
                 fates.append(-1)
         return fates
 
+    def estimate_ghost_fraction(self, n_samples: int = 1000, seed: int | None = None) -> float:
+        """
+        Estimate ghost fraction by randomly sampling seeds.
+
+        Useful when k is too large for full enumeration (k > 16).
+
+        Parameters
+        ----------
+        n_samples : int
+            Number of random seeds to sample (default 1000).
+        seed : int or None
+            Random seed for reproducibility.
+
+        Returns
+        -------
+        float — fraction of sampled seeds that landed in ghost cycles.
+        """
+        import random as _random
+
+        if seed is not None:
+            _random.seed(seed)
+        n_ghosts = 0
+        for _ in range(n_samples):
+            e0 = _random.randrange(0, self.N)
+            fate, _, _ = self.classify(e0, max_steps=64)
+            if fate == "cycle":
+                n_ghosts += 1
+        return n_ghosts / n_samples if n_samples > 0 else 0.0
+
     def _classify_with_period(self, e0: int, max_steps: int = 64) -> tuple[str, int, list[int]]:
         """Classify seed and return cycle period (not cycle point).
 
@@ -230,29 +259,36 @@ class BasinExplorer:
 
 
 def precision_sweep(
-    k_min: int, k_max: int, g: int = 5, target_e: int = 2
+    k_min: int, k_max: int, target_e: int = 2, n_samples: int = 2000, seed: int | None = None
 ) -> list[tuple[int, float]]:
     """
     Sweep precision k to find where ghost seeds first appear.
 
+    Uses full enumeration for k <= 16, random sampling for larger k.
+
     Parameters
     ----------
     k_min, k_max : int — range of bit-precisions
-    g : int — generator (default 5)
-    target_e : int — exponent of target (a = g^{target_e} mod 2^k) (default 2)
+    target_e : int — exponent of target (a = 5^{target_e} mod 2^k) (default 2)
+    n_samples : int — number of random seeds when sampling (default 2000)
+    seed : int or None — random seed for reproducibility
 
     Returns
     -------
     List of (k, ghost_fraction) pairs.
     """
     results = []
-    first_ghost_k = None
+    first_ghost_k: int | None = None
     for k in range(k_min, k_max + 1):
-        a = pow(g, target_e, 1 << k)
-        explorer = BasinExplorer(k, g, a)
-        portrait = explorer.portrait()
-        n_ghosts = len(portrait["cycle"])
-        frac = n_ghosts / explorer.N if explorer.N > 0 else 0.0
+        a = pow(5, target_e, 1 << k)
+        if k > _MAX_K_ENUMERATE:
+            explorer = BasinExplorer(min(k, _MAX_K_ENUMERATE), a)
+            frac = explorer.estimate_ghost_fraction(n_samples=n_samples, seed=seed)
+        else:
+            explorer = BasinExplorer(k, a)
+            portrait = explorer.portrait()
+            n_ghosts = len(portrait["cycle"])
+            frac = n_ghosts / explorer.N if explorer.N > 0 else 0.0
         results.append((k, frac))
         if frac > 0 and first_ghost_k is None:
             first_ghost_k = k
@@ -333,39 +369,48 @@ class GhostHunt:
     Provides both single-target precision sweeps and full weight-matrix
     quantization-cliff analysis.
 
-    Parameters
-    ----------
-    g : int
-        Generator (default 5).  The precision sweep directly uses this
-        generator; the quantization cliff delegates to
-        ``LayerGhostDiagnosticV2`` which uses the base-5 dlog for
-        α-sector classification.
+    Notes
+    -----
+    The generator is hardcoded to 5.  The discrete-log infrastructure
+    (``two_adic_dlog``) only supports base 5.
     """
 
-    def __init__(self, g: int = 5) -> None:
-        self.g = g
+    def __init__(self) -> None:
+        pass
 
-    def precision_threshold_sweep(self, k_min: int, k_max: int, target_e: int) -> None:
+    def precision_threshold_sweep(
+        self, k_min: int, k_max: int, target_e: int, n_samples: int = 2000, seed: int | None = None
+    ) -> None:
         """
         Print precision sweep table for a single target.
+
+        Uses full enumeration for k <= 16, random sampling for larger k.
 
         Parameters
         ----------
         k_min, k_max : int — range of bit-precisions
-        target_e : int — exponent of target (a = g^{target_e} mod 2^k)
+        target_e : int — exponent of target (a = 5^{target_e} mod 2^k)
+        n_samples : int — number of random seeds when sampling (default 2000)
+        seed : int or None — random seed for reproducibility
         """
-        print(f"Precision Sweep  (g={self.g}, target=5^{target_e})")
+        print(f"Precision Sweep  (g=5, target=5^{target_e})")
         print(f"{'k':>4}  {'N':>6}  {'Ghosts':>8}  {'Frac':>8}  {'Status':>10}")
         print("-" * 42)
 
         for k in range(k_min, k_max + 1):
-            a = pow(self.g, target_e, 1 << k)
-            explorer = BasinExplorer(k, self.g, a)
-            portrait = explorer.portrait()
-            n_ghosts = len(portrait["cycle"])
-            frac = n_ghosts / explorer.N if explorer.N > 0 else 0.0
+            a = pow(5, target_e, 1 << k)
+            explorer = BasinExplorer(k, a)
+            if k > _MAX_K_ENUMERATE:
+                frac = explorer.estimate_ghost_fraction(n_samples=n_samples, seed=seed)
+                n_ghosts = int(frac * n_samples)
+                n_label = f"~{n_ghosts}"
+            else:
+                portrait = explorer.portrait()
+                n_ghosts = len(portrait["cycle"])
+                frac = n_ghosts / explorer.N if explorer.N > 0 else 0.0
+                n_label = str(n_ghosts)
             status = "GHOST!" if frac > 0 else "OK"
-            print(f"{k:>4}  {explorer.N:>6}  {n_ghosts:>8}  {frac:>8.4f}  {status:>10}")
+            print(f"{k:>4}  {explorer.N:>6}  {n_label:>8}  {frac:>8.4f}  {status:>10}")
 
     def quantization_cliff(
         self, weights: np.ndarray, k_min: int = 4, k_max: int = 16

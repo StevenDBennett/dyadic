@@ -134,8 +134,8 @@ T∘D = id  on  span{e_n : n ≥ 2}   (NOT on all of ker(ε))
 
 ### `dyadic_math.basin` Module
 
-#### `BasinExplorer(k: int, g: int, target_a: int)`
-Newton basin landscape analysis.
+#### `BasinExplorer(k: int, target_a: int)`
+Newton basin landscape analysis. Generator hardcoded to 5.
 
 **Methods**:
 - `newton_step(e)` — single Newton iteration
@@ -149,15 +149,15 @@ Per-layer diagnostic for weight matrices. Uses `two_adic_dlog` (base 5) for α-s
 **Methods**:
 - `diagnostic_matrix(W)` — returns `(fate, conv_ratio, ghost_ratio, mean_e, v2_e)`
 
-#### `GhostHunt(g: int = 5)`
-Precision threshold hunting.
+#### `GhostHunt()`
+Precision threshold hunting. Generator hardcoded to 5.
 
 **Methods**:
 - `precision_threshold_sweep(k_min, k_max, target_e)` — print sweep table
 - `quantization_cliff(W, k_min, k_max)` — ghost density vs k for a matrix
 
-#### `precision_sweep(k_min, k_max, g=5, target_e=2) -> List[Tuple[int, float]]`
-Standalone precision sweep.
+#### `precision_sweep(k_min, k_max, target_e=2) -> List[Tuple[int, float]]`
+Standalone precision sweep. Generator hardcoded to 5.
 
 ### `dyadic_math.crt` Module
 
@@ -221,7 +221,6 @@ Test α-sector flip under perturbation.
 - `compare_methods(p, k, n_trials, seed=None)` — rate comparison
 - `verify_order(primes, k, n_trials, seed=None)` — verify convergence ratio
 - `newton_correction_uniformity(p, k, n_seeds, seed=None)` — chi-square test
-- `popcount_compression(k, n_trials)` — popcount correlation
 
 ### `dyadic_math.iwasawa` Module
 
@@ -247,7 +246,7 @@ Test α-sector flip under perturbation.
 - `verify_lut_dlog(k, b=8, n_trials, seed=None)` — correctness check
 - `cliff_constant(g, k)` — compute `c = v₂(log₂(g)/4 + 1)`
 - `cliff_formula(g)` — human-readable c(g) formula
-- `mersenne_cliff_theorem(verbose)` — state and verify the full theorem (empirical)
+- `mersenne_cliff_conjecture(verbose)` — state and verify the conjectured cliff formula (empirical)
 - `verify_cliff_constant(verbose)` — verify `c=5` from 4 log-series terms
 - `verify_c_formula(verbose)` — verify `c(g) = v₂(g-5) - 2`
 - `exp2_neg4(k)` — delegates to `dyadic_core.g0(k)` (see `padic_exp`)
@@ -266,8 +265,8 @@ Test α-sector flip under perturbation.
 
 ### `dyadic_math.weight_stability` Module
 
-#### `WeightStabilityDiagnostics(k: int = 16, g: int = 5)`
-Graded 2-adic weight stability diagnostics.
+#### `WeightStabilityDiagnostics(k: int = 16)`
+Graded 2-adic weight stability diagnostics. Generator hardcoded to 5.
 
 **Coordinate analysis**:
 - `weight_coordinates(w)` — return `(v, α, e)`

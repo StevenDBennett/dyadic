@@ -13,7 +13,7 @@ class TestBasinExplorer(unittest.TestCase):
         k = 8
         target_e = 3
         a = pow(5, target_e, 1 << k)
-        explorer = BasinExplorer(k, 5, a)
+        explorer = BasinExplorer(k, a)
         fate, val, _ = explorer.classify(target_e)
         self.assertEqual(fate, "converged")
 
@@ -21,14 +21,14 @@ class TestBasinExplorer(unittest.TestCase):
         k = 8
         for e in range(8):
             a = pow(5, e, 1 << k)
-            explorer = BasinExplorer(k, 5, a)
+            explorer = BasinExplorer(k, a)
             port = explorer.portrait()
             self.assertGreater(len(port["converged"]), 0)
 
     def test_ghost_detection(self):
         k = 8
         a = pow(5, 3, 1 << k)
-        explorer = BasinExplorer(k, 5, a)
+        explorer = BasinExplorer(k, a)
         port = explorer.portrait()
         self.assertIsInstance(port, dict)
         self.assertIn("converged", port)
@@ -38,14 +38,14 @@ class TestBasinExplorer(unittest.TestCase):
     def test_portrait_matrix_length(self):
         k = 6
         a = pow(5, 3, 1 << k)
-        explorer = BasinExplorer(k, 5, a)
+        explorer = BasinExplorer(k, a)
         fv = explorer.fate_vector()
         self.assertEqual(len(fv), explorer.N)
 
     def test_full_portrait_structure(self):
         k = 6
         a = pow(5, 3, 1 << k)
-        explorer = BasinExplorer(k, 5, a)
+        explorer = BasinExplorer(k, a)
         port = explorer.full_portrait()
         self.assertIn("converged", port)
         self.assertIn("cycles", port)
@@ -59,7 +59,7 @@ class TestBasinExplorer(unittest.TestCase):
     def test_full_portrait_cycles_have_periods(self):
         k = 6
         a = pow(5, 3, 1 << k)
-        explorer = BasinExplorer(k, 5, a)
+        explorer = BasinExplorer(k, a)
         port = explorer.full_portrait()
         for period, entries in port["cycles"].items():
             self.assertIsInstance(period, int)
@@ -70,24 +70,20 @@ class TestBasinExplorer(unittest.TestCase):
     def test_portrait_matrix_encoding(self):
         k = 6
         a = pow(5, 3, 1 << k)
-        explorer = BasinExplorer(k, 5, a)
+        explorer = BasinExplorer(k, a)
         pm = explorer.portrait_matrix()
         self.assertEqual(len(pm), explorer.N)
         for val in pm:
             self.assertLessEqual(val, 0)
 
-    def test_invalid_g_rejects_non_5(self):
-        with self.assertRaises(ValueError):
-            BasinExplorer(8, 3, 1)
-
     def test_invalid_k_raises(self):
         with self.assertRaises(ValueError):
-            BasinExplorer(2, 5, 1)
+            BasinExplorer(2, 1)
 
 
 class TestPrecisionSweep(unittest.TestCase):
     def test_sweep_returns_results(self):
-        results = precision_sweep(4, 8, 5, 3)
+        results = precision_sweep(4, 8, target_e=3)
         self.assertGreater(len(results), 0)
         for k, frac in results:
             self.assertIsInstance(k, int)

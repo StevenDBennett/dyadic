@@ -19,7 +19,7 @@ Cliff Constant Verification
     Numerical verification of the Mersenne Cliff Theorem:
       - cliff_constant(g, k)        — compute c = v₂(log₂(g)/4 + 1)
       - cliff_formula(g)            — human-readable c(g) explanation
-      - mersenne_cliff_theorem()    — state and verify the full theorem
+      - mersenne_cliff_conjecture()    — state and verify the conjectured cliff formula
       - verify_cliff_constant()      — verify c=5 from 4 log-series terms
       - verify_c_formula()           — verify c(g) = v₂(g-5) - 2
       - exp2_neg4(k)                — delegates to dyadic_core.g0
@@ -322,7 +322,7 @@ def cliff_formula(g: int) -> str:
     return f"g={g}: {regime}"
 
 
-def mersenne_cliff_theorem(verbose: bool = False) -> dict[str, int | str | bool]:
+def mersenne_cliff_conjecture(verbose: bool = False) -> dict[str, int | str | bool]:
     """
     State and verify the Mersenne Cliff Theorem over a finite range.
 

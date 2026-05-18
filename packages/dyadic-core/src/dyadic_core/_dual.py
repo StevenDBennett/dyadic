@@ -241,7 +241,7 @@ class TwoAdicProcessor:
 # -- self-test ----------------------------------------------------------------
 
 
-def run_all_tests(k: int = 16, verbose: bool = True) -> None:
+def _run_all_tests(k: int = 16, verbose: bool = True) -> None:
     """
     Basic sanity checks for the core arithmetic.
 
@@ -281,4 +281,4 @@ def run_all_tests(k: int = 16, verbose: bool = True) -> None:
         raise AssertionError(f"{len(failures)} test(s) failed at k={k}")
 
     if verbose:
-        print(f"run_all_tests: all checks passed  (k={k})")
+        print(f"_run_all_tests: all checks passed  (k={k})")

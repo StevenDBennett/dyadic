@@ -43,18 +43,15 @@ class WeightStabilityDiagnostics:
     ----------
     k : int
         Bit precision for coordinate analysis (default 16).
-    g : int
-        Generator; must satisfy g ≡ 5 (mod 8).  Default 5.
+
+    Notes
+    -----
+    The generator is hardcoded to 5.  The 2-adic discrete log
+    (``two_adic_dlog``) only supports base 5.
     """
 
-    def __init__(self, k: int = 16, g: int = 5) -> None:
-        if g != 5:
-            raise ValueError(
-                "Only generator g=5 is supported. "
-                "The 2-adic discrete log (two_adic_dlog) is hardcoded to base 5."
-            )
+    def __init__(self, k: int = 16) -> None:
         self.k = k
-        self.g = g
         self.mask = bitmask(k)
         self.N = 1 << (k - 2)
         self._weights: np.ndarray | None = None
@@ -68,7 +65,6 @@ class WeightStabilityDiagnostics:
         weights: np.ndarray,
         k_range: range,
         k: int = 16,
-        g: int = 5,
     ) -> WeightStabilityDiagnostics:
         """
         Create an instance configured for precision-sweep analysis.
@@ -81,15 +77,13 @@ class WeightStabilityDiagnostics:
             Range of bit-precisions to sweep.
         k : int
             Bit precision for the underlying DualNumber arithmetic.
-        g : int
-            Generator; must satisfy g ≡ 5 (mod 8).
 
         Returns
         -------
         WeightStabilityDiagnostics
             Instance ready for ``compute()``.
         """
-        instance = cls(k=k, g=g)
+        instance = cls(k=k)
         instance._weights = weights
         instance._k_range = k_range
         return instance
@@ -240,7 +234,7 @@ class WeightStabilityDiagnostics:
                     profile[k] = 0.0
                     continue
                 try:
-                    be = BasinExplorer(k, self.g, w)
+                    be = BasinExplorer(k, w)
                 except (ValueError, ArithmeticError):
                     profile[k] = 0.0
                     continue

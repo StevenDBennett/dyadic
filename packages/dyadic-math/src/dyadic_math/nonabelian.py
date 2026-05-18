@@ -101,7 +101,7 @@ class NonAbelianCRTDual:
         if det & 1 == 0:
             return 0.0
         try:
-            explorer = BasinExplorer(self.k, 5, det)
+            explorer = BasinExplorer(self.k, det)
             portrait = explorer.portrait()
             n_converged = len(portrait["converged"])
             total = n_converged + len(portrait["cycle"])
