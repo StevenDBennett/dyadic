@@ -141,7 +141,9 @@ def matrix_coordinates(matrix: list[list[int]], k: int) -> MatrixCoordinates:
 # ── Holonomy depth profiling ────────────────────────────────────────────────
 
 
-def holonomy_depth_profile(k: int, p: int, cycle_length: int = 4, n_cycles: int = 30) -> dict[str, float | int]:
+def holonomy_depth_profile(
+    k: int, p: int, cycle_length: int = 4, n_cycles: int = 30
+) -> dict[str, float | int]:
     """
     How holonomy congruence depth changes under single-bit perturbation.
     """
@@ -186,7 +188,7 @@ def filtration_portrait(k: int) -> str:
     lines = [f"Congruence Filtration of GL(2, Z/2^{k})"]
     for j in range(k + 1):
         # Quotient Gamma(j) / Gamma(j+1) ≅ gl(2, F₂)
-        quotient_size = 16 if j < k else 1
+        quotient_size = 16 if j < k else 1  # |GL(2, F_2)| = 2^4 = 16
         lines.append(f"  Γ(2^{j}): |GL| ≈ 2^{4 * max(j, 1) - 3}·3, quotient size = {quotient_size}")
     return "\n".join(lines)
 
@@ -239,8 +241,22 @@ def verify_commutator_depth(
         for _ in range(n_trials):
             shift_a = 1 << depth_a
             shift_b = 1 << depth_b
+            # Diagonal (commuting) matrices — commutator is identity
             matrix_a = [[1 + shift_a, 0], [0, 1 + shift_a]]
             matrix_b = [[1 + shift_b, 0], [0, 1 + shift_b]]
+
+            commutator = matrix_commutator(matrix_a, matrix_b, k)
+            depth_comm = congruence_depth(commutator, k)
+            results.append((depth_a, depth_b, depth_comm))
+
+    # Also test non-commuting matrices in the same congruence subgroup
+    for depth_a, depth_b in depth_pairs:
+        for _ in range(n_trials):
+            shift_a = 1 << depth_a
+            shift_b = 1 << depth_b
+            # Both matrices are ≡ I (mod 2^depth), but do not commute
+            matrix_a = [[1 + shift_a, shift_a], [0, 1 + shift_a]]
+            matrix_b = [[1 + shift_b, 0], [shift_b, 1 + shift_b]]
 
             commutator = matrix_commutator(matrix_a, matrix_b, k)
             depth_comm = congruence_depth(commutator, k)

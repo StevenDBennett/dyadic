@@ -146,7 +146,7 @@ class CRTDualProcessor:
             n_converged = len(portrait["converged"])
             total = n_converged + len(portrait["cycle"])
             return n_converged / total if total > 0 else 0.0
-        except Exception:
+        except (ValueError, ArithmeticError):
             return 0.0
 
     def __repr__(self) -> str:

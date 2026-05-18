@@ -32,8 +32,6 @@ exclude = [
 module = "numpy.*"
 ignore_missing_imports = true
 
-
-
 [tool.pytest.ini_options]
 testpaths = [
     "packages/dyadic-core/tests",

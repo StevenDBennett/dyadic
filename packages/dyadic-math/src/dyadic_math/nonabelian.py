@@ -58,13 +58,18 @@ class NonAbelianCRTDual:
         """
         Extract invariants: det mod 2^k, det dual view, trace mod p,
         and CRT merge.
+
+        For even determinants v2(det) >= 1, the 2-adic discrete log is
+        undefined and alpha_det/e_det are set to 0 with det_odd=1;
+        check ``det_even`` to detect this case.
         """
         holonomy = self.holonomy(matrices)
         det_mod2k = mat_det(holonomy, self.mod2)
+        det_even_flag = (det_mod2k & 1) == 0
         trace_modp = (holonomy[0][0] + holonomy[1][1]) % self.p
 
-        # Dual-view decomposition of determinant
-        det_odd = det_mod2k if (det_mod2k & 1) else det_mod2k + 1
+        # Dual-view decomposition of determinant (only defined for odd inputs)
+        det_odd = det_mod2k | 1  # force odd (LSB = 1)
         dlog_result = two_adic_dlog(det_odd, self.k)
         if dlog_result is not None:
             alpha_det, e_det = dlog_result
@@ -77,6 +82,7 @@ class NonAbelianCRTDual:
 
         return {
             "det_mod2k": det_mod2k,
+            "det_even": det_even_flag,
             "alpha_det": alpha_det,
             "e_det": e_det,
             "trace_modp": trace_modp,
@@ -98,7 +104,7 @@ class NonAbelianCRTDual:
             n_converged = len(portrait["converged"])
             total = n_converged + len(portrait["cycle"])
             return n_converged / total if total > 0 else 0.0
-        except Exception:
+        except (ValueError, ArithmeticError):
             return 0.0
 
 

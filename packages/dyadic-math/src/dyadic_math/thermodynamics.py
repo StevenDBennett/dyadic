@@ -21,7 +21,6 @@ References
 from __future__ import annotations
 
 import warnings
-from typing import Any
 
 import numpy as np
 from dyadic_core import bitmask, two_adic_dlog, valuation
@@ -94,24 +93,26 @@ class SeedThermodynamics:
 
     # ── Coordinate analysis (v1-style) ──────────────────────────────────────
 
-    def weight_coordinates(self, w: int) -> tuple[float, int, int]:
+    def weight_coordinates(self, w: int) -> tuple[int | None, int, int]:
         """
-        2-adic dual coordinates (v, alpha, e) for a single weight.
+        Dual-view coordinates for a single integer weight.
 
-        Returns (v, alpha, e) where v can be float('inf') for zero.
+        Returns (v, alpha, e) where v is None for zero.
         """
-        wbm = w & self.mask
-        if wbm == 0:
-            return (float("inf"), 0, 0)
-        v = valuation(wbm)
+        if w == 0:
+            return (None, 0, 0)
+        w_mod = w & self.mask
+        if w_mod == 0:
+            return (None, 0, 0)
+        v = valuation(w_mod)
         if v is None or v >= self.k:
-            return (float("inf"), 0, 0)
-        odd = (wbm >> v) & self.mask
+            return (None, 0, 0)
+        odd = (w_mod >> v) & self.mask
         result = two_adic_dlog(odd, self.k)
         if result is None:
-            return (float(v), 0, 0)
+            return (v, 0, 0)
         alpha, e = result
-        return (float(v), alpha, e)
+        return (v, alpha, e)
 
     def analyse(self, weights: np.ndarray) -> dict[str, float]:
         """
@@ -236,7 +237,7 @@ class SeedThermodynamics:
                     continue
                 try:
                     be = BasinExplorer(k, self.g, w)
-                except Exception:
+                except (ValueError, ArithmeticError):
                     profile[k] = 0.0
                     continue
                 p = be.portrait()

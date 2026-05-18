@@ -47,13 +47,15 @@ Research code is not installed, not tested in CI, and not referenced in publishe
 - `docs/bug_history.md` documents known bugs honestly. Entries for deleted code are removed.
 - `CHANGELOG.md` describes only what exists.
 - Do not create README.md or documentation files unless explicitly asked.
+- Before committing, verify `docs/api.md` matches the actual API — every documented name must resolve via `getattr(package, name)`.
 
 ## Testing
 
 - Tests live in `packages/dyadic-core/tests/` and `packages/dyadic-math/tests/`.
 - Run with: `python3 -m pytest`
-- Full suite must pass before any commit: 212 tests (104 core + 108 math) as of May 2026.
+- Full suite must pass before any commit: 223 tests (107 core + 116 math) as of May 2026.
 - Use `--tb=short` for concise output.
+- Run `ruff check packages/` and `ruff format --check packages/` — both must pass clean before any commit.
 
 ## Type Checking
 
@@ -76,6 +78,14 @@ Research code is not installed, not tested in CI, and not referenced in publishe
 - Use UK English.
 - No emoji.
 - One commit per logical change.
+
+## Code Quality
+
+- Every public submodule must define `__all__` listing its exported names.
+- Never use bare `except Exception` — narrow to specific exception types (`ValueError`, `ArithmeticError`, etc.).
+- No silent API misbehaviour: if a parameter is accepted but ignored, raise `ValueError` or remove it. If a return value is inherently undefined (e.g. valuation of zero), return `None` not a sentinel like `float("inf")`.
+- Do not duplicate iteration loops. Extract shared helpers for repeated patterns (series accumulation, Newton step core, etc.).
+- No unused imports. MyPy's `--strict` and Ruff will flag these.
 
 ## What Not To Do
 

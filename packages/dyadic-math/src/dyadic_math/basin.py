@@ -24,6 +24,23 @@ import numpy as np
 from dyadic_core import bitmask, modinv_newton, two_adic_dlog, two_adic_log5, valuation
 
 
+def newton_step_core(
+    g: int, e: int, a: int, k: int, log5_unit: int, mask: int, exp_mask: int
+) -> int:
+    """
+    Single Newton iteration for the map e ↦ e - (g^e - a) / (g^e · log5_unit).
+
+    This is the core computation used by BasinExplorer, separation.py,
+    and fourier.py.  Extracted to eliminate three-way code duplication.
+    """
+    g_val = pow(g, e, 1 << k)
+    f_val = (g_val - a) & mask
+    df_val = (g_val * log5_unit) & exp_mask
+    df_inv = modinv_newton(df_val, k - 2)
+    delta = ((f_val >> 2) * df_inv) & exp_mask
+    return (e - delta) & exp_mask
+
+
 @lru_cache(maxsize=128)
 def _cached_portrait(k: int, g: int, target_a: int) -> dict[str, list[int]]:
     """LRU-cached basin portrait keyed by (k, g, target_a)."""
@@ -73,15 +90,7 @@ class BasinExplorer:
 
     def newton_step(self, e: int) -> int:
         """Single Newton iteration for the map e ↦ e - f(e)/f'(e)."""
-        mask = self.mask
-        exp_mask = self.N - 1
-
-        g_val = pow(5, e, 1 << self.k)
-        f_val = (g_val - self.a) & mask
-        df_val = (g_val * self.L) & exp_mask
-        df_inv = modinv_newton(df_val, self.k - 2)
-        delta = ((f_val >> 2) * df_inv) & exp_mask
-        return (e - delta) & exp_mask
+        return newton_step_core(self.g, e, self.a, self.k, self.L, self.mask, self.N - 1)
 
     def _trajectory(
         self, e0: int, max_steps: int = 64, track_period: bool = False
@@ -112,7 +121,7 @@ class BasinExplorer:
             path.append(e_next)
 
             if e_next == e:
-                if pow(5, e, 1 << self.k) == self.a:
+                if pow(self.g, e, 1 << self.k) == self.a:
                     return ("converged", step + 1 if track_period else e, path)
                 else:
                     period_or_point = 1 if track_period else e

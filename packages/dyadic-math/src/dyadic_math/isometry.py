@@ -8,11 +8,6 @@ T6-a  Exponential Map Isometry
     The exponential map e ↦ 5^e scales 2-adic distances by exactly
     factor 4 (via the 2-adic Taylor series).
 
-T6-b  Operator Algebra Identities
-    Let D = I - S (forward difference) and avg = (1/N) Σ S^i
-    (Cesàro average) on the function space Z/N → Z/2^k.
-    Then: avg^2 = N·avg, D·avg = 0, avg·D = 0.
-
 T6-c  Trace-mod-p Independence
     In GL(2) holonomies over Z/(2^k·p)Z, the 2-adic α-sector of
     det(H) and Tr(H) mod p are statistically independent.

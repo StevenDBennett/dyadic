@@ -15,7 +15,9 @@ from __future__ import annotations
 
 from math import ceil, log2
 
-from dyadic_core import bitmask, modinv_newton, two_adic_log5, valuation
+from dyadic_core import bitmask, two_adic_log5, valuation
+
+from dyadic_math.basin import newton_step_core
 
 
 def newton_trajectory(a: int, k: int, e_seed: int, steps: int = 10) -> list[int]:
@@ -43,12 +45,7 @@ def newton_trajectory(a: int, k: int, e_seed: int, steps: int = 10) -> list[int]
     e = e_seed
 
     for _ in range(steps):
-        g5 = pow(5, e, 1 << k)
-        f_val = (g5 - a) & mask
-        df_unit = (g5 * log5_unit) & exp_mask
-        df_inv = modinv_newton(df_unit, k - 2)
-        delta = ((f_val >> 2) * df_inv) & exp_mask
-        e = (e - delta) & exp_mask
+        e = newton_step_core(5, e, a, k, log5_unit, mask, exp_mask)
         history.append(e)
 
     return history

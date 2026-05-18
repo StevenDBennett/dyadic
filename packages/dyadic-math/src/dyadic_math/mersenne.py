@@ -20,12 +20,12 @@ Cliff Constant Proofs
       - cliff_constant(g, k)        — compute c = v₂(log₂(g)/4 + 1)
       - cliff_formula(g)            — human-readable c(g) explanation
       - mersenne_cliff_theorem()    — state and verify the full theorem
-      - prove_cliff_constant()      — prove c=5 from 4 log-series terms
-      - prove_c_formula()           — prove c(g) = v₂(g-5) - 2
-      - exp2_neg4(k)                — compute the 2-adic zero
+      - verify_cliff_constant()      — prove c=5 from 4 log-series terms
+      - verify_c_formula()           — prove c(g) = v₂(g-5) - 2
+      - exp2_neg4(k)                — delegates to dyadic_core.g0
       - cliff_constant_unified(g,k) — unified formula
       - verify_unified_formula()    — verify unified matches direct
-      - proof_connection()          — show all proofs are connected
+      - verify_connection()          — show all proofs are connected
 """
 
 from __future__ import annotations
@@ -35,12 +35,14 @@ from functools import lru_cache
 
 from dyadic_core import (
     bitmask,
+    dlog_bootstrap,
+    g0,
     modinv_newton,
+    padic_log,
     two_adic_dlog,
     two_adic_log5,
     valuation,
 )
-from dyadic_core.core import dlog_bootstrap
 
 # ── Mersenne coordinates ────────────────────────────────────────────────────
 
@@ -289,35 +291,10 @@ def cliff_constant(g: int = 5, k: int = 20) -> int:
     """
     if g == 5:
         log_val = two_adic_log5(k) >> 2
-        c_val = valuation(log_val + 1)
-        assert c_val is not None  # log_val + 1 > 0
-        return c_val
-
-    mask = bitmask(k)
-    x = (g - 1) & mask
-    result = 0
-    x_power = x
-    for n in range(1, 400):
-        vn = valuation(n)
-        assert vn is not None  # n >= 1
-        vx = valuation(x)
-        if vx is None and x == 0:
-            break
-        assert vx is not None  # x > 0 for g ≡ 5 (mod 8)
-        v2_term = n * vx - vn
-        if v2_term >= k:
-            break
-        odd_n = n >> vn
-        inv_odd_n = modinv_newton(odd_n, k)
-        term_shifted = (x_power >> vn) * inv_odd_n & mask
-        if n % 2 == 0:
-            result = (result - term_shifted) & mask
-        else:
-            result = (result + term_shifted) & mask
-        x_power = (x_power * x) & mask
-    log_g = result >> 2
-    c_val = valuation(log_g + 1)
-    assert c_val is not None  # log_g + 1 > 0
+    else:
+        log_val = padic_log(g, k) >> 2
+    c_val = valuation(log_val + 1)
+    assert c_val is not None  # log_val + 1 > 0
     return c_val
 
 
@@ -430,7 +407,7 @@ def mersenne_cliff_theorem(verbose: bool = False) -> dict[str, int | str | bool]
     }
 
 
-def prove_cliff_constant(verbose: bool = False) -> bool:
+def verify_cliff_constant(verbose: bool = False) -> bool:
     """
     Prove v_2(log_2(5)/4 + 1) = 5 from first principles.
 
@@ -468,7 +445,7 @@ def prove_cliff_constant(verbose: bool = False) -> bool:
     return all_ok
 
 
-def prove_c_formula(verbose: bool = False) -> bool:
+def verify_c_formula(verbose: bool = False) -> bool:
     """
     Prove c(g) = v_2(g-5) - 2 for g ≡ 5 (mod 8), g ≠ 5, v_2(g-5) ≠ 7.
 
@@ -510,29 +487,9 @@ def exp2_neg4(k: int) -> int:
     """
     Compute exp_2(-4) mod 2^k — the 2-adic zero of log_2(g)/4 + 1.
 
-    Correct values:
-        exp_2(-4) mod 2^ 7 =    5
-        exp_2(-4) mod 2^ 8 =  133
-        exp_2(-4) mod 2^ 9 =  389
-        exp_2(-4) mod 2^10 =  901
-        exp_2(-4) mod 2^11 = 1925
+    Delegates to ``dyadic_core.g0`` (the canonical implementation).
     """
-    mask = bitmask(k)
-    result = 1
-    odd_nfact = 1
-    for n in range(1, k + 1):
-        v_term = n + bin(n).count("1")
-        vn = valuation(n)
-        assert vn is not None  # n >= 1
-        n_odd = n >> vn
-        odd_nfact = (odd_nfact * n_odd) % (1 << (k + 4))
-        if v_term >= k:
-            continue
-        inv_odd = modinv_newton(odd_nfact & mask, k)
-        sign = 1 if n % 2 == 0 else -1
-        term = (sign * (1 << v_term) * inv_odd) & mask
-        result = (result + term) & mask
-    return result
+    return g0(k)
 
 
 def cliff_constant_unified(g: int, k: int = 32) -> int:
@@ -547,8 +504,8 @@ def cliff_constant_unified(g: int, k: int = 32) -> int:
         => v_2(f(g_0)) = -2
         => c(g) = v_2(g - exp_2(-4)) - 2.  QED
     """
-    g0 = exp2_neg4(k)
-    v = valuation(g - g0)
+    g0_val = exp2_neg4(k)
+    v = valuation(g - g0_val)
     return (v - 2) if v is not None else k
 
 
@@ -605,7 +562,7 @@ def verify_unified_formula(
     return ok
 
 
-def proof_connection(verbose: bool = False) -> bool:
+def verify_connection(verbose: bool = False) -> bool:
     """
     Show that all four proofs are connected through a single identity:
 

@@ -9,31 +9,44 @@ The dyadic library is split into two packages:
 
 ## dyadic-core
 
-### `dyadic_core.core` Functions
+The package is organised into focused submodules. All names are re-exported from `dyadic_core` for direct access:
 
-#### `_mask(k: int) -> int`
+```python
+from dyadic_core import DualNumber, modinv_newton, padic_exp, ...
+```
+
+Backward-compatible imports from `dyadic_core.core` also work.
+
+### `dyadic_core._util` — Basic Utilities
+
+#### `bitmask(k: int) -> int`
 Bit mask `(1 << k) - 1`.
 
-#### `_valuation(n: int) -> int`
-2-adic valuation `v₂(n)`. Returns `float('inf')` for `n = 0`.
+#### `valuation(n: int) -> int | None`
+2-adic valuation `v₂(n)`. Returns `None` for `n = 0`.
+
+#### `mat_mul(A, B, mod) -> list[list[int]]`
+2×2 matrix multiplication modulo `mod`.
+
+#### `mat_det(M, mod) -> int`
+Determinant of a 2×2 matrix modulo `mod`.
+
+### `dyadic_core._exceptions` — Error Hierarchy
+
+- `DyadicError(ValueError)` — base
+- `NonInvertibleError` — inversion of non-invertible element
+- `ConvergenceError` — iterative method failed
+- `DomainError` — argument outside domain of convergence
+
+### `dyadic_core._modular` — Modular Arithmetic
 
 #### `modinv_newton(a: int, k: int) -> int`
 `a⁻¹ mod 2^k` via quadratic Newton lifting. Requires `a` odd.
 
-#### `two_adic_log5(k: int) -> int`
-2-adic logarithm of 5 truncated to `k` bits. The unique `L ∈ Z₂` satisfying `exp₂(L) = 5`. Cached per `k` (LRU, 256 entries).
+#### `dual_add(v_a, alpha_a, e_a, v_b, alpha_b, e_b, k) -> tuple[int | None, int, int]`
+Exact addition in dual `(v, α, e)` coordinates via LTE. Returns `(v_sum, α_sum, e_sum)` for `a + b mod 2^k` without converting to integer. `v_sum` is `None` on exact cancellation. Handles 5 cases: different valuations (annihilation), same sign (doubling or v+1), opposite signs (v+2+v₂(Δe) via LTE), exact cancellation.
 
-Used as derivative scaling factor in Newton dlog: the derivative of `e ↦ 5^e` is `5^e · (L >> 2)`.
-
-#### `two_adic_dlog(a: int, k: int, L: Optional[int] = None) -> Optional[Tuple[int, int]]`
-Full 2-adic decomposition of odd part: `a = (-1)^α · 5^e (mod 2^k)`.
-Returns `(alpha, e)` or `None` if `a` is even. Uses 10-bit LUT bootstrap for `k ≤ 34` (256 entries, optimal sweet spot), bit-by-bit to `k/2` otherwise.
-
-#### `dual_add(v_a: int, alpha_a: int, e_a: int, v_b: int, alpha_b: int, e_b: int, k: int) -> Tuple[int | float, int, int]`
-Exact addition in dual `(v, α, e)` coordinates via LTE, without converting back to group representation. Given `a = 2^{v_a}·(-1)^{α_a}·5^{e_a}` and `b = 2^{v_b}·(-1)^{α_b}·5^{e_b}`, returns `(v_sum, α_sum, e_sum)` for `a + b mod 2^k`. Handles 5 cases: different valuations (annihilation), same sign (doubling or v+1), opposite signs (v+2+v₂(Δe) via LTE), and exact cancellation.
-
-#### `run_all_tests(k: int = 16, verbose: bool = True) -> None`
-Self-check for core arithmetic: round-trip, multiplication, inversion, powering.
+### `dyadic_core._series` — 2-adic Series
 
 #### `padic_exp(x: int, k: int) -> int`
 General 2-adic exponential `exp(x) mod 2^k`. Requires `v₂(x) ≥ 2`. Uses exact integer arithmetic with analytic valuation tracking for termination.
@@ -44,15 +57,32 @@ General 2-adic logarithm `log(g) mod 2^k`. Requires `g ≡ 1 mod 4` (i.e. `v₂(
 #### `g0(k: int) -> int`
 The cliff centre `g₀ = exp₂(−4) mod 2^k`. The unique 2-adic unit with `log(g₀) = −4`. The hardware approximation `−123` agrees with `g₀` to 13 bits.
 
-#### `dlog_residual_tracking(a: int, k: int, L: Optional[int] = None) -> Tuple[int, List[Dict]]`
+### `dyadic_core._dlog` — 2-adic Discrete Logarithm
+
+#### `two_adic_log5(k: int) -> int`
+2-adic logarithm of 5 truncated to `k` bits. The unique `L ∈ Z₂` satisfying `exp₂(L) = 5`. Cached per `k` (LRU, 256 entries).
+
+Used as derivative scaling factor in Newton dlog: the derivative of `e ↦ 5^e` is `5^e · (L >> 2)`.
+
+#### `two_adic_dlog(a: int, k: int, L: Optional[int] = None) -> Optional[tuple[int, int]]`
+Full 2-adic decomposition of odd part: `a = (-1)^α · 5^e (mod 2^k)`.
+Returns `(alpha, e)` or `None` if `a` is even. Uses 10-bit LUT bootstrap for `k ≤ 34` (256 entries, optimal sweet spot), bit-by-bit to `k/2` otherwise.
+
+#### `dlog_bootstrap(a: int, k: int) -> int`
+Bit-by-bit discrete log for `a ≡ 1 (mod 8)`. O(k) steps; used to seed Newton.
+
+#### `dlog_residual_tracking(a: int, k: int, L: Optional[int] = None) -> tuple[int, list[DLogNewtonStep]]`
 Viglietta discrete log with normalised residual tracking at each Newton step. Returns `(e, history)` where each entry in history contains `tau_before`/`tau_after` (the residual `(5^e · a⁻¹ − 1) / 4`) and its 2-adic valuation, confirming the quadratic convergence gain law. Requires `a ≡ 1 (mod 4)`.
 
-### `dyadic_core.core` Classes
+#### `DLogNewtonStep(TypedDict)`
+Schema for a single Newton step in the tracking history.
+
+### `dyadic_core._dual` — Dual Number System
 
 #### `DualNumber(n: int, k: int = 64)`
 2-adic dual-view decomposition of `n` modulo `2^k`.
 
-**Attributes**: `v` (valuation, float('inf') for zero), `alpha` (0 or 1), `e` (exponent), `is_zero`, `value` (the integer `n mod 2^k`).
+**Attributes**: `v` (valuation, `None` for zero), `alpha` (0 or 1), `e` (exponent), `is_zero`, `value` (the integer `n mod 2^k`).
 
 **Methods**:
 - `verify()` — round-trip check: coordinates → integer matches stored integer
@@ -67,6 +97,9 @@ Arithmetic on DualNumbers in coordinate space.
 - `inv(a)` — invert unit (v=0)
 - `pow(a, n)` — integer power (negative → inverse)
 - `dlog(a)` — returns `(v, alpha, e)`
+
+#### `run_all_tests(k: int = 16, verbose: bool = True) -> None`
+Self-check for core arithmetic: round-trip, multiplication, inversion, powering.
 
 ### `dyadic_core.exponent` Module
 
@@ -217,12 +250,12 @@ Test α-sector flip under perturbation.
 - `cliff_constant(g, k)` — compute `c = v₂(log₂(g)/4 + 1)`
 - `cliff_formula(g)` — human-readable c(g) formula
 - `mersenne_cliff_theorem(verbose)` — state and verify the full theorem
-- `prove_cliff_constant(verbose)` — prove `c=5` from 4 log-series terms
-- `prove_c_formula(verbose)` — prove `c(g) = v₂(g-5) - 2`
-- `exp2_neg4(k)` — compute `exp₂(-4) mod 2^k`, the zero of `log₂(g)/4+1`
+- `verify_cliff_constant(verbose)` — prove `c=5` from 4 log-series terms
+- `verify_c_formula(verbose)` — prove `c(g) = v₂(g-5) - 2`
+- `exp2_neg4(k)` — delegates to `dyadic_core.g0(k)` (see `padic_exp`)
 - `cliff_constant_unified(g, k)` — unified formula via Newton-Taylor lemma
 - `verify_unified_formula(g_values, k)` — verify unified matches direct
-- `proof_connection(verbose)` — show all proofs connected via `log₂(5) ≡ -4 (mod 128)`
+- `verify_connection(verbose)` — show all proofs connected via `log₂(5) ≡ -4 (mod 128)`
 
 ### `dyadic_math.isometry` Module
 

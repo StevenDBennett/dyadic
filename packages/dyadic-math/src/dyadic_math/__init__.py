@@ -31,9 +31,9 @@ from dyadic_math.mersenne import (
     mersenne_cliff_table,
     mersenne_cliff_theorem,
     mersenne_coordinates,
-    proof_connection,
-    prove_c_formula,
-    prove_cliff_constant,
+    verify_c_formula,
+    verify_cliff_constant,
+    verify_connection,
 )
 from dyadic_math.nonabelian import NonAbelianCRTDual, phase_alignment_experiment
 
@@ -78,9 +78,9 @@ __all__ = [
     "mersenne_cliff_theorem",
     "cliff_constant_unified",
     "dlog_with_lut",
-    "prove_cliff_constant",
-    "prove_c_formula",
-    "proof_connection",
+    "verify_cliff_constant",
+    "verify_c_formula",
+    "verify_connection",
     "verify_isometry",
     "isometry_pair_test",
     "isometry_summary",

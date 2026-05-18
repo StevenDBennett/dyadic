@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - General p-adic root finding: Newton, Halley, composed methods for p ≠ 2, 3
 - Seed thermodynamics: graded v₂(e) stability diagnostics, precision-sweep ghost cliff detection
 - Weight stability analysis: z-score comparison against random baseline
+- Core module split: `dyadic_core.core` → 6 focused submodules (`_exceptions`, `_util`, `_modular`, `_series`, `_dlog`, `_dual`) with backward-compat re-export shim
+- Shared `_series_accumulate` helper extracted from duplicated `padic_exp`/`padic_log` loops
+- Shared `newton_step_core` helper extracted from basin/fourier/separation duplicate loops
+- `__all__` defined in all 6 core submodules
+- 11 new tests: `from_coords` edge cases, `pow(0)`, `dlog_bootstrap` direct coverage
+- `docs/api.md` dyadic-core section rewritten to match 6-submodule layout
+- AGENTS.md: code quality standards section, ruff checks, `__all__` requirement, docs sync verification
 
 ### Changed
 
@@ -30,6 +37,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Deleted dyadic-ml, dyadic_math.operators, dyadic_math.gauge, dyadic_math.iwasawa_algebra
 - Replaced degenerate eps_crit metric with phase_alignment_experiment
 - Replaced binary ghost_ratio with graded v₂(e) thermodynamic measure
+- `exp2_neg4(k)` delegates to `g0(k)` instead of duplicate implementation
+- `BasinExplorer.newton_step` and `_trajectory` use `self.g` not hardcoded `5`
+- `dlog_residual_tracking` bootstrap unified to `k // 2 + 2` (same as `dlog_newton`)
+- `mersenne.cliff_constant` for `g != 5` uses `padic_log(g, k)` instead of standalone loop
+- `fourier.step_count_fn` and `separation.newton_trajectory` delegate to `newton_step_core`
+- Renamed `prove_cliff_constant` → `verify_cliff_constant`, `prove_c_formula` → `verify_c_formula`, `proof_connection` → `verify_connection`
+- `isometry.py`: removed T6-b docstring (no implementation exists)
+- `iwasawa.py`: `verify_commutator_depth` tests non-commuting shear matrices
 
 ### Fixed
 
@@ -38,3 +53,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Average operator O(N²) performance: replaced closure chain with direct summation
 - Closure late-binding bug in operator composition
 - Test 11 tautology: proper separation of training and test data
+- `thermodynamics.weight_coordinates` returns `None` for zero (was `float("inf")`)
+- `thermodynamics`: fixed `wbm` typo → `w_mod`
+- `_dual.from_coords` rejects `v < 0` (was silently accepted)
+- `two_adic_log5(10)` gave 901 instead of 389 (pre-existing bug in duplicate `exp2_neg4`)
+- `nonabelian.invariants`: narrowed bare `except Exception` to `except (ValueError, ArithmeticError)`
+- `pyproject.toml`: removed triple blank line

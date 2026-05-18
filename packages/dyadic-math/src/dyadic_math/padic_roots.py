@@ -49,7 +49,7 @@ def _ext_gcd(a: int, b: int) -> tuple[int, int, int]:
 
 
 def _pk(p: int, k: int) -> int:
-    return int(p ** k)
+    return int(p**k)
 
 
 # ── Hensel lifting ──────────────────────────────────────────────────────────

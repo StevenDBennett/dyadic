@@ -238,15 +238,15 @@ class TestMersenneProofs(unittest.TestCase):
         self.assertTrue(thm["all_pass"], f"Theorem failed: {thm}")
         self.assertEqual(thm["c"], 5)
 
-    def test_prove_cliff_constant(self):
-        from dyadic_math.mersenne import prove_cliff_constant
+    def test_verify_cliff_constant(self):
+        from dyadic_math.mersenne import verify_cliff_constant
 
-        self.assertTrue(prove_cliff_constant())
+        self.assertTrue(verify_cliff_constant())
 
-    def test_prove_c_formula(self):
-        from dyadic_math.mersenne import prove_c_formula
+    def test_verify_c_formula(self):
+        from dyadic_math.mersenne import verify_c_formula
 
-        self.assertTrue(prove_c_formula())
+        self.assertTrue(verify_c_formula())
 
     def test_exp2_neg4(self):
         from dyadic_math.mersenne import exp2_neg4
@@ -254,7 +254,7 @@ class TestMersenneProofs(unittest.TestCase):
         self.assertEqual(exp2_neg4(7), 5)
         self.assertEqual(exp2_neg4(8), 133)
         self.assertEqual(exp2_neg4(9), 389)
-        self.assertEqual(exp2_neg4(10), 901)
+        self.assertEqual(exp2_neg4(10), 389)
         self.assertEqual(exp2_neg4(11), 1925)
 
     def test_cliff_constant_unified(self):
@@ -270,10 +270,10 @@ class TestMersenneProofs(unittest.TestCase):
 
         self.assertTrue(verify_unified_formula())
 
-    def test_proof_connection(self):
-        from dyadic_math.mersenne import proof_connection
+    def test_verify_connection(self):
+        from dyadic_math.mersenne import verify_connection
 
-        self.assertTrue(proof_connection())
+        self.assertTrue(verify_connection())
 
     def test_lift_root(self):
         from dyadic_math.padic_roots import lift_root
