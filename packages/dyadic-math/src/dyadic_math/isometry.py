@@ -15,8 +15,8 @@ T6-c  Trace-mod-p Independence
 
 from __future__ import annotations
 
-import math
 import random
+import warnings
 from collections import Counter
 
 import numpy as np
@@ -114,7 +114,7 @@ def trace_alpha_independence(
     cycle_length: int = 4,
     n_cycles: int = 100,
     seed: int | None = None,
-) -> dict[str, float]:
+) -> dict[str, float | None]:
     """
     Chi-square test: α(det(H)) and Tr(H) mod p are independent.
 
@@ -154,8 +154,15 @@ def trace_alpha_independence(
     df = (2 - 1) * (p - 1)
 
     try:
-        p_value = math.gammaincc(df / 2, chi2 / 2)  # type: ignore[attr-defined]
-    except AttributeError:
+        from scipy.special import gammaincc  # type: ignore[import-untyped]
+
+        p_value = float(gammaincc(df / 2, chi2 / 2))
+    except ImportError:
+        warnings.warn(
+            "scipy not available; p-value omitted from chi-square test",
+            RuntimeWarning,
+            stacklevel=2,
+        )
         p_value = None
 
     return {

@@ -23,6 +23,9 @@ dependencies = [
     "numpy>=1.26",
 ]
 
+[project.optional-dependencies]
+stats = ["scipy>=1.12"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["dyadic_math*"]

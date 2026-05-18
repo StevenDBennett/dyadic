@@ -16,7 +16,6 @@ from dyadic_core._util import bitmask, valuation
 __all__ = [
     "DualNumber",
     "TwoAdicProcessor",
-    "run_all_tests",
 ]
 
 

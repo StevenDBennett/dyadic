@@ -1,8 +1,14 @@
-"""Tests for dyadic_math.newton_dynamics — polynomial arithmetic, iterates, dynatomic."""
+"""Tests for research.newton_dynamics — polynomial arithmetic, iterates, dynatomic."""
 import unittest
 import math
+import sys
+from pathlib import Path
 
-from dyadic_math.newton_dynamics import (
+_parent = str(Path(__file__).resolve().parents[2])
+if _parent not in sys.path:
+    sys.path.insert(0, _parent)
+
+from research.newton_dynamics import (
     poly_mul, poly_add, poly_scalar_mul, poly_pow, poly_divmod,
     mobius, compute_iterates, dynatomic_polynomial,
     is_cube, tonelli_shanks, check_quadratic_cube_roots,

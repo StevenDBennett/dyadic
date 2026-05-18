@@ -63,6 +63,8 @@ def lift_root(a: int, p: int, k: int) -> int | None:
     Returns x such that x^3 ≡ a (mod p^k), or None if no root exists.
     Requires p ≠ 2, 3 and a not divisible by p.
     """
+    if p == 2 or p == 3:
+        raise ValueError(f"p-adic cube-root finding requires p ≠ 2, 3, got {p}")
     # Find root mod p by brute force
     x0 = None
     for t in range(p):
@@ -142,6 +144,8 @@ def convergence_profile(
 
     Returns list of valuations at each step.
     """
+    if p == 2 or p == 3:
+        raise ValueError(f"p-adic convergence requires p ≠ 2, 3, got {p}")
     if x_true is None:
         x_true = lift_root(a, p, k)
         if x_true is None:
@@ -179,6 +183,8 @@ def compare_methods(
 
     Returns dict with mean final v_p per method.
     """
+    if p == 2 or p == 3:
+        raise ValueError(f"p-adic root finding requires p ≠ 2, 3, got {p}")
     if seed is not None:
         random.seed(seed)
     methods: dict[str, Callable[[int, int, int], int]] = {
@@ -223,6 +229,9 @@ def verify_order(
         random.seed(seed)
     if primes is None:
         primes = [5, 7, 11, 13]
+    for p in primes:
+        if p == 2 or p == 3:
+            raise ValueError(f"verify_order requires p ≠ 2, 3, got {p}")
 
     methods: dict[str, Callable[[int, int, int], int]] = {
         "Newton": newton_step,
@@ -266,6 +275,8 @@ def newton_correction_uniformity(
     delta = (x^3 - a) / (3 x^2) mod p, and the claim is this is
     uniform over F_p for random (x, a).
     """
+    if p == 2 or p == 3:
+        raise ValueError(f"newton_correction_uniformity requires p ≠ 2, 3, got {p}")
     if seed is not None:
         random.seed(seed)
     pk = _pk(p, k)

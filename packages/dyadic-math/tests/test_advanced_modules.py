@@ -28,6 +28,13 @@ class TestSeparation(unittest.TestCase):
         profile = step_count_profile(6, 3)
         self.assertIsInstance(profile, dict)
 
+    def test_ultrametric_ball_tree_structure(self):
+        from dyadic_math.separation import ultrametric_ball_tree
+
+        tree = ultrametric_ball_tree(6, 3, depth=2)
+        self.assertIsInstance(tree, str)
+        self.assertIn("depth", tree.lower())
+
 
 class TestFourier(unittest.TestCase):
     def test_step_count_fn_shape(self):
@@ -232,15 +239,21 @@ class TestMersenneProofs(unittest.TestCase):
         self.assertTrue(thm["all_pass"], f"Theorem failed: {thm}")
         self.assertEqual(thm["c"], 5)
 
-    def test_verify_cliff_constant(self):
-        from dyadic_math.mersenne import verify_cliff_constant
+    def test_cliff_constant_series_terms(self):
+        from dyadic_core import two_adic_log5, valuation
 
-        self.assertTrue(verify_cliff_constant())
+        c = valuation(two_adic_log5(10) // 4 + 1)
+        self.assertEqual(c, 5)
 
-    def test_verify_c_formula(self):
-        from dyadic_math.mersenne import verify_c_formula
+    def test_c_formula_values_match(self):
+        from dyadic_core import valuation
+        from dyadic_math.mersenne import cliff_constant
 
-        self.assertTrue(verify_c_formula())
+        for g in (13, 21, 29, 37, 45, 53, 61):
+            c = cliff_constant(g, k=24)
+            s = valuation(g - 5)
+            expected = min(s - 2, 5)
+            self.assertEqual(c, expected, f"g={g}: c={c}, expected={expected}")
 
     def test_exp2_neg4(self):
         from dyadic_math.mersenne import exp2_neg4
@@ -259,15 +272,22 @@ class TestMersenneProofs(unittest.TestCase):
             u = cliff_constant_unified(g, k=32)
             self.assertEqual(d, u, f"Mismatch for g={g}: direct={d}, unified={u}")
 
-    def test_verify_unified_formula(self):
-        from dyadic_math.mersenne import verify_unified_formula
+    def test_unified_formula_matches_direct(self):
+        from dyadic_math.mersenne import cliff_constant, cliff_constant_unified
 
-        self.assertTrue(verify_unified_formula())
+        for g in (5, 13, 21, 29, 37, 45, 53, 61):
+            d = cliff_constant(g, k=24)
+            u = cliff_constant_unified(g, k=32)
+            self.assertEqual(d, u, f"Mismatch for g={g}: direct={d}, unified={u}")
 
-    def test_verify_connection(self):
-        from dyadic_math.mersenne import verify_connection
+    def test_central_identity_holds(self):
+        from dyadic_core import two_adic_log5
+        from dyadic_math.mersenne import cliff_constant, exp2_neg4
 
-        self.assertTrue(verify_connection())
+        log5_mod128 = two_adic_log5(8) & 127
+        self.assertEqual(log5_mod128, (-4) % 128)
+        self.assertEqual(exp2_neg4(7), 5)
+        self.assertEqual(cliff_constant(5), 5)
 
     def test_lift_root(self):
         from dyadic_math.padic_roots import lift_root

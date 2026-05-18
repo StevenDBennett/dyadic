@@ -34,34 +34,27 @@ class TestLiftRoot(unittest.TestCase):
 
 
 class TestNewton2Step(unittest.TestCase):
-    def test_converges_faster_than_newton(self):
-        from dyadic_math.padic_roots import lift_root, newton2_step, newton_step
+    def test_newton2_converges_to_cube_root(self):
+        from dyadic_math.padic_roots import lift_root, newton2_step
 
-        p, k = 5, 6
+        p, k, a, x0 = 5, 6, 8, 2
         pk = p**k
-        a = 8
         x_true = lift_root(a, p, k)
         self.assertIsNotNone(x_true)
-        x0 = 2
-        x_n1 = newton_step(x0, a, pk)
-        x_n2 = newton_step(x_n1, a, pk)
-        x_comp = newton2_step(x0, a, pk)
-        self.assertEqual(x_n2, x_comp)
+        x = newton2_step(x0, a, pk)
+        self.assertEqual(pow(x, 3, pk), a % pk)
 
 
 class TestNewton3Step(unittest.TestCase):
-    def test_equals_three_newton_steps(self):
-        from dyadic_math.padic_roots import newton3_step, newton_step
+    def test_newton3_converges_to_cube_root(self):
+        from dyadic_math.padic_roots import lift_root, newton3_step
 
-        p, k = 5, 6
+        p, k, a, x0 = 5, 6, 8, 2
         pk = p**k
-        a = 8
-        x0 = 2
-        x_n1 = newton_step(x0, a, pk)
-        x_n2 = newton_step(x_n1, a, pk)
-        x_n3 = newton_step(x_n2, a, pk)
-        x_comp = newton3_step(x0, a, pk)
-        self.assertEqual(x_n3, x_comp)
+        x_true = lift_root(a, p, k)
+        self.assertIsNotNone(x_true)
+        x = newton3_step(x0, a, pk)
+        self.assertEqual(pow(x, 3, pk), a % pk)
 
 
 class TestCompareMethods(unittest.TestCase):

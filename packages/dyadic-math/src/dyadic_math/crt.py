@@ -101,6 +101,8 @@ class CRTDualProcessor:
     """
 
     def __init__(self, k: int, p: int, g_p: int | None = None) -> None:
+        if p < 3 or p % 2 == 0:
+            raise ValueError(f"CRT requires odd prime p, got {p}")
         self.k = k
         self.p = p
         self.mod2 = 1 << k

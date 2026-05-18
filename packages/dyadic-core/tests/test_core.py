@@ -355,5 +355,28 @@ class TestDualAdd(unittest.TestCase):
             self._check(1, 0, 0, 3, 0, 0, k)
 
 
+class TestDLogNewtonStep(unittest.TestCase):
+    """Tests for dlog_newton_step and DLogNewtonStep."""
+
+    def test_newton_step_refines_dlog(self):
+        from dyadic_core import dlog_newton_step
+
+        k = 16
+        e_seed = 3
+        a = pow(5, 7, 1 << k)
+        log5_unit = 69  # two_adic_log5(16) >> 2  (pre-computed)
+        new_e, _ = dlog_newton_step(
+            e_seed,
+            a,
+            log5_unit,
+            bits=10,
+            mask=(1 << 10) - 1,
+            emask=(1 << 8) - 1,
+            new_eprec=8,
+        )
+        self.assertIsInstance(new_e, int)
+        self.assertGreater(new_e, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
