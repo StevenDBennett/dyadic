@@ -21,24 +21,9 @@ from functools import lru_cache
 from typing import Any
 
 import numpy as np
-from dyadic_core import bitmask, modinv_newton, two_adic_dlog, two_adic_log5, valuation
+from dyadic_core import bitmask, two_adic_dlog, two_adic_log5, valuation
 
-
-def newton_step_core(
-    g: int, e: int, a: int, k: int, log5_unit: int, mask: int, exp_mask: int
-) -> int:
-    """
-    Single Newton iteration for the map e ↦ e - (g^e - a) / (g^e · log5_unit).
-
-    This is the core computation used by BasinExplorer, separation.py,
-    and fourier.py.  Extracted to eliminate three-way code duplication.
-    """
-    g_val = pow(g, e, 1 << k)
-    f_val = (g_val - a) & mask
-    df_val = (g_val * log5_unit) & exp_mask
-    df_inv = modinv_newton(df_val, k - 2)
-    delta = ((f_val >> 2) * df_inv) & exp_mask
-    return (e - delta) & exp_mask
+from dyadic_math._step import newton_step_core
 
 
 @lru_cache(maxsize=128)
@@ -56,12 +41,20 @@ class BasinExplorer:
     """
     Explore the Newton-basin landscape for target a modulo 2^k.
 
+    Enumerates all N = 2^(k-2) seeds — O(2^k) Newton iterations.
+    Practical up to k ≈ 16 (N = 16384); beyond that the portrait
+    methods become expensive.
+
     Parameters
     ----------
     k : int
         Bit precision (≥ 3).
     g : int
-        Generator; must satisfy g ≡ 5 (mod 8).
+        Generator; must satisfy g ≡ 5 (mod 8).  Note: the discrete-log
+        infrastructure (``two_adic_dlog``) is hardcoded to base 5.
+        For g ≠ 5 the α-sector classification is correct but the
+        e-coordinate decomposition relative to the dlog is inconsistent
+        with the iteration generator — use g=5 for full consistency.
     target_a : int
         The target integer for which to solve 5^e ≡ target_a (mod 2^k).
     """
@@ -257,14 +250,10 @@ class LayerGhostDiagnosticV2:
     Parameters
     ----------
     k : int — bit precision (≥ 3)
-    g : int — generator (default 5)
-    max_iter : int — max Newton iterations (default 100)
     """
 
-    def __init__(self, k: int, g: int = 5, max_iter: int = 100) -> None:
+    def __init__(self, k: int) -> None:
         self.k = k
-        self.g = g
-        self.max_iter = max_iter
 
     def diagnostic_matrix(
         self,
@@ -322,11 +311,18 @@ class GhostHunt:
 
     Provides both single-target precision sweeps and full weight-matrix
     quantization-cliff analysis.
+
+    Parameters
+    ----------
+    g : int
+        Generator (default 5).  The precision sweep directly uses this
+        generator; the quantization cliff delegates to
+        ``LayerGhostDiagnosticV2`` which uses the base-5 dlog for
+        α-sector classification.
     """
 
-    def __init__(self, g: int = 5, max_iter: int = 100) -> None:
+    def __init__(self, g: int = 5) -> None:
         self.g = g
-        self.max_iter = max_iter
 
     def precision_threshold_sweep(self, k_min: int, k_max: int, target_e: int) -> None:
         """
@@ -360,7 +356,7 @@ class GhostHunt:
         """
         results: dict[int, float] = {}
         for k in range(k_min, k_max + 1):
-            diag = LayerGhostDiagnosticV2(k, self.g, self.max_iter)
+            diag = LayerGhostDiagnosticV2(k)
             _, _, ghost_ratio, _, _ = diag.diagnostic_matrix(weights)
             results[k] = ghost_ratio
         return results

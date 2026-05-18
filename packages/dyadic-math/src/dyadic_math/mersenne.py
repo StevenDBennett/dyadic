@@ -36,6 +36,7 @@ from functools import lru_cache
 from dyadic_core import (
     bitmask,
     dlog_bootstrap,
+    dlog_newton_step,
     g0,
     modinv_newton,
     padic_log,
@@ -245,12 +246,7 @@ def dlog_with_lut(a: int, k: int, b: int = 8) -> int:
         bits = new_eprec + 2
         mask = bitmask(bits)
         emask = bitmask(new_eprec)
-        pow5e = pow(5, e, 1 << bits)
-        f = (pow5e - a) & mask
-        df_unit = (pow5e * log5_unit) & emask
-        df_inv = modinv_newton(df_unit, new_eprec)
-        delta = ((f >> 2) * df_inv) & emask
-        e = (e - delta) & emask
+        e, _ = dlog_newton_step(e, a, log5_unit, bits, mask, emask, new_eprec)
         eprec = new_eprec
 
     return e

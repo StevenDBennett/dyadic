@@ -71,6 +71,9 @@ Returns `(alpha, e)` or `None` if `a` is even. Uses 10-bit LUT bootstrap for `k 
 #### `dlog_bootstrap(a: int, k: int) -> int`
 Bit-by-bit discrete log for `a ≡ 1 (mod 8)`. O(k) steps; used to seed Newton.
 
+#### `dlog_newton_step(e, a, L_unit, bits, mask, emask, new_eprec) -> tuple[int, int]`
+Single Newton step for 2-adic discrete log. Refines `e` so that `5^e ≡ a (mod 2^bits)`. Returns `(new_e, delta)`. Shared by `dlog_newton`, `dlog_residual_tracking`, and `dlog_with_lut`.
+
 #### `dlog_residual_tracking(a: int, k: int, L: Optional[int] = None) -> tuple[int, list[DLogNewtonStep]]`
 Viglietta discrete log with normalised residual tracking at each Newton step. Returns `(e, history)` where each entry in history contains `tau_before`/`tau_after` (the residual `(5^e · a⁻¹ − 1) / 4`) and its 2-adic valuation, confirming the quadratic convergence gain law. Requires `a ≡ 1 (mod 4)`.
 
@@ -109,7 +112,7 @@ Model the multiplicative group `⟨g⟩ ≅ Z/N` where `N = 2^(k-2)`.
 **Methods**:
 - `lift(e)` — `g^e mod 2^k`
 - `difference(f, e)` — forward difference `(Df)(e) = f(e+1) - f(e)`
-- `integrate(f)` — discrete integral `Σ f(e) mod 2^k`
+- `integrate(f)` — discrete integral `Σ f(e) mod 2^k`; warns for k > 14 (O(N) iteration becomes expensive)
 - `is_eigenfunction(f, e)` — check `D(g^e) = (g-1)·g^e`
 
 ### `dyadic_core.mahler` Module
@@ -145,13 +148,13 @@ Newton basin landscape analysis.
 - `portrait()` — full basin portrait dict over all seeds
 - `fate_vector()` — compact encoding (0=converged, 1=cycle, 2=diverged)
 
-#### `LayerGhostDiagnosticV2(k: int, g: int = 5, max_iter: int = 100)`
-Per-layer diagnostic for weight matrices.
+#### `LayerGhostDiagnosticV2(k: int)`
+Per-layer diagnostic for weight matrices. Uses `two_adic_dlog` (base 5) for α-sector classification.
 
 **Methods**:
 - `diagnostic_matrix(W)` — returns `(fate, conv_ratio, ghost_ratio, mean_e, v2_e)`
 
-#### `GhostHunt(g: int = 5, max_iter: int = 100)`
+#### `GhostHunt(g: int = 5)`
 Precision threshold hunting.
 
 **Methods**:
@@ -177,7 +180,7 @@ CRT arithmetic.
 - `convergence_ratio_2adic(P)` — 2-adic convergence ratio
 
 #### `combined_stability(k, p, num_cycles=50, cycle_length=4) -> Dict`
-Randomised correlation test: correlates `v₂(prod)` with the change in `v₂` under 2-adic multiplicative perturbation `w → w·(1+2^t)`.
+Ultrametric Lipschitz verification: correlates `v₂(prod)` with `v₂(delta)` under additive perturbation `w → w + 2^t`. Positive correlation is structurally guaranteed (ultrametric continuity) — this is a self-consistency check, not a discovery.
 
 ### `dyadic_math.nonabelian` Module
 

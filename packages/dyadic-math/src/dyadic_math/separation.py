@@ -17,7 +17,7 @@ from math import ceil, log2
 
 from dyadic_core import bitmask, two_adic_log5, valuation
 
-from dyadic_math.basin import newton_step_core
+from dyadic_math._step import newton_step_core
 
 
 def newton_trajectory(a: int, k: int, e_seed: int, steps: int = 10) -> list[int]:

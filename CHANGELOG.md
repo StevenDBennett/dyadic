@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Public `dlog_newton_step` function extracted from private `_dlog_newton_step` for reuse in `mersenne.dlog_with_lut`
+- `_step` module: `newton_step_core` extracted from `basin.py` to break hub dependency (separation.py, fourier.py now import from `_step`)
 - Two-package library structure: dyadic-core (stdlib) and dyadic-math (numpy)
 - 2-adic arithmetic: DualNumber decomposition, modular inverse via Newton lifting, discrete logarithms with LUT bootstrap, p-adic exp/log
 - Mahler calculus: binomial basis with Dirac/Volterra operators
@@ -33,6 +35,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `LayerGhostDiagnosticV2`: removed dead `g` and `max_iter` parameters (class only uses `two_adic_dlog`)
+- `GhostHunt`: removed dead `max_iter` parameter
+- `SeedThermodynamics`: raises `ValueError` if `g != 5` (dlog infrastructure is base-5 only)
+- `nonabelian.invariants`: `alpha_det`/`e_det` set to `None` for even determinants (was silently returning coordinates of forced-odd value)
+- `ExponentSpace.integrate`: warns instead of raising `ValueError` for large k
+- `docs/api.md`: updated `dlog_newton_step`, `LayerGhostDiagnosticV2`, `GhostHunt`, `combined_stability`, `ExponentSpace.integrate` documentation
+- `AGENTS.md`: updated test counts (115 core + 108 math), mypy fallback note, constructor validation standard, docs verification procedure
 - Extracted from the dual-view project (three predecessor codebases)
 - Deleted dyadic-ml, dyadic_math.operators, dyadic_math.gauge, dyadic_math.iwasawa_algebra
 - Replaced degenerate eps_crit metric with phase_alignment_experiment
@@ -48,6 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `nonabelian.invariants`: `alpha_det` and `e_det` now correct for odd determinants (was computing on `det_mod2k | 1`)
+- `phase_alignment_experiment`, `trace_alpha_independence`, `trace_exponent_independence`: skip trials with even holonomy determinant
+- `mersenne.dlog_with_lut`: deduplicated Newton step code (uses `dlog_newton_step` now)
 - α=1 sector ghost attractor: Newton iteration now solves 5^e ≡ -a for targets ≡ 3 mod 4
 - NewtonProjector modulus mismatch: modinv computed modulo k-2 (exponent domain) not k
 - Average operator O(N²) performance: replaced closure chain with direct summation

@@ -20,7 +20,7 @@ from typing import Any
 import numpy as np
 from dyadic_core import bitmask, two_adic_log5
 
-from dyadic_math.basin import newton_step_core
+from dyadic_math._step import newton_step_core
 
 
 def step_count_fn(k: int, e_true: int, max_steps: int = 10) -> np.ndarray:

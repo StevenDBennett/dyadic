@@ -50,6 +50,11 @@ class SeedThermodynamics:
     """
 
     def __init__(self, k: int = 16, g: int = 5) -> None:
+        if g != 5:
+            raise ValueError(
+                "Only generator g=5 is supported. "
+                "The 2-adic discrete log (two_adic_dlog) is hardcoded to base 5."
+            )
         self.k = k
         self.g = g
         self.mask = bitmask(k)

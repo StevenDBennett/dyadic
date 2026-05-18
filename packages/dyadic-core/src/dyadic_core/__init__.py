@@ -1,6 +1,7 @@
 from dyadic_core._dlog import (
     DLogNewtonStep,
     dlog_bootstrap,
+    dlog_newton_step,
     dlog_residual_tracking,
     two_adic_dlog,
     two_adic_log5,
@@ -28,6 +29,7 @@ __all__ = [
     "two_adic_dlog",
     "dual_add",
     "dlog_bootstrap",
+    "dlog_newton_step",
     "dlog_residual_tracking",
     "DLogNewtonStep",
     "padic_exp",

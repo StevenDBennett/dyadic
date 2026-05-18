@@ -17,6 +17,7 @@ from dyadic_core._util import bitmask, valuation
 __all__ = [
     "DLogNewtonStep",
     "dlog_bootstrap",
+    "dlog_newton_step",
     "dlog_residual_tracking",
     "two_adic_dlog",
     "two_adic_log5",
@@ -104,13 +105,13 @@ def dlog_newton(a: int, k: int, L: int | None = None) -> int:
         mask = bitmask(bits)
         emask = bitmask(new_eprec)
 
-        e, _ = _dlog_newton_step(e, a, L_unit, bits, mask, emask, new_eprec)
+        e, _ = dlog_newton_step(e, a, L_unit, bits, mask, emask, new_eprec)
         eprec = new_eprec
 
     return e
 
 
-def _dlog_newton_step(
+def dlog_newton_step(
     e: int, a: int, L_unit: int, bits: int, mask: int, emask: int, new_eprec: int
 ) -> tuple[int, int]:
     """
@@ -182,7 +183,7 @@ def dlog_residual_tracking(
         tau_before = ((rho_before - 1) & mask) >> 2
         v2_before = valuation(tau_before)
 
-        e, delta = _dlog_newton_step(e, a, L_unit, bits, mask, emask, new_eprec)
+        e, delta = dlog_newton_step(e, a, L_unit, bits, mask, emask, new_eprec)
 
         pow5e = pow(5, e, 1 << bits)
         rho_after = (pow5e * a_inv) & mask

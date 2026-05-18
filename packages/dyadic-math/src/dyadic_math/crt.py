@@ -157,8 +157,13 @@ def combined_stability(
     k: int, p: int, num_cycles: int = 50, cycle_length: int = 4
 ) -> dict[str, float]:
     """
-    Randomised test: correlation between 2-adic depth of a CRT cycle product
-    and the 2-adic valuation of the change under an additive 2ᵗ perturbation.
+    Verify the ultrametric Lipschitz property of CRT cycle products.
+
+    Correlates v₂(product) with v₂(product change under additive 2ᵗ
+    perturbation).  For any function on Z/2^k, deeper 2-adic inputs
+    produce smaller 2-adic output changes (ultrametric continuity),
+    so the Pearson r is expected to be positive by construction.
+    This is a self-consistency check, not a discovery.
 
     Unlike the original bit-flip approach (which always gave v₂(Δ)=0 because
     XOR by a power of 2 always produces an odd difference), this uses an

@@ -10,6 +10,7 @@ together with the finite-difference calculus on the exponent domain.
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Callable
 
 
@@ -61,13 +62,15 @@ class ExponentSpace:
 
         Returns Σ_{e=0}^{N-1} f(e)  (mod 2^k).
 
-        Raises ValueError if k > max_k because N = 2^{k-2} grows
-        exponentially and iterating over all seeds is impractical.
+        Warns if k > max_k because N = 2^{k-2} grows exponentially and
+        the O(N) iteration becomes expensive.
         """
         if self.k > max_k:
-            raise ValueError(
-                f"integrate with k={self.k} requires 2^{self.k - 2} iterations; "
-                f"limit to k ≤ {max_k} or use a closed form"
+            warnings.warn(
+                f"integrate with k={self.k} requires 2^{self.k - 2} iterations "
+                f"(N={self.N}); consider k ≤ {max_k} or a closed form",
+                RuntimeWarning,
+                stacklevel=2,
             )
         total = 0
         for e in range(self.N):

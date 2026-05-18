@@ -47,13 +47,14 @@ Research code is not installed, not tested in CI, and not referenced in publishe
 - `docs/bug_history.md` documents known bugs honestly. Entries for deleted code are removed.
 - `CHANGELOG.md` describes only what exists.
 - Do not create README.md or documentation files unless explicitly asked.
-- Before committing, verify `docs/api.md` matches the actual API — every documented name must resolve via `getattr(package, name)`.
+- Before committing, verify `docs/api.md` matches the actual API — every documented top-level name must resolve via `getattr(package, name)`. Run `python3 -c "import dyadic_core, dyadic_math; [hasattr(dyadic_core, n) or hasattr(dyadic_math, n) or print(f'MISSING: {n}') for n in ['name1', ...]]"` or consult the verification script in the agent.
+- Internal submodules (prefixed `_`) are not public API and should not appear in `docs/api.md`.
 
 ## Testing
 
 - Tests live in `packages/dyadic-core/tests/` and `packages/dyadic-math/tests/`.
-- Run with: `python3 -m pytest`
-- Full suite must pass before any commit: 223 tests (107 core + 116 math) as of May 2026.
+- Run with: `python3 -m pytest` or `pytest`.
+- Full suite must pass before any commit: 223 tests (115 core + 108 math).
 - Use `--tb=short` for concise output.
 - Run `ruff check packages/` and `ruff format --check packages/` — both must pass clean before any commit.
 
@@ -63,14 +64,14 @@ Research code is not installed, not tested in CI, and not referenced in publishe
 - Test directories and `research/` are excluded from strict checking.
 - Run with: `make typecheck` or `python3 -m mypy packages/`
 - Test files are not checked in CI (too many untyped test methods).
-- Fix all mypy errors before committing source code.
+- Fix all mypy errors before committing source code. If mypy is unavailable in the local environment, at minimum ensure ruff and pytest pass clean.
 
 ## Workflow
 
 - Create a feature branch for each logical chunk of work (`git checkout -b topic/description`).
 - Commit early and often on the branch. One commit per logical change at merge time.
 - Squash or rebase before merging to `main` if the branch has many small commits.
-- Before merging, run all three checks: `ruff check packages/`, `ruff format --check packages/`, and `python3 -m pytest --tb=short`. Fix all mypy errors too.
+- Before merging, run all three checks: `ruff check packages/`, `ruff format --check packages/`, and `python3 -m pytest --tb=short`. Fix all mypy errors too (or at minimum ensure ruff and pytest pass clean if mypy is unavailable).
 - Delete the feature branch after merging.
 
 ## Commit Style
@@ -87,6 +88,7 @@ Research code is not installed, not tested in CI, and not referenced in publishe
 - No silent API misbehaviour: if a parameter is accepted but ignored, raise `ValueError` or remove it. If a return value is inherently undefined (e.g. valuation of zero), return `None` not a sentinel like `float("inf")`.
 - Do not duplicate iteration loops. Extract shared helpers for repeated patterns (series accumulation, Newton step core, etc.).
 - No unused imports. MyPy's `--strict` and Ruff will flag these.
+- Accepting a parameter that silently produces wrong results for most values is worse than rejecting invalid parameters early. Constructor validation should raise `ValueError` with a clear message when a parameter is unsupported, even if the parameter seems plausibly general (e.g. generator `g` in components that hardcode base-5 dlog).
 
 ## What Not To Do
 

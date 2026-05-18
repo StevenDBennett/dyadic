@@ -120,7 +120,12 @@ def trace_alpha_independence(
             for _ in range(cycle_length)
         ]
         inv = nc.invariants(mats)
-        observations.append((inv["alpha_det"], inv["trace_modp"]))
+        if inv["det_even"]:
+            continue
+        alpha = inv["alpha_det"]
+        if alpha is None:
+            continue
+        observations.append((alpha, inv["trace_modp"]))
 
     # Contingency table: alpha (0,1) × trace_modp (0..p-1)
     table = Counter(observations)
@@ -162,11 +167,15 @@ def trace_exponent_independence(
             for _ in range(cycle_length)
         ]
         inv = nc.invariants(mats)
+        if inv["det_even"]:
+            continue
+        e_det = inv["e_det"]
+        if e_det is None:
+            continue
         trace = inv["trace_modp"]
-        e_det = float(inv["e_det"])
         if trace not in groups:
             groups[trace] = []
-        groups[trace].append(e_det)
+        groups[trace].append(float(e_det))
 
     # One-way ANOVA
     all_vals = [v for vals in groups.values() for v in vals]

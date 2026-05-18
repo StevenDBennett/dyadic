@@ -8,6 +8,7 @@ everything for code that does ``from dyadic_core.core import ...``.
 from dyadic_core._dlog import (  # noqa: F401
     DLogNewtonStep,
     dlog_bootstrap,
+    dlog_newton_step,
     dlog_residual_tracking,
     two_adic_dlog,
     two_adic_log5,

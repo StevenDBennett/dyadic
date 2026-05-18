@@ -54,27 +54,29 @@ class NonAbelianCRTDual:
             result = mat_mul(result, matrix, self.mod_full)
         return result
 
-    def invariants(self, matrices: list[list[list[int]]]) -> dict[str, int]:
+    def invariants(self, matrices: list[list[list[int]]]) -> dict[str, int | None]:
         """
         Extract invariants: det mod 2^k, det dual view, trace mod p,
         and CRT merge.
 
         For even determinants v2(det) >= 1, the 2-adic discrete log is
-        undefined and alpha_det/e_det are set to 0 with det_odd=1;
-        check ``det_even`` to detect this case.
+        undefined and ``alpha_det``/``e_det`` are set to ``None``.
+        Check ``det_even`` to detect this case.
         """
         holonomy = self.holonomy(matrices)
         det_mod2k = mat_det(holonomy, self.mod2)
         det_even_flag = (det_mod2k & 1) == 0
         trace_modp = (holonomy[0][0] + holonomy[1][1]) % self.p
 
-        # Dual-view decomposition of determinant (only defined for odd inputs)
-        det_odd = det_mod2k | 1  # force odd (LSB = 1)
-        dlog_result = two_adic_dlog(det_odd, self.k)
-        if dlog_result is not None:
-            alpha_det, e_det = dlog_result
+        # Dual-view decomposition (only defined for odd inputs)
+        if not det_even_flag:
+            dlog_result = two_adic_dlog(det_mod2k, self.k)
+            if dlog_result is not None:
+                alpha_det, e_det = dlog_result
+            else:
+                alpha_det, e_det = None, None
         else:
-            alpha_det, e_det = 0, 0
+            alpha_det, e_det = None, None
 
         # CRT merge
         inv_2k = self.crt.crt_reconstruct(det_mod2k, trace_modp)
@@ -124,6 +126,7 @@ def phase_alignment_experiment(
     """
     nc = NonAbelianCRTDual(k, p)
     flips = 0
+    valid = 0
 
     for _ in range(n_cycles):
         mats = [
@@ -135,17 +138,27 @@ def phase_alignment_experiment(
         ]
 
         inv = nc.invariants(mats)
+        if inv["det_even"]:
+            continue
         alpha0 = inv["alpha_det"]
+        if alpha0 is None:
+            continue
 
         eps_mat = _perturbation_matrix(inv["det_mod2k"] + 1, nc.mod_full)
         perturbed = mats[:]
         perturbed[0] = mat_mul(perturbed[0], eps_mat, nc.mod_full)
         inv_p = nc.invariants(perturbed)
+        if inv_p["det_even"]:
+            continue
+        alpha1 = inv_p["alpha_det"]
+        if alpha1 is None:
+            continue
 
-        if inv_p["alpha_det"] != alpha0:
+        valid += 1
+        if alpha1 != alpha0:
             flips += 1
 
     return {
-        "alignment": flips / n_cycles if n_cycles > 0 else 0.0,
-        "n_trials": n_cycles,
+        "alignment": flips / valid if valid > 0 else 0.0,
+        "n_trials": valid,
     }
