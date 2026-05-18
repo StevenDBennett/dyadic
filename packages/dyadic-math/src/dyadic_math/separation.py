@@ -50,7 +50,7 @@ def newton_trajectory(a: int, k: int, e_seed: int, steps: int = 10) -> list[int]
     e = e_seed
 
     for _ in range(steps):
-        e = newton_step_core(5, e, a, k, log5_unit, mask, exp_mask)
+        e = newton_step_core(e, a, k, log5_unit, mask, exp_mask)
         history.append(e)
 
     return history
@@ -98,7 +98,7 @@ def verify_separation(
     s_values: list[int],
     n_trials: int = 50,
     seed: int | None = None,
-) -> dict[int, int]:
+) -> dict[int, tuple[int, int]]:
     """
     Empirical verification that the separation theorem holds
     with zero variance.
@@ -107,13 +107,16 @@ def verify_separation(
     (a, a') with v₂(a - a') = s and checks that the observed
     separation matches the prediction.
 
-    Returns dict mapping s → observed step (or -1 on mismatch).
+    Returns dict mapping s → (passed, total) where passed is the
+    number of trials that matched the predicted separation.
     """
     if seed is not None:
         random.seed(seed)
-    results: dict[int, int] = {}
+    results: dict[int, tuple[int, int]] = {}
     for s in s_values:
-        observed = -1
+        passed = 0
+        total = 0
+        pred = predicted_separation(s)
         for _ in range(n_trials):
             e_seed = random.randint(0, (1 << (k - 2)) - 1)
             a_base = random.getrandbits(k) & bitmask(k)
@@ -121,13 +124,12 @@ def verify_separation(
             a_prime = a ^ (1 << s)
             a_prime = a_prime | 1  # ensure odd
             n_obs = separation_step(a, a_prime, k, e_seed)
-            pred = predicted_separation(s)
 
-            if n_obs != pred:
-                observed = n_obs
-                break
-            observed = pred
-        results[s] = observed
+            total += 1
+            if n_obs == pred:
+                passed += 1
+
+        results[s] = (passed, total)
 
     return results
 

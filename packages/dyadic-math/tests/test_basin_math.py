@@ -5,7 +5,7 @@ import io
 import unittest
 
 import numpy as np
-from dyadic_math.basin import BasinExplorer, GhostHunt, LayerGhostDiagnosticV2, precision_sweep
+from dyadic_math.basin import AlphaSectorDiagnostic, BasinExplorer, GhostHunt, precision_sweep
 
 
 class TestBasinExplorer(unittest.TestCase):
@@ -90,10 +90,10 @@ class TestPrecisionSweep(unittest.TestCase):
             self.assertIsInstance(frac, float)
 
 
-class TestLayerGhostDiagnosticV2(unittest.TestCase):
+class TestAlphaSectorDiagnostic(unittest.TestCase):
     def test_diagnostic_matrix_shape(self):
         W = np.array([[1, 3], [5, 7]], dtype=np.int64)
-        diag = LayerGhostDiagnosticV2(k=8)
+        diag = AlphaSectorDiagnostic(k=8)
         fate, conv, ghost, mean_e, v2_e = diag.diagnostic_matrix(W)
         self.assertEqual(fate.shape, W.shape)
         self.assertIsInstance(conv, float)
@@ -101,7 +101,7 @@ class TestLayerGhostDiagnosticV2(unittest.TestCase):
 
     def test_all_even_returns_negative_one(self):
         W = np.array([2, 4, 6], dtype=np.int64)
-        diag = LayerGhostDiagnosticV2(k=8)
+        diag = AlphaSectorDiagnostic(k=8)
         fate, conv, ghost, _, _ = diag.diagnostic_matrix(W)
         self.assertTrue(np.all(fate == -1))
         self.assertEqual(conv, 0.0)
@@ -109,7 +109,7 @@ class TestLayerGhostDiagnosticV2(unittest.TestCase):
 
     def test_powers_of_five_are_stable(self):
         W = np.array([pow(5, e, 256) for e in range(4)], dtype=np.int64)
-        diag = LayerGhostDiagnosticV2(k=8)
+        diag = AlphaSectorDiagnostic(k=8)
         fate, conv, ghost, _, _ = diag.diagnostic_matrix(W)
         self.assertGreater(conv, 0.5)
         self.assertLess(ghost, 0.5)

@@ -15,6 +15,9 @@ The package is organised into focused submodules. All names are re-exported from
 from dyadic_core import DualNumber, modinv_newton, padic_exp, ...
 ```
 
+#### `__version__: str`
+Package version (PEP 440). Current: `"0.1.0"`.
+
 ### `dyadic_core._util` — Basic Utilities
 
 #### `bitmask(k: int) -> int`
@@ -131,6 +134,8 @@ T∘D = id  on  span{e_n : n ≥ 2}   (NOT on all of ker(ε))
 
 ## dyadic-math
 
+#### `__version__: str`
+Package version (PEP 440). Current: `"0.1.0"`.
 
 ### `dyadic_math.basin` Module
 
@@ -143,8 +148,8 @@ Newton basin landscape analysis. Generator hardcoded to 5.
 - `portrait()` — full basin portrait dict over all seeds
 - `fate_vector()` — compact encoding (0=converged, 1=cycle, 2=diverged)
 
-#### `LayerGhostDiagnosticV2(k: int)`
-Per-layer diagnostic for weight matrices. Uses `two_adic_dlog` (base 5) for α-sector classification.
+#### `AlphaSectorDiagnostic(k: int)`
+Per-layer diagnostic for weight matrices. Uses `two_adic_dlog` (base 5) for α-sector classification.  Note: this is an α-sector classifier, not a ghost detector — the genuinely graded stability measure is v₂(e).
 
 **Methods**:
 - `diagnostic_matrix(W)` — returns `(fate, conv_ratio, ghost_ratio, mean_e, v2_e)`

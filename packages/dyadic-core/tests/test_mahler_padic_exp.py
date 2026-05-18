@@ -68,6 +68,18 @@ class TestPadicExp(unittest.TestCase):
         g0_32 = padic_exp(-4, 32)
         self.assertEqual(g0_32 & bitmask(16), g0_16)
 
+    def test_two_adic_log5_ground_truth(self):
+        # Regression test: padic_log(5, 10) fixed after duplicate-exp2_neg4 bug.
+        # The correct value 636 was verified via series computation.
+        from dyadic_core import two_adic_log5
+
+        val = two_adic_log5(10)
+        self.assertEqual(val, 636)
+        # Suffix stability: higher-k values truncate to the same lower bits
+        for k in [12, 16, 20]:
+            higher = two_adic_log5(k)
+            self.assertEqual(higher & bitmask(10), val)
+
 
 class TestG0(unittest.TestCase):
     def test_g0_mod_4_is_1(self):

@@ -124,7 +124,11 @@ class TestVerifySeparation(unittest.TestCase):
         results = verify_separation(k, s_values, n_trials=5)
         for s in s_values:
             self.assertIn(s, results)
-            self.assertIsInstance(results[s], int)
+            passed, total = results[s]
+            self.assertIsInstance(passed, int)
+            self.assertIsInstance(total, int)
+            self.assertGreaterEqual(passed, 0)
+            self.assertLessEqual(passed, total)
 
 
 class TestDyadicCoefficients(unittest.TestCase):

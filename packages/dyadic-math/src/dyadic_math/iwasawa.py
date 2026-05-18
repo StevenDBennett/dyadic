@@ -87,6 +87,8 @@ def ldu_decompose(matrix: list[list[int]], k: int) -> dict[str, list[list[int]]]
     l_val = (c * inv_a) & bitmask(k)
     d1 = a
     d2 = (d - l_val * b) & bitmask(k)
+    if d2 & 1 == 0:
+        return None
 
     return {
         "L": [[1, 0], [l_val, 1]],
@@ -194,7 +196,9 @@ def filtration_portrait(k: int) -> str:
     lines = [f"Congruence Filtration of GL(2, Z/2^{k})"]
     for j in range(k + 1):
         # Quotient Gamma(j) / Gamma(j+1) ≅ gl(2, F₂)
-        quotient_size = 16 if j < k else 1  # |GL(2, F_2)| = 2^4 = 16
+        quotient_size = (
+            16 if j < k else 1
+        )  # |gl(2, F_2)| = 2^4 (additive), not GL(2) with |GL(2,F_2)|=6
         lines.append(f"  Γ(2^{j}): |GL| ≈ 2^{4 * max(j, 1) - 3}·3, quotient size = {quotient_size}")
     return "\n".join(lines)
 

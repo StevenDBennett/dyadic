@@ -130,6 +130,14 @@ class TestIwasawa(unittest.TestCase):
         self.assertIn("D", ldu)
         self.assertIn("U", ldu)
 
+    def test_ldu_decompose_even_d2_returns_none(self):
+        from dyadic_math.iwasawa import ldu_decompose
+
+        # [[1, 0], [0, 2]] has odd pivot but even d2 => not in GL(2)
+        M = [[1, 0], [0, 2]]
+        ldu = ldu_decompose(M, 8)
+        self.assertIsNone(ldu)
+
     def test_matrix_coordinates(self):
         from dyadic_math.iwasawa import matrix_coordinates
 

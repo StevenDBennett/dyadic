@@ -1,7 +1,7 @@
 from dyadic_math._version import __version__
 
 # 2a. Dynamics
-from dyadic_math.basin import BasinExplorer, GhostHunt, LayerGhostDiagnosticV2, precision_sweep
+from dyadic_math.basin import AlphaSectorDiagnostic, BasinExplorer, GhostHunt, precision_sweep
 
 # 2d. Extensions
 from dyadic_math.crt import CRTDualNumber, CRTDualProcessor, combined_stability
@@ -81,6 +81,7 @@ from dyadic_math.weight_stability import WeightStabilityDiagnostics
 
 __all__ = [
     "__version__",
+    "AlphaSectorDiagnostic",
     "analytic_coefficients",
     "analytic_step_count",
     "BasinExplorer",
@@ -108,7 +109,6 @@ __all__ = [
     "holonomy_depth_profile",
     "isometry_pair_test",
     "isometry_summary",
-    "LayerGhostDiagnosticV2",
     "ldu_decompose",
     "lift_root",
     "MatrixCoordinates",

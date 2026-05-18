@@ -92,7 +92,7 @@ class BasinExplorer:
 
     def newton_step(self, e: int) -> int:
         """Single Newton iteration for the map e ↦ e - f(e)/f'(e)."""
-        return newton_step_core(5, e, self.a, self.k, self.L, self.mask, self.N - 1)
+        return newton_step_core(e, self.a, self.k, self.L, self.mask, self.N - 1)
 
     def _trajectory(
         self, e0: int, max_steps: int = 64, track_period: bool = False
@@ -297,7 +297,7 @@ def precision_sweep(
     return results
 
 
-class LayerGhostDiagnosticV2:
+class AlphaSectorDiagnostic:
     """
     Per-layer 2-adic ghost diagnostic for a weight matrix.
 
@@ -422,7 +422,7 @@ class GhostHunt:
         """
         results: dict[int, float] = {}
         for k in range(k_min, k_max + 1):
-            diag = LayerGhostDiagnosticV2(k)
+            diag = AlphaSectorDiagnostic(k)
             _, _, ghost_ratio, _, _ = diag.diagnostic_matrix(weights)
             results[k] = ghost_ratio
         return results

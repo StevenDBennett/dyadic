@@ -59,7 +59,7 @@ def step_count_fn(k: int, e_true: int, max_steps: int = 10) -> np.ndarray:
         e = e_seed
         step_count = 0
         while e != e_true and step_count < max_steps:
-            e = newton_step_core(5, e, a_val, k, log5_unit, mask, exp_mask)
+            e = newton_step_core(e, a_val, k, log5_unit, mask, exp_mask)
             step_count += 1
         if e == e_true:
             h[e_seed] = step_count
