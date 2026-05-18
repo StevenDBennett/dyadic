@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 __all__ = [
+    "WARN_K_LIMIT",
+    "MAX_K_ENUMERATE",
     "bitmask",
     "mat_det",
     "mat_mul",
     "valuation",
 ]
+
+# O(2^k) enumeration limits for Newton basin analysis.
+# Enumerating all N = 2^(k-2) seeds becomes expensive past k=16.
+WARN_K_LIMIT = 16
+MAX_K_ENUMERATE = 20
 
 
 def bitmask(k: int) -> int:

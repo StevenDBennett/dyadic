@@ -32,6 +32,15 @@ Bit mask `(1 << k) - 1`.
 #### `mat_det(M, mod) -> int`
 Determinant of a 2×2 matrix modulo `mod`.
 
+#### `WARN_K_LIMIT: int`
+Bit-precision threshold (16) above which O(2^k) Newton basin enumeration
+triggers a `RuntimeWarning`.  Re-exported from `dyadic_core`.
+
+#### `MAX_K_ENUMERATE: int`
+Hard limit (20) on bit-precision for full enumeration of Newton basins.
+Beyond this, sampling methods must be used instead.  Re-exported from
+`dyadic_core`.
+
 ### `dyadic_core._exceptions` — Error Hierarchy
 
 - `DyadicError(ValueError)` — base
@@ -200,9 +209,10 @@ Test α-sector flip under perturbation.
 - `newton_trajectory(a, k, e_seed, steps=10)` — per-step Newton history
 - `separation_step(a, a_prime, k, e_seed)` — first divergence step
 - `predicted_separation(s, method_order=2)` — theoretical `n*(s)`
-- `verify_separation(k, s_values, n_trials, seed=None)` — zero-variance verification
 - `ultrametric_ball_tree(k, e_true, depth=3)` — ASCII tree
 - `step_count_profile(k, e_true)` — v₂ level counts
+
+The internal function `verify_separation` (accessible via `dyadic_math.separation.verify_separation`) provides empirical theorem verification and is not part of the stable public API.
 
 ### `dyadic_math.fourier` Module
 
@@ -224,8 +234,9 @@ Test α-sector flip under perturbation.
 - `newton3_step(x, a, pk)` — order 8 (triple Newton)
 - `convergence_profile(x0, a, p, k, step_fn, x_true)` — track v_p
 - `compare_methods(p, k, n_trials, seed=None)` — rate comparison
-- `verify_order(primes, k, n_trials, seed=None)` — verify convergence ratio
 - `newton_correction_uniformity(p, k, n_seeds, seed=None)` — chi-square test
+
+The internal function `verify_order` (accessible via `dyadic_math.padic_roots.verify_order`) provides convergence order verification and is not part of the stable public API.
 
 ### `dyadic_math.iwasawa` Module
 
@@ -236,37 +247,36 @@ Test α-sector flip under perturbation.
 - `holonomy_depth_profile(k, p, ..., seed=None)` — depth under perturbation
 - `filtration_portrait(k)` — GL(2) quotient sizes
 - `matrix_commutator(M, N, k)` — `[M,N]` computation
-- `verify_commutator_depth(k, ...)` — depth theorem verification
 - `MatrixCoordinates` — dataclass
+
+The internal function `verify_commutator_depth` (accessible via `dyadic_math.iwasawa.verify_commutator_depth`) provides commutator depth theorem verification and is not part of the stable public API.
 
 ### `dyadic_math.mersenne` Module
 
 - `mersenne_coordinates(n, k)` — `(α, e_true, v₂(e_true))`
-- `verify_core_identity(n_max)` — 5^(2^(n-2)) ≡ 1 - 2^n
 - `mersenne_cliff_table(n_max)` — cliff thresholds
 - `bootstrap_cost(eprec0, k)` — Viglietta bit-cost
 - `optimal_bootstrap(k_values)` — minimiser search
 - `compare_bootstrap_strategies(k_values)` — sqrt vs k/2 vs LUT
 - `dlog_with_lut(a, k, b=8)` — LUT-based dlog
-- `verify_lut_dlog(k, b=8, n_trials, seed=None)` — correctness check
 - `cliff_constant(g, k)` — compute `c = v₂(log₂(g)/4 + 1)`
 - `cliff_formula(g)` — human-readable c(g) formula
 - `mersenne_cliff_conjecture(verbose)` — state and verify the conjectured cliff formula (empirical)
-- `verify_cliff_constant(verbose)` — verify `c=5` from 4 log-series terms
-- `verify_c_formula(verbose)` — verify `c(g) = v₂(g-5) - 2`
 - `exp2_neg4(k)` — delegates to `dyadic_core.g0(k)` (see `padic_exp`)
 - `cliff_constant_unified(g, k)` — unified formula via Newton-Taylor lemma
-- `verify_unified_formula(g_values, k)` — verify unified matches direct
-- `verify_connection(verbose)` — show all checks connected via `log₂(5) ≡ -4 (mod 128)`
+
+The following internal verification functions are accessible via `dyadic_math.mersenne` but are not part of the stable public API:
+- `verify_core_identity`, `verify_lut_dlog`, `verify_cliff_constant`, `verify_c_formula`, `verify_unified_formula`, `verify_connection`
 
 ### `dyadic_math.isometry` Module
 
-- `verify_isometry(k, n_trials, seed=None)` — v₂(5^e-1) = v₂(e)+2
 - `isometry_pair_test(k, n_trials, seed=None)` — pair form
 - `isometry_summary(k)` — full conditioning picture
 - `trace_alpha_independence(k, p, ..., seed=None)` — chi-square test
 - `trace_exponent_independence(k, p, ..., seed=None)` — ANOVA F-test
 - `exponent_valuation_profile(k, n_samples, seed=None)` — v₂(e_true) distribution
+
+The internal function `verify_isometry` (accessible via `dyadic_math.isometry.verify_isometry`) provides isometry theorem verification and is not part of the stable public API.
 
 ### `dyadic_math.weight_stability` Module
 

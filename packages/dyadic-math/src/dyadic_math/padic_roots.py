@@ -33,20 +33,9 @@ def _vp(n: int, p: int) -> int | None:
     return v
 
 
-def _modinv(a: int, pk: int) -> int | None:
-    """Modular inverse modulo pk (pk need not be a prime power)."""
-    # Extended Euclidean algorithm
-    g, x, y = _ext_gcd(a, pk)
-    if g != 1:
-        return None
-    return x % pk
-
-
-def _ext_gcd(a: int, b: int) -> tuple[int, int, int]:
-    if b == 0:
-        return (a, 1, 0)
-    g, x1, y1 = _ext_gcd(b, a % b)
-    return (g, y1, x1 - (a // b) * y1)
+def _modinv(a: int, pk: int) -> int:
+    """Modular inverse modulo pk via Python 3.8+ pow(a, -1, pk)."""
+    return pow(a, -1, pk)
 
 
 def _pk(p: int, k: int) -> int:
@@ -81,8 +70,9 @@ def lift_root(a: int, p: int, k: int) -> int | None:
         mod *= p
         f = (x * x * x - a) % mod
         df = (3 * x * x) % mod
-        inv_df = _modinv(df, mod)
-        if inv_df is None:
+        try:
+            inv_df = _modinv(df, mod)
+        except ValueError:
             return None
         x = (x - f * inv_df) % mod
 
@@ -97,8 +87,6 @@ def newton_step(x: int, a: int, pk: int) -> int:
     f = (x * x * x - a) % pk
     df = (3 * x * x) % pk
     inv_df = _modinv(df, pk)
-    if inv_df is None:
-        return x
     return (x - f * inv_df) % pk
 
 
@@ -110,8 +98,6 @@ def halley_step(x: int, a: int, pk: int) -> int:
     num = (2 * f * df) % pk
     denom = (2 * df * df - f * ddf) % pk
     inv_denom = _modinv(denom, pk)
-    if inv_denom is None:
-        return x
     return (x - num * inv_denom) % pk
 
 
@@ -157,7 +143,10 @@ def convergence_profile(
     profile: list[int] = [k] if init_v is None else [init_v]
 
     for _ in range(k + 1):
-        x_new = step_fn(x, a, pk)
+        try:
+            x_new = step_fn(x, a, pk)
+        except ValueError:
+            break
         diff = abs(x_new - x_true)
         if diff == 0:
             profile.append(k)  # saturated
@@ -219,11 +208,15 @@ def verify_order(
     k: int = 8,
     n_trials: int = 10,
     seed: int | None = None,
-) -> dict[str, dict[int, float]]:
+) -> dict[str, list[float]]:
     """
     Verify that v_p(x_{n+1} - x*) / v_p(x_n - x*) = m (method order).
 
-    Returns nested dict: method -> {trial_index: observed_order}.
+    Only includes trials where the initial valuation v_p(x_0 - x*) > 0
+    (the convergence ratio test requires at least one step of
+    non-zero valuation to measure the multiplier).
+
+    Returns nested dict: method -> list of observed order ratios.
     """
     if seed is not None:
         random.seed(seed)
@@ -237,11 +230,11 @@ def verify_order(
         "Newton": newton_step,
         "Halley": halley_step,
     }
-    results: dict[str, dict[int, float]] = {name: {} for name in methods}
+    results: dict[str, list[float]] = {name: [] for name in methods}
 
     for p in primes:
         pk = _pk(p, k)
-        for trial in range(n_trials):
+        for _ in range(n_trials):
             a = random.randrange(2, min(pk, 5000))
             if a % p == 0:
                 continue
@@ -254,9 +247,11 @@ def verify_order(
 
             for name, step_fn in methods.items():
                 prof = convergence_profile(x0, a, p, k, step_fn, x_true)
-                if len(prof) >= 3:
-                    ratio = prof[-1] / prof[-2] if prof[-2] > 0 else 0
-                    results[name][trial] = ratio
+                # Need at least 3 entries: initial, step 1, step 2.
+                # Step 1 must have non-zero valuation to measure the ratio.
+                if len(prof) >= 3 and prof[2] > 0:
+                    ratio = prof[2] / prof[1]
+                    results[name].append(ratio)
 
     return results
 
@@ -292,8 +287,9 @@ def newton_correction_uniformity(
 
         f = (x * x * x - a) % pk
         df = (3 * x * x) % pk
-        inv_df = _modinv(df, pk)
-        if inv_df is None:
+        try:
+            inv_df = _modinv(df, pk)
+        except ValueError:
             continue
         delta = (f * inv_df) % pk
         corrections.append(delta % p)

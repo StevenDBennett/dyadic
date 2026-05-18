@@ -14,9 +14,15 @@ import functools
 import numpy as np
 from dyadic_core import DualNumber, modinv_newton, valuation
 
+_PRIME_LUT_LIMIT = 10**5
+
 
 def _primitive_root(p: int) -> int | None:
     """Find the smallest primitive root modulo prime p."""
+    if p > _PRIME_LUT_LIMIT:
+        raise ValueError(
+            f"Primitive root search is O(p) and limited to p ≤ {_PRIME_LUT_LIMIT}, got {p}"
+        )
     if p == 2:
         return 1
     phi = p - 1
@@ -45,7 +51,14 @@ def _primitive_root(p: int) -> int | None:
 
 @functools.lru_cache(maxsize=32)
 def _prime_dlog_lut(p: int, g_p: int) -> dict[int, int]:
-    """Build a lookup table for discrete logs modulo prime p."""
+    """Build a lookup table for discrete logs modulo prime p.
+
+    Raises ValueError if p exceeds _PRIME_LUT_LIMIT (memory guard).
+    """
+    if p > _PRIME_LUT_LIMIT:
+        raise ValueError(
+            f"Discrete-log LUT requires O(p) memory, limited to p ≤ {_PRIME_LUT_LIMIT}, got {p}"
+        )
     lut: dict[int, int] = {}
     cur = 1
     for e in range(p - 1):

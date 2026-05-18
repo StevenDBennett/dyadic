@@ -185,6 +185,13 @@ def trace_exponent_independence(
 
     Returns F-statistic and p-value from scipy if available,
     otherwise returns effect size estimate.
+
+    Note on assumptions: the ANOVA F-test assumes normally distributed
+    residuals and equal variance across groups.  The discrete-log
+    exponent e is bounded and its distribution is non-normal, so the
+    p-value should be interpreted as a descriptive statistic rather
+    than a valid hypothesis test.  Use trace_alpha_independence
+    (chi-square) for a distribution-free alternative.
     """
     if seed is not None:
         random.seed(seed)

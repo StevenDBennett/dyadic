@@ -75,14 +75,14 @@ class TestCompareMethods(unittest.TestCase):
 
 
 class TestVerifyOrder(unittest.TestCase):
-    def test_returns_nested_dict(self):
+    def test_returns_nested_list(self):
         from dyadic_math.padic_roots import verify_order
 
         result = verify_order([5, 7], k=4, n_trials=3)
         self.assertIn("Newton", result)
         self.assertIn("Halley", result)
         for method_name in result:
-            self.assertIsInstance(result[method_name], dict)
+            self.assertIsInstance(result[method_name], list)
 
 
 class TestNewtonCorrectionUniformity(unittest.TestCase):

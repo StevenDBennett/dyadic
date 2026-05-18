@@ -21,7 +21,6 @@ from dyadic_math.isometry import (
     isometry_summary,
     trace_alpha_independence,
     trace_exponent_independence,
-    verify_isometry,
 )
 from dyadic_math.iwasawa import (
     MatrixCoordinates,
@@ -32,7 +31,6 @@ from dyadic_math.iwasawa import (
     ldu_decompose,
     matrix_commutator,
     matrix_coordinates,
-    verify_commutator_depth,
 )
 from dyadic_math.mersenne import (
     bootstrap_cost,
@@ -46,12 +44,6 @@ from dyadic_math.mersenne import (
     mersenne_cliff_table,
     mersenne_coordinates,
     optimal_bootstrap,
-    verify_c_formula,
-    verify_cliff_constant,
-    verify_connection,
-    verify_core_identity,
-    verify_lut_dlog,
-    verify_unified_formula,
 )
 from dyadic_math.nonabelian import NonAbelianCRTDual, phase_alignment_experiment
 
@@ -65,7 +57,6 @@ from dyadic_math.padic_roots import (
     newton3_step,
     newton_correction_uniformity,
     newton_step,
-    verify_order,
 )
 from dyadic_math.separation import (
     newton_trajectory,
@@ -73,7 +64,6 @@ from dyadic_math.separation import (
     separation_step,
     step_count_profile,
     ultrametric_ball_tree,
-    verify_separation,
 )
 
 # 2c. Weight stability analysis
@@ -135,15 +125,5 @@ __all__ = [
     "trace_exponent_independence",
     "ultrametric_ball_tree",
     "ultrametric_uncertainty",
-    "verify_c_formula",
-    "verify_cliff_constant",
-    "verify_commutator_depth",
-    "verify_connection",
-    "verify_core_identity",
-    "verify_isometry",
-    "verify_lut_dlog",
-    "verify_order",
-    "verify_separation",
-    "verify_unified_formula",
     "WeightStabilityDiagnostics",
 ]

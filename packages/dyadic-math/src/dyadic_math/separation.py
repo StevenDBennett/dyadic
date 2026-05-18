@@ -17,12 +17,9 @@ import random
 import warnings
 from math import ceil, log2
 
-from dyadic_core import bitmask, two_adic_log5, valuation
+from dyadic_core import MAX_K_ENUMERATE, WARN_K_LIMIT, bitmask, two_adic_log5, valuation
 
 from dyadic_math._step import newton_step_core
-
-_WARN_K_LIMIT = 16  # step_count_profile enumerates 2^(k-2) seeds
-_MAX_K_ENUMERATE = 20
 
 
 def newton_trajectory(a: int, k: int, e_seed: int, steps: int = 10) -> list[int]:
@@ -167,14 +164,14 @@ def step_count_profile(k: int, e_true: int) -> dict[int, tuple[int, int]]:
 
     Returns dict mapping v → (count, steps_to_converge).
     """
-    if k > _MAX_K_ENUMERATE:
+    if k > MAX_K_ENUMERATE:
         raise ValueError(
-            f"k={k} exceeds the hard limit of {_MAX_K_ENUMERATE} "
+            f"k={k} exceeds the hard limit of {MAX_K_ENUMERATE} "
             f"(N=2^{k - 2} seeds). Enumeration is O(2^k)."
         )
-    if k > _WARN_K_LIMIT:
+    if k > WARN_K_LIMIT:
         warnings.warn(
-            f"k={k} gives N=2^{k - 2} seeds; enumeration is O(2^k). Consider k ≤ {_WARN_K_LIMIT}.",
+            f"k={k} gives N=2^{k - 2} seeds; enumeration is O(2^k). Consider k ≤ {WARN_K_LIMIT}.",
             RuntimeWarning,
             stacklevel=2,
         )

@@ -22,12 +22,16 @@ from functools import lru_cache
 from typing import Any
 
 import numpy as np
-from dyadic_core import bitmask, two_adic_dlog, two_adic_log5, valuation
+from dyadic_core import (
+    MAX_K_ENUMERATE,
+    WARN_K_LIMIT,
+    bitmask,
+    two_adic_dlog,
+    two_adic_log5,
+    valuation,
+)
 
 from dyadic_math._step import newton_step_core
-
-_WARN_K_LIMIT = 16  # portrait enumerates 2^(k-2) seeds; k > 16 is expensive
-_MAX_K_ENUMERATE = 20  # hard limit: 2^18 = 262144 seeds
 
 
 @lru_cache(maxsize=128)
@@ -65,10 +69,10 @@ class BasinExplorer:
     def __init__(self, k: int, target_a: int) -> None:
         if k < 3:
             raise ValueError("k must be ≥ 3")
-        if k > _WARN_K_LIMIT:
+        if k > WARN_K_LIMIT:
             warnings.warn(
                 f"k={k} gives N=2^{k - 2} seeds; portrait enumeration is O(2^k). "
-                f"Consider k ≤ {_WARN_K_LIMIT}.",
+                f"Consider k ≤ {WARN_K_LIMIT}.",
                 RuntimeWarning,
                 stacklevel=2,
             )
@@ -147,9 +151,9 @@ class BasinExplorer:
         return self._trajectory(e0, max_steps, track_period=False)
 
     def _check_k_limit(self) -> None:
-        if self.k > _MAX_K_ENUMERATE:
+        if self.k > MAX_K_ENUMERATE:
             raise ValueError(
-                f"k={self.k} exceeds the hard limit of {_MAX_K_ENUMERATE} "
+                f"k={self.k} exceeds the hard limit of {MAX_K_ENUMERATE} "
                 f"(N=2^{self.k - 2} seeds). "
                 f"Use estimate_ghost_fraction() for approximate results."
             )
@@ -281,8 +285,8 @@ def precision_sweep(
     first_ghost_k: int | None = None
     for k in range(k_min, k_max + 1):
         a = pow(5, target_e, 1 << k)
-        if k > _MAX_K_ENUMERATE:
-            explorer = BasinExplorer(min(k, _MAX_K_ENUMERATE), a)
+        if k > MAX_K_ENUMERATE:
+            explorer = BasinExplorer(k, a)
             frac = explorer.estimate_ghost_fraction(n_samples=n_samples, seed=seed)
         else:
             explorer = BasinExplorer(k, a)
@@ -400,7 +404,7 @@ class GhostHunt:
         for k in range(k_min, k_max + 1):
             a = pow(5, target_e, 1 << k)
             explorer = BasinExplorer(k, a)
-            if k > _MAX_K_ENUMERATE:
+            if k > MAX_K_ENUMERATE:
                 frac = explorer.estimate_ghost_fraction(n_samples=n_samples, seed=seed)
                 n_ghosts = int(frac * n_samples)
                 n_label = f"~{n_ghosts}"

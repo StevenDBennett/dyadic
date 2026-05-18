@@ -15,7 +15,14 @@ from dyadic_core._exceptions import (
 )
 from dyadic_core._modular import dual_add, modinv_newton
 from dyadic_core._series import g0, padic_exp, padic_log
-from dyadic_core._util import bitmask, mat_det, mat_mul, valuation
+from dyadic_core._util import (
+    MAX_K_ENUMERATE,
+    WARN_K_LIMIT,
+    bitmask,
+    mat_det,
+    mat_mul,
+    valuation,
+)
 from dyadic_core._version import __version__
 from dyadic_core.exponent import ExponentSpace
 from dyadic_core.mahler import MahlerCalculus
@@ -35,6 +42,8 @@ __all__ = [
     "padic_exp",
     "padic_log",
     "g0",
+    "WARN_K_LIMIT",
+    "MAX_K_ENUMERATE",
     "bitmask",
     "valuation",
     "mat_mul",
