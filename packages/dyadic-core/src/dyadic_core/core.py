@@ -15,11 +15,10 @@ Public names
 """
 from __future__ import annotations
 
+import math
 from contextlib import contextmanager
 from functools import lru_cache
-import math
 from typing import TypedDict
-
 
 # ── exception hierarchy ────────────────────────────────────────────────────────
 
@@ -402,7 +401,7 @@ class DualNumber:
         self._n = n_mod
 
     @classmethod
-    def from_coords(cls, v: int, alpha: int, e: int, k: int = 64) -> "DualNumber":
+    def from_coords(cls, v: int, alpha: int, e: int, k: int = 64) -> DualNumber:
         """Build a DualNumber directly from coordinates."""
         obj = cls.__new__(cls)
         obj.k = k

@@ -1,11 +1,10 @@
-"""Tests for dyadic_math.basin — BasinExplorer, precision_sweep, LayerGhostDiagnosticV2, GhostHunt."""
-import unittest
-import io
+"""Tests for dyadic_math.basin module."""
 import contextlib
+import io
+import unittest
 
-from dyadic_math.basin import BasinExplorer, precision_sweep, LayerGhostDiagnosticV2, GhostHunt
-from dyadic_core import DualNumber, bitmask
 import numpy as np
+from dyadic_math.basin import BasinExplorer, GhostHunt, LayerGhostDiagnosticV2, precision_sweep
 
 
 class TestBasinExplorer(unittest.TestCase):
@@ -52,7 +51,7 @@ class TestBasinExplorer(unittest.TestCase):
         self.assertIn('diverged', port)
         self.assertIsInstance(port['cycles'], dict)
         total = len(port['converged']) + len(port['diverged'])
-        for period, entries in port['cycles'].items():
+        for _period, entries in port['cycles'].items():
             total += len(entries)
         self.assertEqual(total, explorer.N)
 
@@ -64,7 +63,7 @@ class TestBasinExplorer(unittest.TestCase):
         for period, entries in port['cycles'].items():
             self.assertIsInstance(period, int)
             self.assertGreater(period, 0)
-            for seed, cycle_path in entries:
+            for _seed, cycle_path in entries:
                 self.assertEqual(len(cycle_path), period)
 
     def test_portrait_matrix_encoding(self):

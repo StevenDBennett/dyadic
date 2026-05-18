@@ -30,7 +30,7 @@ class TestLiftRoot(unittest.TestCase):
 
 class TestNewton2Step(unittest.TestCase):
     def test_converges_faster_than_newton(self):
-        from dyadic_math.padic_roots import newton2_step, newton_step, lift_root
+        from dyadic_math.padic_roots import lift_root, newton2_step, newton_step
         p, k = 5, 6
         pk = p ** k
         a = 8
@@ -45,7 +45,7 @@ class TestNewton2Step(unittest.TestCase):
 
 class TestNewton3Step(unittest.TestCase):
     def test_equals_three_newton_steps(self):
-        from dyadic_math.padic_roots import newton3_step, newton_step, lift_root
+        from dyadic_math.padic_roots import newton3_step, newton_step
         p, k = 5, 6
         pk = p ** k
         a = 8
@@ -112,7 +112,7 @@ class TestSeparationStep(unittest.TestCase):
 
 class TestVerifySeparation(unittest.TestCase):
     def test_returns_results_for_all_s_values(self):
-        from dyadic_math.separation import verify_separation, predicted_separation
+        from dyadic_math.separation import verify_separation
         k = 8
         s_values = [3, 4, 5]
         results = verify_separation(k, s_values, n_trials=5)
@@ -136,10 +136,13 @@ class TestDyadicCoefficients(unittest.TestCase):
         self.assertIn("N/4", coeffs)
 
     def test_matches_analytic_for_step_count(self):
-        from dyadic_math.fourier import step_count_fn, analytic_step_count, dyadic_coefficients, analytic_coefficients
+        from dyadic_math.fourier import (
+            analytic_coefficients,
+            dyadic_coefficients,
+            step_count_fn,
+        )
         k = 6
         h_num = step_count_fn(k, 3)
-        h_an = analytic_step_count(k, 3)
         dyadic_num = dyadic_coefficients(h_num)
         dyadic_an = analytic_coefficients(k)
         self.assertIn("DC", dyadic_num)

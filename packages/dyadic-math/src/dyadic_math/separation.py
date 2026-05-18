@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from math import ceil, log2
 
-from dyadic_core import bitmask, valuation, modinv_newton, two_adic_log5
+from dyadic_core import bitmask, modinv_newton, two_adic_log5, valuation
 
 
 def newton_trajectory(a: int, k: int, e_seed: int, steps: int = 10) -> list[int]:
@@ -35,19 +35,19 @@ def newton_trajectory(a: int, k: int, e_seed: int, steps: int = 10) -> list[int]
     -------
     List of exponent values, length steps+1 (includes seed).
     """
-    L = two_adic_log5(k) >> 2
+    log5_unit = two_adic_log5(k) >> 2
     mask = bitmask(k)
-    Nmask = (1 << (k - 2)) - 1
+    exp_mask = (1 << (k - 2)) - 1
     history = [e_seed]
     e = e_seed
 
     for _ in range(steps):
         g5 = pow(5, e, 1 << k)
         f_val = (g5 - a) & mask
-        df_unit = (g5 * L) & Nmask
+        df_unit = (g5 * log5_unit) & exp_mask
         df_inv = modinv_newton(df_unit, k - 2)
-        delta = ((f_val >> 2) * df_inv) & Nmask
-        e = (e - delta) & Nmask
+        delta = ((f_val >> 2) * df_inv) & exp_mask
+        e = (e - delta) & exp_mask
         history.append(e)
 
     return history
@@ -133,12 +133,12 @@ def ultrametric_ball_tree(k: int, e_true: int, depth: int = 3) -> str:
     Shows how Newton trajectories are identical for seeds that
     lie in the same 2-adic ball of radius 2^(-m).
     """
-    N = 1 << (k - 2)
-    lines = [f"Ultrametric ball tree (N={N}, e_true={e_true})"]
+    order = 1 << (k - 2)
+    lines = [f"Ultrametric ball tree (N={order}, e_true={e_true})"]
 
     for d in range(depth + 1):
         ball_size = 1 << d
-        n_balls = N // ball_size
+        n_balls = order // ball_size
         lines.append(f"\n  depth={d} (balls of size {ball_size}):")
         row = ""
         for b in range(min(n_balls, 32)):
@@ -159,11 +159,11 @@ def step_count_profile(k: int, e_true: int) -> dict[int, tuple[int, int]]:
 
     Returns dict mapping v → (count, steps_to_converge).
     """
-    N = 1 << (k - 2)
+    order = 1 << (k - 2)
     profile: dict[int, tuple[int, int]] = {}
 
-    for e_seed in range(N):
-        diff = (e_seed - e_true) & (N - 1)
+    for e_seed in range(order):
+        diff = (e_seed - e_true) & (order - 1)
         if diff == 0:
             v = k  # true root
         else:

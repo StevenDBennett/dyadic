@@ -1,5 +1,6 @@
 """Tests for advanced modules: separation, fourier, padic_roots, iwasawa, mersenne, isometry."""
 import unittest
+
 import numpy as np
 
 
@@ -38,7 +39,7 @@ class TestFourier(unittest.TestCase):
         self.assertEqual(len(h), 1 << (k - 2))
 
     def test_analytic_matches_numeric(self):
-        from dyadic_math.fourier import step_count_fn, analytic_step_count
+        from dyadic_math.fourier import analytic_step_count, step_count_fn
         k = 6
         h_num = step_count_fn(k, 3)
         h_an = analytic_step_count(k, 3)
@@ -71,7 +72,7 @@ class TestPadicRoots(unittest.TestCase):
         self.assertIsInstance(x, int)
 
     def test_convergence_profile(self):
-        from dyadic_math.padic_roots import convergence_profile, newton_step, lift_root
+        from dyadic_math.padic_roots import convergence_profile, lift_root, newton_step
         p, k = 5, 4
         a = 8
         x_true = lift_root(a, p, k)
@@ -96,7 +97,7 @@ class TestIwasawa(unittest.TestCase):
         self.assertGreaterEqual(d, 1)
 
     def test_filtration_residue(self):
-        from dyadic_math.iwasawa import filtration_residue, congruence_depth
+        from dyadic_math.iwasawa import congruence_depth, filtration_residue
         M = [[3, 0], [0, 3]]
         d = congruence_depth(M, 8)
         res = filtration_residue(M, d, 8)
@@ -164,13 +165,13 @@ class TestMersenne(unittest.TestCase):
     def test_optimal_bootstrap(self):
         from dyadic_math.mersenne import optimal_bootstrap
         results = optimal_bootstrap([16, 24, 32])
-        for k, best in results.items():
+        for _k, best in results.items():
             self.assertGreater(best, 0)
 
     def test_compare_bootstrap_strategies(self):
         from dyadic_math.mersenne import compare_bootstrap_strategies
         results = compare_bootstrap_strategies([16, 24])
-        for k, data in results.items():
+        for _k, data in results.items():
             for key in ("sqrt_cost", "half_cost", "lut_cost"):
                 self.assertIn(key, data)
 

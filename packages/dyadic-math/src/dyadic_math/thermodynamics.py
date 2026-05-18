@@ -22,8 +22,8 @@ from __future__ import annotations
 import warnings
 
 import numpy as np
+from dyadic_core import bitmask, two_adic_dlog, valuation
 
-from dyadic_core import bitmask, valuation, two_adic_dlog
 from dyadic_math.basin import BasinExplorer
 
 
@@ -65,7 +65,7 @@ class SeedThermodynamics:
         k_range: range,
         k: int = 16,
         g: int = 5,
-    ) -> "SeedThermodynamics":
+    ) -> SeedThermodynamics:
         """
         Create an instance configured for precision-sweep analysis.
 
@@ -111,9 +111,9 @@ class SeedThermodynamics:
         alpha, e = result
         return (float(v), alpha, e)
 
-    def analyse(self, W: np.ndarray) -> dict[str, float]:
+    def analyse(self, weights: np.ndarray) -> dict[str, float]:
         """
-        Compute comprehensive 2-adic statistics for weight matrix W.
+        Compute comprehensive 2-adic statistics for weight matrix weights.
 
         Returns a dict with keys:
             alpha_fraction, mean_v2_e, std_v2_e, mean_e_norm,
@@ -122,7 +122,7 @@ class SeedThermodynamics:
         alpha_frac, v2_e_vals, e_norms = 0.0, [], []
         n_odd = 0
 
-        for w in W.flat:
+        for w in weights.flat:
             w_int = int(w)
             if w_int & 1 == 0:
                 continue
@@ -172,18 +172,18 @@ class SeedThermodynamics:
             return self.k
         return v2_e + 2
 
-    def compare_to_random(self, W: np.ndarray, n_samples: int = 1000) -> dict[str, float]:
+    def compare_to_random(self, weights: np.ndarray, n_samples: int = 1000) -> dict[str, float]:
         """
         Z-score comparison of statistics against random baseline.
 
         Returns dict with z_alpha, z_v2_e, z_cliff_risk.
         """
-        stats = self.analyse(W)
+        stats = self.analyse(weights)
         alphas, v2s, cliffs = [], [], []
 
         for _ in range(n_samples):
-            R = np.random.randint(0, 1 << self.k, size=W.shape, dtype=np.int64)
-            rstats = self.analyse(R)
+            random_weights = np.random.randint(0, 1 << self.k, size=weights.shape, dtype=np.int64)
+            rstats = self.analyse(random_weights)
             alphas.append(rstats["alpha_fraction"])
             v2s.append(rstats["mean_v2_e"])
             cliffs.append(rstats["cliff_risk"])
@@ -200,7 +200,7 @@ class SeedThermodynamics:
 
     # ── Precision-sweep analysis (v2-style) ─────────────────────────────────
 
-    def __call__(self, weights: np.ndarray, k_range: range) -> "SeedThermodynamics":
+    def __call__(self, weights: np.ndarray, k_range: range) -> SeedThermodynamics:
         """Deprecated: use ``SeedThermodynamics.from_precision_sweep()`` instead."""
         warnings.warn(
             "Calling SeedThermodynamics(weights, k_range) is deprecated. "
@@ -304,8 +304,6 @@ class SeedThermodynamics:
 
         hist = self.cliff_histogram()
         if hist:
-            max_k = max(hist.keys())
-            min_k = min(hist.keys())
             bar_max = max(hist.values())
             bar_width = 30
             lines.append("  Cliff histogram:")

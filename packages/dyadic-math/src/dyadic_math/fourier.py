@@ -15,8 +15,7 @@ against the numeric FFT.
 from __future__ import annotations
 
 import numpy as np
-
-from dyadic_core import bitmask, valuation, modinv_newton, two_adic_log5
+from dyadic_core import bitmask, modinv_newton, two_adic_log5
 
 
 def step_count_fn(k: int, e_true: int, max_steps: int = 10) -> np.ndarray:
@@ -29,26 +28,26 @@ def step_count_fn(k: int, e_true: int, max_steps: int = 10) -> np.ndarray:
     The function only takes values in {0, 1, 2, 3} for valid inputs;
     h = max_steps + 1 indicates failure to converge within budget.
     """
-    N = 1 << (k - 2)
-    a = pow(5, e_true, 1 << k)
-    L = two_adic_log5(k) >> 2
+    order = 1 << (k - 2)
+    a_val = pow(5, e_true, 1 << k)
+    log5_unit = two_adic_log5(k) >> 2
     mask = bitmask(k)
-    Nmask = N - 1
-    h = np.zeros(N, dtype=np.int32)
+    exp_mask = order - 1
+    h = np.zeros(order, dtype=np.int32)
 
-    for e_seed in range(N):
+    for e_seed in range(order):
         e = e_seed
-        step = 0
-        while e != e_true and step < max_steps:
+        step_count = 0
+        while e != e_true and step_count < max_steps:
             g5 = pow(5, e, 1 << k)
-            f_val = (g5 - a) & mask
-            df_unit = (g5 * L) & Nmask
+            f_val = (g5 - a_val) & mask
+            df_unit = (g5 * log5_unit) & exp_mask
             df_inv = modinv_newton(df_unit, k - 2)
-            delta = ((f_val >> 2) * df_inv) & Nmask
-            e = (e - delta) & Nmask
-            step += 1
+            delta = ((f_val >> 2) * df_inv) & exp_mask
+            e = (e - delta) & exp_mask
+            step_count += 1
         if e == e_true:
-            h[e_seed] = step
+            h[e_seed] = step_count
         else:
             h[e_seed] = max_steps + 1  # did not converge
     return h
@@ -64,10 +63,10 @@ def analytic_step_count(k: int, e_true: int) -> np.ndarray:
         h = 2  if v₂(e - e_true) == 1  (distance exactly 2)
         h = 3  if v₂(e - e_true) == 0  (distance odd)
     """
-    N = 1 << (k - 2)
-    h = np.full(N, 3, dtype=np.int32)
-    offset = np.arange(N, dtype=np.intp)
-    diff = (offset - e_true) & (N - 1)
+    order = 1 << (k - 2)
+    h = np.full(order, 3, dtype=np.int32)
+    offset = np.arange(order, dtype=np.intp)
+    diff = (offset - e_true) & (order - 1)
 
     mask0 = diff == 0
     h[mask0] = 0
@@ -100,15 +99,15 @@ def dyadic_coefficients(f: np.ndarray) -> dict[str, complex]:
     Only dyadic frequencies j = 0, N/2, N/4, ... have non-zero
     power for the step-count function.
     """
-    N = len(f)
-    F = dft(f)
-    coeffs: dict[str, complex] = {"DC": F[0]}
+    length = len(f)
+    spectrum = dft(f)
+    coeffs: dict[str, complex] = {"DC": spectrum[0]}
 
     m = 1
-    while N // (2 * m) > 0:
-        j = N // (2 * m)
-        if j < len(F):
-            coeffs[f"N/{2*m}"] = F[j]
+    while length // (2 * m) > 0:
+        j = length // (2 * m)
+        if j < len(spectrum):
+            coeffs[f"N/{2*m}"] = spectrum[j]
         m *= 2
     return coeffs
 
@@ -119,25 +118,22 @@ def analytic_coefficients(k: int) -> dict[str, complex]:
 
     Returns dict with DC, N/2, N/4 components derived analytically.
     """
-    N = 1 << (k - 2)
+    order = 1 << (k - 2)
 
-    # DC = N - N/4 - N/8 - ...  (all seeds except those at distance 1)
-    # Simplified: DC ≈ N·(1 - 1/N) ≈ N for large N
-    n_dc = N - N // 4
+    n_dc = order - order // 4
     dc_coeff = complex(n_dc, 0)
 
     # N/2: contrast between even and odd exponents
-    n_half = N // 2
+    n_half = order // 2
     half_coeff = complex(n_half, 0)
 
-    # N/4: contrast within odd-exponent pairs
-    n_quarter = N // 4
+    n_quarter = order // 4
     quarter_coeff = complex(-n_quarter, 0)
 
     return {
         "DC": dc_coeff,
-        f"N/2": half_coeff,
-        f"N/4": quarter_coeff,
+        "N/2": half_coeff,
+        "N/4": quarter_coeff,
     }
 
 
@@ -177,9 +173,9 @@ def ultrametric_uncertainty(k: int) -> str:
     2^(-m)) has Fourier support only at dyadic frequencies.
     The product |support|·|freq_support| = N.
     """
-    N = 1 << (k - 2)
+    order = 1 << (k - 2)
     return (
-        f"2-adic Fourier Uncertainty (k={k}, N={N}):\n"
+        f"2-adic Fourier Uncertainty (k={k}, N={order}):\n"
         f"A function supported on an ultrametric ball of radius 2^(-m)\n"
         f"has Fourier support only at frequencies j = N/2^t for t >= m.\n"
         f"Product |supp| × |freq_supp| = N (saturated)."

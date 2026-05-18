@@ -2,9 +2,14 @@
 import unittest
 
 from dyadic_core import (
-    bitmask, valuation, modinv_newton, two_adic_log5,
-    two_adic_dlog, dlog_residual_tracking,
-    DualNumber, TwoAdicProcessor,
+    DualNumber,
+    TwoAdicProcessor,
+    bitmask,
+    dlog_residual_tracking,
+    modinv_newton,
+    two_adic_dlog,
+    two_adic_log5,
+    valuation,
 )
 
 

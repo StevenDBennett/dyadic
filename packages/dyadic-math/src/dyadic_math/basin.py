@@ -19,8 +19,7 @@ from __future__ import annotations
 from functools import lru_cache
 
 import numpy as np
-
-from dyadic_core import bitmask, valuation, modinv_newton, two_adic_log5, two_adic_dlog
+from dyadic_core import bitmask, modinv_newton, two_adic_dlog, two_adic_log5, valuation
 
 
 @lru_cache(maxsize=128)
@@ -73,14 +72,14 @@ class BasinExplorer:
     def newton_step(self, e: int) -> int:
         """Single Newton iteration for the map e ↦ e - f(e)/f'(e)."""
         mask = self.mask
-        Nmask = self.N - 1
+        exp_mask = self.N - 1
 
         g_val = pow(5, e, 1 << self.k)
         f_val = (g_val - self.a) & mask
-        df_val = (g_val * self.L) & Nmask
+        df_val = (g_val * self.L) & exp_mask
         df_inv = modinv_newton(df_val, self.k - 2)
-        delta = ((f_val >> 2) * df_inv) & Nmask
-        return (e - delta) & Nmask
+        delta = ((f_val >> 2) * df_inv) & exp_mask
+        return (e - delta) & exp_mask
 
     def _trajectory(
         self, e0: int, max_steps: int = 64, track_period: bool = False
@@ -258,16 +257,17 @@ class LayerGhostDiagnosticV2:
         self.g = g
         self.max_iter = max_iter
 
-    def diagnostic_matrix(self, W: np.ndarray) -> tuple[np.ndarray, float, float, float, float]:
+    def diagnostic_matrix(
+        self, weights: np.ndarray,
+    ) -> tuple[np.ndarray, float, float, float, float]:
         """
-        Analyse each weight in W and return per-layer ghost stats.
+        Analyse each weight in weights and return per-layer ghost stats.
 
         Returns
         -------
         (fate, conv_ratio, ghost_ratio, mean_e, v2_e)
         """
-        from dyadic_core import valuation, two_adic_dlog
-        flat = W.ravel()
+        flat = weights.ravel()
         fate = np.zeros(len(flat), dtype=np.int32)
         conv_count = 0
         ghost_count = 0
@@ -300,7 +300,7 @@ class LayerGhostDiagnosticV2:
         mean_e = float(np.mean(e_vals)) if e_vals else 0.0
         mean_v2_e = float(np.mean(v2_vals)) if v2_vals else 0.0
 
-        return fate.reshape(W.shape), conv_ratio, ghost_ratio, mean_e, mean_v2_e
+        return fate.reshape(weights.shape), conv_ratio, ghost_ratio, mean_e, mean_v2_e
 
 
 class GhostHunt:
@@ -340,7 +340,7 @@ class GhostHunt:
             print(f"{k:>4}  {explorer.N:>6}  {n_ghosts:>8}  {frac:>8.4f}  {status:>10}")
 
     def quantization_cliff(
-        self, W: np.ndarray, k_min: int = 4, k_max: int = 16
+        self, weights: np.ndarray, k_min: int = 4, k_max: int = 16
     ) -> dict[int, float]:
         """
         Measure ghost density vs precision k for a weight matrix.
@@ -350,6 +350,6 @@ class GhostHunt:
         results: dict[int, float] = {}
         for k in range(k_min, k_max + 1):
             diag = LayerGhostDiagnosticV2(k, self.g, self.max_iter)
-            _, _, ghost_ratio, _, _ = diag.diagnostic_matrix(W)
+            _, _, ghost_ratio, _, _ = diag.diagnostic_matrix(weights)
             results[k] = ghost_ratio
         return results

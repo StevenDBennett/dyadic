@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "dyadic-math: p-adic Newton dynamics for the discrete-log map — basin analysis, ghost detection, Mersenne theorems"
 readme = "README.md"
 license = {text = "MIT"}
-authors = [{name = "Steve", email = "steve@example.com"}]
+authors = [{name = "Steve", email = "StevenBennettMobile@gmail.com"}]
 keywords = ["p-adic", "newton-dynamics", "number-theory", "adic-arithmetic"]
 classifiers = [
     "Programming Language :: Python :: 3",

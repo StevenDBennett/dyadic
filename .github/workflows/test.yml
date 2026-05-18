@@ -26,12 +26,11 @@ jobs:
       - name: Install packages
         run: |
           pip install -e packages/dyadic-core
-          pip install -e packages/dyadic-math --no-deps
-          pip install -e 'packages/dyadic-ml[scipy]' --no-deps
+          pip install -e packages/dyadic-math
       - name: Type check with mypy
         run: |
           pip install mypy
-          mypy packages/dyadic-core/src packages/dyadic-math/src packages/dyadic-ml/src
+          mypy packages/dyadic-core/src packages/dyadic-math/src
 
   test:
     runs-on: ubuntu-latest
@@ -46,7 +45,6 @@ jobs:
       - name: Install packages
         run: |
           pip install -e packages/dyadic-core
-          pip install -e packages/dyadic-math --no-deps
-          pip install -e 'packages/dyadic-ml[scipy]' --no-deps
+          pip install -e packages/dyadic-math
       - name: Run tests
         run: pytest packages/ -v --tb=short

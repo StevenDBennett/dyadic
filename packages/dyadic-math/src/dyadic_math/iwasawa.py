@@ -16,66 +16,73 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-import numpy as np
 
-from dyadic_core import DualNumber, modinv_newton, two_adic_dlog, valuation, bitmask, mat_mul, mat_det
+import numpy as np
+from dyadic_core import (
+    DualNumber,
+    bitmask,
+    mat_det,
+    mat_mul,
+    modinv_newton,
+    valuation,
+)
 
 # ── Congruence filtration ───────────────────────────────────────────────────
 
-def congruence_depth(M: list[list[int]], k: int) -> int:
+def congruence_depth(matrix: list[list[int]], k: int) -> int:
     """
-    Largest j such that M ≡ I (mod 2^j).
+    Largest j such that matrix ≡ I (mod 2^j).
 
     This is the matrix analog of v₂(n - 1) for scalars.
     Returns 0 if M ≠ I (mod 2).
     """
     for j in range(1, k + 1):
         mask = bitmask(j)
-        if (M[0][0] & mask) != 1 or (M[0][1] & mask) != 0 or \
-           (M[1][0] & mask) != 0 or (M[1][1] & mask) != 1:
+        if (matrix[0][0] & mask) != 1 or (matrix[0][1] & mask) != 0 or \
+           (matrix[1][0] & mask) != 0 or (matrix[1][1] & mask) != 1:
             return j - 1
     return k
 
-def filtration_residue(M: list[list[int]], depth: int, k: int) -> list[list[int]]:
+def filtration_residue(matrix: list[list[int]], depth: int, _k: int) -> list[list[int]]:
     """
     The gl(2, F₂) direction of departure from identity at depth.
 
-    Returns (M - I) / 2^depth mod 2 — a matrix over F₂.
+    Returns (matrix - I) / 2^depth mod 2 — a matrix over F₂.
     """
     shift = 1 << depth
     residue = [
-        [((M[0][0] - 1) // shift) & 1, (M[0][1] // shift) & 1],
-        [(M[1][0] // shift) & 1, ((M[1][1] - 1) // shift) & 1],
+        [((matrix[0][0] - 1) // shift) & 1, (matrix[0][1] // shift) & 1],
+        [(matrix[1][0] // shift) & 1, ((matrix[1][1] - 1) // shift) & 1],
     ]
     return residue
 
 # ── LDU decomposition ───────────────────────────────────────────────────────
 
-def ldu_decompose(M: list[list[int]], k: int) -> dict[str, list[list[int]]] | None:
+def ldu_decompose(matrix: list[list[int]], k: int) -> dict[str, list[list[int]]] | None:
     """
-    Factor M = L · D · U (mod 2^k) where:
+    Factor matrix = L · D · U (mod 2^k) where:
         L — lower unipotent ([[1, 0], [l, 1]])
         D — diagonal       ([[d1, 0], [0, d2]])
         U — upper unipotent ([[1, u], [0, 1]])
 
     Returns None if pivot M[0][0] is even (not invertible mod 2^k).
     """
-    a, b = M[0][0], M[0][1]
-    c, d = M[1][0], M[1][1]
+    a, b = matrix[0][0], matrix[0][1]
+    c, d = matrix[1][0], matrix[1][1]
 
     if a & 1 == 0:
         return None
 
     inv_a = modinv_newton(a, k)
-    u = (b * inv_a) & bitmask(k)
-    l = (c * inv_a) & bitmask(k)
+    u_val = (b * inv_a) & bitmask(k)
+    l_val = (c * inv_a) & bitmask(k)
     d1 = a
-    d2 = (d - l * b) & bitmask(k)
+    d2 = (d - l_val * b) & bitmask(k)
 
     return {
-        "L": [[1, 0], [l, 1]],
+        "L": [[1, 0], [l_val, 1]],
         "D": [[d1, 0], [0, d2]],
-        "U": [[1, u], [0, 1]],
+        "U": [[1, u_val], [0, 1]],
     }
 
 # ── Dual coordinates for matrices ───────────────────────────────────────────
@@ -89,20 +96,20 @@ class MatrixCoordinates:
     det_dual: DualNumber
     ldu: dict[str, list[list[int]]] | None
 
-def matrix_coordinates(M: list[list[int]], k: int) -> MatrixCoordinates:
+def matrix_coordinates(matrix: list[list[int]], k: int) -> MatrixCoordinates:
     """
-    Full coordinate decomposition of M ∈ GL(2, Z/2^k).
+    Full coordinate decomposition of matrix ∈ GL(2, Z/2^k).
 
     Returns depth, F₂-residue, trace v₂, determinant DualNumber,
     and LDU factors.
     """
-    depth = congruence_depth(M, k)
-    res = filtration_residue(M, depth, k)
-    trace_val = (M[0][0] + M[1][1]) & bitmask(k)
+    depth = congruence_depth(matrix, k)
+    res = filtration_residue(matrix, depth, k)
+    trace_val = (matrix[0][0] + matrix[1][1]) & bitmask(k)
     trace_depth = valuation(trace_val) if trace_val != 0 else k
-    det_val = mat_det(M, 1 << k)
+    det_val = mat_det(matrix, 1 << k)
     det_dual = DualNumber(det_val, k)
-    ldu = ldu_decompose(M, k)
+    ldu = ldu_decompose(matrix, k)
 
     return MatrixCoordinates(
         depth=depth,
@@ -116,7 +123,7 @@ def matrix_coordinates(M: list[list[int]], k: int) -> MatrixCoordinates:
 
 def holonomy_depth_profile(
     k: int, p: int, cycle_length: int = 4, n_cycles: int = 30
-) -> Dict:
+) -> dict:
     """
     How holonomy congruence depth changes under single-bit perturbation.
     """
@@ -132,12 +139,12 @@ def holonomy_depth_profile(
              for _ in range(2)]
             for _ in range(cycle_length)
         ]
-        H = nc.holonomy(mats)
-        d_orig = congruence_depth(H, k)
+        holonomy = nc.holonomy(mats)
+        d_orig = congruence_depth(holonomy, k)
 
         mats[0][0][0] ^= 1  # flip lowest bit
-        H_pert = nc.holonomy(mats)
-        d_pert = congruence_depth(H_pert, k)
+        holonomy_pert = nc.holonomy(mats)
+        d_pert = congruence_depth(holonomy_pert, k)
 
         depths_orig.append(d_orig)
         depths_pert.append(d_pert)
@@ -159,8 +166,6 @@ def filtration_portrait(k: int) -> str:
     """
     lines = [f"Congruence Filtration of GL(2, Z/2^{k})"]
     for j in range(k + 1):
-        # |GL(2, Z/2^j)| = 2^(4j - 3) * 3 for j >= 1
-        order = 2 ** (4 * max(j, 1) - 3) * 3 if j >= 1 else 1
         # Quotient Gamma(j) / Gamma(j+1) ≅ gl(2, F₂)
         quotient_size = 16 if j < k else 1
         lines.append(
@@ -172,31 +177,31 @@ def filtration_portrait(k: int) -> str:
 # ── Commutator depth theorem ────────────────────────────────────────────────
 
 def matrix_commutator(
-    M: list[list[int]], N: list[list[int]], k: int
+    matrix_a: list[list[int]], matrix_b: list[list[int]], k: int
 ) -> list[list[int]]:
     """
-    Compute [M, N] = M N M^{-1} N^{-1} modulo 2^k.
+    Compute [matrix_a, matrix_b] = matrix_a matrix_b matrix_a^{-1} matrix_b^{-1} modulo 2^k.
 
-    Requires det(M), det(N) to be odd (GL(2) condition).
+    Requires det(matrix_a), det(matrix_b) to be odd (GL(2) condition).
     """
     mod = 1 << k
-    inv_M = [[M[1][1], -M[0][1]], [-M[1][0], M[0][0]]]
-    det_M = mat_det(M, mod)
-    inv_det_M = modinv_newton(det_M, k)
+    inv_a = [[matrix_a[1][1], -matrix_a[0][1]], [-matrix_a[1][0], matrix_a[0][0]]]
+    det_a = mat_det(matrix_a, mod)
+    inv_det_a = modinv_newton(det_a, k)
     for i in range(2):
         for j in range(2):
-            inv_M[i][j] = (inv_M[i][j] * inv_det_M) % mod
+            inv_a[i][j] = (inv_a[i][j] * inv_det_a) % mod
 
-    inv_N = [[N[1][1], -N[0][1]], [-N[1][0], N[0][0]]]
-    det_N = mat_det(N, mod)
-    inv_det_N = modinv_newton(det_N, k)
+    inv_b = [[matrix_b[1][1], -matrix_b[0][1]], [-matrix_b[1][0], matrix_b[0][0]]]
+    det_b = mat_det(matrix_b, mod)
+    inv_det_b = modinv_newton(det_b, k)
     for i in range(2):
         for j in range(2):
-            inv_N[i][j] = (inv_N[i][j] * inv_det_N) % mod
+            inv_b[i][j] = (inv_b[i][j] * inv_det_b) % mod
 
-    MN = mat_mul(M, N, mod)
-    MN_inv = mat_mul(inv_M, inv_N, mod)
-    return mat_mul(MN, MN_inv, mod)
+    ab = mat_mul(matrix_a, matrix_b, mod)
+    inv_ab = mat_mul(inv_a, inv_b, mod)
+    return mat_mul(ab, inv_ab, mod)
 
 def verify_commutator_depth(
     k: int, depth_pairs: list[tuple[int, int]] = None, n_trials: int = 50
@@ -211,15 +216,15 @@ def verify_commutator_depth(
 
     results: list[tuple[int, int, int]] = []
 
-    for dM, dN in depth_pairs:
+    for depth_a, depth_b in depth_pairs:
         for _ in range(n_trials):
-            shift_M = 1 << dM
-            shift_N = 1 << dN
-            M = [[1 + shift_M, 0], [0, 1 + shift_M]]
-            N = [[1 + shift_N, 0], [0, 1 + shift_N]]
+            shift_a = 1 << depth_a
+            shift_b = 1 << depth_b
+            matrix_a = [[1 + shift_a, 0], [0, 1 + shift_a]]
+            matrix_b = [[1 + shift_b, 0], [0, 1 + shift_b]]
 
-            M_computed = matrix_commutator(M, N, k)
-            dMN = congruence_depth(M_computed, k)
-            results.append((dM, dN, dMN))
+            commutator = matrix_commutator(matrix_a, matrix_b, k)
+            depth_comm = congruence_depth(commutator, k)
+            results.append((depth_a, depth_b, depth_comm))
 
     return results

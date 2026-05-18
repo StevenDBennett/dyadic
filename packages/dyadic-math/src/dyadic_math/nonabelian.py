@@ -20,8 +20,8 @@ for this purpose.
 from __future__ import annotations
 
 import numpy as np
+from dyadic_core import mat_det, mat_mul, two_adic_dlog
 
-from dyadic_core import bitmask, valuation, modinv_newton, two_adic_dlog, mat_mul, mat_det
 from .crt import CRTDualProcessor
 
 
@@ -46,21 +46,21 @@ class NonAbelianCRTDual:
         self.mod_full = self.mod2 * p
         self.crt = CRTDualProcessor(k, p)
 
-    def holonomy(self, mats: list[list[list[int]]]) -> list[list[int]]:
+    def holonomy(self, matrices: list[list[list[int]]]) -> list[list[int]]:
         """Product of all matrices in the cycle modulo mod_full."""
-        H = [[1, 0], [0, 1]]
-        for M in mats:
-            H = mat_mul(H, M, self.mod_full)
-        return H
+        result = [[1, 0], [0, 1]]
+        for matrix in matrices:
+            result = mat_mul(result, matrix, self.mod_full)
+        return result
 
-    def invariants(self, mats: list[list[list[int]]]) -> dict[str, int]:
+    def invariants(self, matrices: list[list[list[int]]]) -> dict[str, int]:
         """
         Extract invariants: det mod 2^k, det dual view, trace mod p,
         and CRT merge.
         """
-        H = self.holonomy(mats)
-        det_mod2k = mat_det(H, self.mod2)
-        trace_modp = (H[0][0] + H[1][1]) % self.p
+        holonomy = self.holonomy(matrices)
+        det_mod2k = mat_det(holonomy, self.mod2)
+        trace_modp = (holonomy[0][0] + holonomy[1][1]) % self.p
 
         # Dual-view decomposition of determinant
         det_odd = det_mod2k if (det_mod2k & 1) else det_mod2k + 1
@@ -83,12 +83,12 @@ class NonAbelianCRTDual:
             "crt_p_view": inv_p,
         }
 
-    def convergence_ratio_full(self, mats: list[list[list[int]]]) -> float:
+    def convergence_ratio_full(self, matrices: list[list[list[int]]]) -> float:
         """Convergence ratio of the holonomy determinant 2-adic component."""
         from .basin import BasinExplorer
 
-        H = self.holonomy(mats)
-        det = mat_det(H, self.mod2)
+        holonomy = self.holonomy(matrices)
+        det = mat_det(holonomy, self.mod2)
         if det & 1 == 0:
             return 0.0
         try:
@@ -102,7 +102,7 @@ class NonAbelianCRTDual:
 
 
 def phase_alignment_experiment(
-    k: int, p: int, N_cycle: int = 4, n_cycles: int = 30,
+    k: int, p: int, cycle_length: int = 4, n_cycles: int = 30,
 ) -> dict[str, float]:
     """
     Test whether a single-bit perturbation flips the α-sector of the
@@ -119,7 +119,7 @@ def phase_alignment_experiment(
         mats = [
             [[np.random.randint(0, nc.mod_full), np.random.randint(0, nc.mod_full)],
              [np.random.randint(0, nc.mod_full), np.random.randint(0, nc.mod_full)]]
-            for _ in range(N_cycle)
+            for _ in range(cycle_length)
         ]
 
         inv = nc.invariants(mats)

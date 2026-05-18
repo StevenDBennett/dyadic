@@ -2,11 +2,15 @@
 Tests for padic_exp, padic_log, g0 (core.py) and MahlerCalculus (mahler.py).
 """
 import unittest
-import numpy as np
 
 from dyadic_core import (
-    padic_exp, padic_log, g0, valuation, bitmask, MahlerCalculus,
+    MahlerCalculus,
+    bitmask,
+    g0,
+    padic_exp,
+    padic_log,
     two_adic_log5,
+    valuation,
 )
 
 
@@ -161,7 +165,7 @@ class TestVolterraOperator(unittest.TestCase):
         self.assertEqual(MahlerCalculus.volterra_operator([0, 0, 1]), [0, 0, 0, -1])
 
 
-class TestDT_TD_Asymmetry(unittest.TestCase):
+class TestDtTdAsymmetry(unittest.TestCase):
     def test_D_e0_is_zero(self):
         self.assertEqual(MahlerCalculus.dirac_operator([1]), [])
 
@@ -263,8 +267,8 @@ class TestCliffDensityTheory(unittest.TestCase):
         k = 14
         total = 1 << (k - 2)
         total_c = sum(
-            max(0, valuation(abs((L - total if L > total // 2 else L) + 4)) - 2)
-            if (L - total if L > total // 2 else L) + 4 != 0 else k
+            max(0, valuation(abs((L - total if total // 2 < L else L) + 4)) - 2)
+            if (L - total if total // 2 < L else L) + 4 != 0 else k
             for L in range(total)
         )
         expected_c = total_c / total

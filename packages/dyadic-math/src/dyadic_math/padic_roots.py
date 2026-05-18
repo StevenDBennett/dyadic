@@ -11,15 +11,11 @@ where m is the method order, with zero variance.
 """
 from __future__ import annotations
 
-from collections.abc import Callable
-import math
 import random
 from collections import Counter
+from collections.abc import Callable
 
 import numpy as np
-
-from dyadic_core import bitmask
-
 
 # ── p-adic helpers (self-contained for general primes) ──────────────────────
 

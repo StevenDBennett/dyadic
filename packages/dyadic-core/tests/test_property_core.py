@@ -1,11 +1,14 @@
 """Property-based tests for dyadic_core invariants."""
-from hypothesis import given, settings
-from hypothesis.strategies import integers, data
-
 from dyadic_core import (
-    bitmask, valuation, modinv_newton, two_adic_dlog,
-    DualNumber, TwoAdicProcessor, padic_exp, padic_log,
+    DualNumber,
+    TwoAdicProcessor,
+    bitmask,
+    modinv_newton,
+    two_adic_dlog,
+    valuation,
 )
+from hypothesis import given
+from hypothesis.strategies import integers
 
 
 @given(integers(min_value=1, max_value=20))

@@ -2,10 +2,12 @@
 
 ## Project Identity
 
-2-adic arithmetic library with Newton dynamics analysis. Nothing more.
+p-adic arithmetic library with 2-adic Newton dynamics analysis.
 
-- **Not** spectral geometry, gauge theory, Iwasawa algebras, ML, quantum compilation, or butterfly compilers.
-- If a module cannot honestly deliver what its name claims, delete it — do not keep broken code.
+- **dyadic-core**: 2-adic arithmetic foundation — DualNumber decomposition, modular inverse via Newton lifting, discrete logarithms, p-adic exp/log, Mahler calculus, exponent space. Stdlib only.
+- **dyadic-math**: p-adic mathematics built on top — Newton dynamics (basin analysis, ghost detection), CRT extensions, GL(2) holonomy, Iwasawa-style matrix filtrations, Fourier analysis of step-count functions, Mersenne theorems, general p-adic root finding (Newton, Halley, composed methods for p ≠ 2, 3), weight thermodynamics. Depends on dyadic-core + numpy.
+
+If a module cannot honestly deliver what its name claims, delete it — do not keep broken code.
 
 ## Package Structure
 
@@ -13,8 +15,8 @@ Two packages only:
 
 | Package | Location | Description |
 |---------|----------|-------------|
-| `dyadic-core` | `packages/dyadic-core/` | 2-adic arithmetic foundation — stdlib only |
-| `dyadic-math` | `packages/dyadic-math/` | Newton dynamics, CRT, Fourier, Mersenne — depends on dyadic-core + numpy |
+| `dyadic-core` | `packages/dyadic-core/` | 2-adic arithmetic foundation — DualNumber, modinv, dlog, padic exp/log, Mahler calculus, exponent space. Stdlib only |
+| `dyadic-math` | `packages/dyadic-math/` | p-adic mathematics: Newton dynamics, CRT extensions, GL(2) holonomy, Iwasawa filtrations, Fourier analysis, Mersenne theorems, general p-adic root finding (p ≠ 2, 3), thermodynamics. Depends on dyadic-core + numpy |
 
 `dyadic-ml` was deleted. `dyadic_math.operators`, `dyadic_math.gauge`, `dyadic_math.iwasawa_algebra` were deleted from dyadic-math.
 
@@ -69,7 +71,6 @@ Research code is not installed, not tested in CI, and not referenced in publishe
 
 ## What Not To Do
 
-- Do not add spectral geometry, gauge theory, or Iwasawa algebra claims anywhere.
 - Do not mention `dyadic-ml`, `butterfly`, `ghost_regularization` as features — they were deleted.
 - Do not install or reference `torch` or `scipy` as dependencies.
 - Do not create `.md` files proactively unless asked.

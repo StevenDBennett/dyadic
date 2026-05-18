@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "dyadic-core: 2-adic arithmetic foundation — DualNumber, discrete log, padic exp/log, Mahler calculus"
 readme = "README.md"
 license = {text = "MIT"}
-authors = [{name = "Steve", email = "steve@example.com"}]
+authors = [{name = "Steve", email = "StevenBennettMobile@gmail.com"}]
 keywords = ["2-adic", "p-adic", "number-theory", "dual-number", "adic-arithmetic"]
 classifiers = [
     "Programming Language :: Python :: 3",

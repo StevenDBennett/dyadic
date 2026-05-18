@@ -2,9 +2,7 @@
 import unittest
 
 import numpy as np
-
 from dyadic_math.thermodynamics import SeedThermodynamics
-from dyadic_core import bitmask
 
 
 class TestSeedThermodynamics(unittest.TestCase):

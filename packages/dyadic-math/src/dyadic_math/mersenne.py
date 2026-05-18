@@ -29,15 +29,17 @@ Cliff Constant Proofs
 """
 from __future__ import annotations
 
-from functools import lru_cache
 import math
+from functools import lru_cache
 
 from dyadic_core import (
-    bitmask, valuation, modinv_newton,
-    two_adic_log5, two_adic_dlog, DualNumber,
+    bitmask,
+    modinv_newton,
+    two_adic_dlog,
+    two_adic_log5,
+    valuation,
 )
 from dyadic_core.core import dlog_bootstrap
-
 
 # ── Mersenne coordinates ────────────────────────────────────────────────────
 
@@ -89,7 +91,7 @@ def _cliff_prediction(n: int, c: int) -> int:
         return n + c
 
 
-def mersenne_cliff_table(n_max: int = 12) -> list[Dict]:
+def mersenne_cliff_table(n_max: int = 12) -> list[dict]:
     """
     Find the cliff precision k* for each Mersenne weight 2^n - 1.
 
@@ -162,7 +164,7 @@ def optimal_bootstrap(k_values: list[int] = None) -> dict[int, int]:
     return results
 
 
-def compare_bootstrap_strategies(k_values: list[int] = None) -> dict[int, Dict]:
+def compare_bootstrap_strategies(k_values: list[int] = None) -> dict[int, dict]:
     """
     Compare sqrt(k) heuristic vs k/2 optimal vs LUT b=8.
 
@@ -171,7 +173,7 @@ def compare_bootstrap_strategies(k_values: list[int] = None) -> dict[int, Dict]:
     if k_values is None:
         k_values = [16, 24, 32, 48, 64]
 
-    results: dict[int, Dict] = {}
+    results: dict[int, dict] = {}
     for k in k_values:
         sqrt_eprec = max(4, int(math.isqrt(k)) + 2)
         half_eprec = max(4, k // 2 + 2)
@@ -220,7 +222,7 @@ def dlog_with_lut(a: int, k: int, b: int = 8) -> int:
     e = lut.get(a_b, 0) & bitmask(b - 2)
     eprec = b - 2
 
-    L = two_adic_log5(k) >> 2
+    log5_unit = two_adic_log5(k) >> 2
     mask_full = bitmask(k)
     a &= mask_full
 
@@ -231,7 +233,7 @@ def dlog_with_lut(a: int, k: int, b: int = 8) -> int:
         emask = bitmask(new_eprec)
         pow5e = pow(5, e, 1 << bits)
         f = (pow5e - a) & mask
-        df_unit = (pow5e * L) & emask
+        df_unit = (pow5e * log5_unit) & emask
         df_inv = modinv_newton(df_unit, new_eprec)
         delta = ((f >> 2) * df_inv) & emask
         e = (e - delta) & emask
@@ -272,8 +274,8 @@ def cliff_constant(g: int = 5, k: int = 20) -> int:
         c(g)   = v_2(L_g+1)    at the boundary v_2(g-5)=7
     """
     if g == 5:
-        L = two_adic_log5(k) >> 2
-        return valuation(L + 1)
+        log_val = two_adic_log5(k) >> 2
+        return valuation(log_val + 1)
 
     mask = bitmask(k)
     x = (g - 1) & mask
@@ -292,8 +294,8 @@ def cliff_constant(g: int = 5, k: int = 20) -> int:
         else:
             result = (result + term_shifted) & mask
         x_power = (x_power * x) & mask
-    L_g = result >> 2
-    return valuation(L_g + 1)
+    log_g = result >> 2
+    return valuation(log_g + 1)
 
 
 def cliff_formula(g: int) -> str:
@@ -434,7 +436,7 @@ def prove_cliff_constant(verbose: bool = False) -> bool:
         print(f"  log_2(5) ≡ {t1} + {t2} + {t3} + {t4}  (mod 256)")
         print(f"           = {total}  (mod 256)")
         print()
-        print(f"  v_2(log_2(5)/4 + 1) = 5.  QED")
+        print("  v_2(log_2(5)/4 + 1) = 5.  QED")
         print()
         for msg, ok in checks:
             print(f"  {'✓' if ok else '✗'}  {msg}")
@@ -470,7 +472,7 @@ def prove_c_formula(verbose: bool = False) -> bool:
     if verbose:
         print("Proof: c(g) = min(v_2(g-5)-2, 5)  for v_2(g-5) ≠ 7")
         print()
-        print(f"  Numerical check (g = 13..600, all s ≠ 7):")
+        print("  Numerical check (g = 13..600, all s ≠ 7):")
         print(f"    Failures: {len(failures)}")
         if failures:
             for g, s, pred, actual in failures[:3]:
@@ -563,12 +565,12 @@ def proof_connection(verbose: bool = False) -> bool:
     This single fact, proved using 4 terms of the 2-adic log series,
     generates the entire theorem structure.
     """
-    L5_mod128 = two_adic_log5(8) & 127
+    log5_mod128 = two_adic_log5(8) & 127
     minus4_mod128 = (-4) % 128
 
     checks = [
         ("log_2(5) mod 128 = 124 = -4 mod 128",
-         L5_mod128 == minus4_mod128),
+         log5_mod128 == minus4_mod128),
         ("exp_2(-4) mod 128 = 5",
          exp2_neg4(7) == 5),
         ("c(5) = v_2(log_2(5)/4 + 1) = 5",

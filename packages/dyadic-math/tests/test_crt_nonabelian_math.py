@@ -1,14 +1,18 @@
 """Tests for dyadic_math.crt and dyadic_math.nonabelian."""
 import unittest
 
+from dyadic_core import mat_det, mat_mul
 from dyadic_math.crt import (
-    CRTDualNumber, CRTDualProcessor, combined_stability,
-    _primitive_root, _prime_dlog,
+    CRTDualNumber,
+    CRTDualProcessor,
+    _prime_dlog,
+    _primitive_root,
+    combined_stability,
 )
 from dyadic_math.nonabelian import (
-    NonAbelianCRTDual, phase_alignment_experiment,
+    NonAbelianCRTDual,
+    phase_alignment_experiment,
 )
-from dyadic_core import mat_mul, mat_det
 
 
 class TestCRTHelpers(unittest.TestCase):

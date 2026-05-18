@@ -19,15 +19,13 @@ T6-c  Trace-mod-p Independence
 """
 from __future__ import annotations
 
-from collections import Counter
-import math
 import random
+from collections import Counter
 
 import numpy as np
+from dyadic_core import bitmask, two_adic_dlog, valuation
 
-from dyadic_core import bitmask, mat_det, mat_mul, two_adic_dlog, valuation
 from .nonabelian import NonAbelianCRTDual
-
 
 # ── T6-a: Exponential Map Isometry ──────────────────────────────────────────
 
@@ -81,8 +79,8 @@ def isometry_summary(k: int) -> str:
     n_cases = 1 << (k - 2)
     lines = [
         f"Exponential Map Isometry Summary (k={k}, N={n_cases})",
-        f"  v₂(5^e - 1)     = v₂(e) + 2     (T6-a: isometry)",
-        f"  n*(s)           = ceil(log₂(s)) - 1  (T2: separation)",
+        "  v₂(5^e - 1)     = v₂(e) + 2     (T6-a: isometry)",
+        "  n*(s)           = ceil(log₂(s)) - 1  (T2: separation)",
         "",
         "  Together these imply the bidirectional Lipschitz condition:",
         "    v₂(e1 - e2) + 2 ≤ v₂(5^e1 - 5^e2) ≤ k",
@@ -178,12 +176,12 @@ def trace_exponent_independence(
     if df_within > 0 and df_between > 0:
         ms_between = ss_between / df_between
         ms_within = ss_within / df_within
-        F = ms_between / ms_within if ms_within > 0 else 0.0
+        f_stat = ms_between / ms_within if ms_within > 0 else 0.0
     else:
-        F = 0.0
+        f_stat = 0.0
 
     return {
-        "F_stat": F,
+        "F_stat": f_stat,
         "df_between": df_between,
         "df_within": df_within,
         "n_samples": len(all_vals),

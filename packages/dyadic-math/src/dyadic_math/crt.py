@@ -8,10 +8,8 @@ residue, allowing joint analysis of weights in the product ring.
 """
 from __future__ import annotations
 
-import math
 import numpy as np
-
-from dyadic_core import bitmask, valuation, modinv_newton, two_adic_log5, two_adic_dlog, DualNumber
+from dyadic_core import DualNumber, modinv_newton, valuation
 
 
 def _primitive_root(p: int) -> int | None:
@@ -113,10 +111,10 @@ class CRTDualProcessor:
         t = ((r2 - rp) * inv_p) & (self.mod2 - 1)
         return (t * self.p + rp) % self.mod_full
 
-    def mul(self, A: CRTDualNumber, B: CRTDualNumber) -> CRTDualNumber:
+    def mul(self, a_val: CRTDualNumber, b_val: CRTDualNumber) -> CRTDualNumber:
         """Multiply two CRTDualNumbers directly."""
-        n2 = (A.component_2.value * B.component_2.value) % self.mod2
-        np_val = (A.residue_p * B.residue_p) % self.p
+        n2 = (a_val.component_2.value * b_val.component_2.value) % self.mod2
+        np_val = (a_val.residue_p * b_val.residue_p) % self.p
         n_full = self.crt_reconstruct(n2, np_val)
         return CRTDualNumber(n_full, self.k, self.p, self.g_p)
 
@@ -134,15 +132,15 @@ class CRTDualProcessor:
             prod = self.mul(prod, num)
         return prod
 
-    def convergence_ratio_2adic(self, P: CRTDualNumber) -> float:
-        """Convergence ratio of the 2-adic component of P."""
+    def convergence_ratio_2adic(self, product: CRTDualNumber) -> float:
+        """Convergence ratio of the 2-adic component of product."""
         from .basin import BasinExplorer
 
-        a = P.component_2.value
-        if a == 0 or (a & 1) == 0:
+        a_val = product.component_2.value
+        if a_val == 0 or (a_val & 1) == 0:
             return 0.0
         try:
-            explorer = BasinExplorer(self.k, 5, a)
+            explorer = BasinExplorer(self.k, 5, a_val)
             portrait = explorer.portrait()
             n_converged = len(portrait['converged'])
             total = n_converged + len(portrait['cycle'])
@@ -175,8 +173,8 @@ def combined_stability(
 
     for _ in range(num_cycles):
         weights = [np.random.randint(0, proc.mod_full) for _ in range(cycle_length)]
-        P = proc.cycle_product([CRTDualNumber(w, k, p, proc.g_p) for w in weights])
-        v2_orig = valuation(P.component_2.value)
+        product = proc.cycle_product([CRTDualNumber(w, k, p, proc.g_p) for w in weights])
+        v2_orig = valuation(product.component_2.value)
         if v2_orig is None:
             v2_orig = 0.0
 
@@ -186,11 +184,11 @@ def combined_stability(
         perturbed = (weights[idx] + (1 << t)) % proc.mod_full
         weights_pert = weights[:]
         weights_pert[idx] = perturbed
-        P_pert = proc.cycle_product(
+        product_pert = proc.cycle_product(
             [CRTDualNumber(w, k, p, proc.g_p) for w in weights_pert]
         )
 
-        delta = abs(P.component_2.value - P_pert.component_2.value)
+        delta = abs(product.component_2.value - product_pert.component_2.value)
         v2_delta = valuation(delta) if delta > 0 else 0
 
         v2_orig_vals.append(float(v2_orig))
