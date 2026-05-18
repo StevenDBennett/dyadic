@@ -22,6 +22,7 @@ Key asymmetry (proved in tests):
 The asymmetry arises because D(e₁) = −e₀ exits ker(ε), so T∘D is
 undefined at e₁.
 """
+
 from __future__ import annotations
 
 
@@ -64,7 +65,7 @@ class MahlerCalculus:
         """
         N = min(len(f) - 1, max_degree)
         coeffs: list[int] = []
-        diff = f[:N + 1]
+        diff = f[: N + 1]
         for _ in range(N + 1):
             coeffs.append(diff[0])
             diff = [diff[i + 1] - diff[i] for i in range(len(diff) - 1)]
@@ -109,9 +110,7 @@ class MahlerCalculus:
         if not coeffs:
             return []
         if coeffs[0] != 0:
-            raise ValueError(
-                "Volterra operator requires a₀ = 0 (augmentation kernel)"
-            )
+            raise ValueError("Volterra operator requires a₀ = 0 (augmentation kernel)")
         return [0] + [-c for c in coeffs]
 
     @staticmethod

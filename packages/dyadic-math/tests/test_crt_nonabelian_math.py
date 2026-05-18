@@ -1,4 +1,5 @@
 """Tests for dyadic_math.crt and dyadic_math.nonabelian."""
+
 import unittest
 
 from dyadic_core import mat_det, mat_mul
@@ -91,13 +92,13 @@ class TestNonAbelianMatrixOps(unittest.TestCase):
         A = [[1, 2], [3, 4]]
         B = [[5, 6], [7, 8]]
         C = mat_mul(A, B, 100)
-        self.assertEqual(C[0][0], (1*5 + 2*7) % 100)
-        self.assertEqual(C[0][1], (1*6 + 2*8) % 100)
+        self.assertEqual(C[0][0], (1 * 5 + 2 * 7) % 100)
+        self.assertEqual(C[0][1], (1 * 6 + 2 * 8) % 100)
 
     def testmat_det(self):
         M = [[1, 2], [3, 4]]
         det = mat_det(M, 100)
-        self.assertEqual(det, (1*4 - 2*3) % 100)
+        self.assertEqual(det, (1 * 4 - 2 * 3) % 100)
 
 
 class TestNonAbelianCRTDual(unittest.TestCase):

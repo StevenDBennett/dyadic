@@ -17,6 +17,7 @@ signal is whether the perturbation flips the α-sector of the
 determinant (phase alignment).  Use phase_alignment_experiment()
 for this purpose.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -94,15 +95,18 @@ class NonAbelianCRTDual:
         try:
             explorer = BasinExplorer(self.k, 5, det)
             portrait = explorer.portrait()
-            n_converged = len(portrait['converged'])
-            total = n_converged + len(portrait['cycle'])
+            n_converged = len(portrait["converged"])
+            total = n_converged + len(portrait["cycle"])
             return n_converged / total if total > 0 else 0.0
         except Exception:
             return 0.0
 
 
 def phase_alignment_experiment(
-    k: int, p: int, cycle_length: int = 4, n_cycles: int = 30,
+    k: int,
+    p: int,
+    cycle_length: int = 4,
+    n_cycles: int = 30,
 ) -> dict[str, float]:
     """
     Test whether a single-bit perturbation flips the α-sector of the
@@ -117,8 +121,10 @@ def phase_alignment_experiment(
 
     for _ in range(n_cycles):
         mats = [
-            [[np.random.randint(0, nc.mod_full), np.random.randint(0, nc.mod_full)],
-             [np.random.randint(0, nc.mod_full), np.random.randint(0, nc.mod_full)]]
+            [
+                [np.random.randint(0, nc.mod_full), np.random.randint(0, nc.mod_full)],
+                [np.random.randint(0, nc.mod_full), np.random.randint(0, nc.mod_full)],
+            ]
             for _ in range(cycle_length)
         ]
 

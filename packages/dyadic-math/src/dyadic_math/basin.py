@@ -14,6 +14,7 @@ iteration converges to a ghost fixed point at e* = dlog(a+2, k).
 This fix was identified in the original 2-Adic-Newton-Dynamics
 codebase and is essential for correctness.
 """
+
 from __future__ import annotations
 
 from functools import lru_cache
@@ -26,7 +27,7 @@ from dyadic_core import bitmask, modinv_newton, two_adic_dlog, two_adic_log5, va
 def _cached_portrait(k: int, g: int, target_a: int) -> dict[str, list[int]]:
     """LRU-cached basin portrait keyed by (k, g, target_a)."""
     explorer = BasinExplorer(k, g, target_a)
-    result: dict[str, list[int]] = {'converged': [], 'cycle': [], 'diverged': []}
+    result: dict[str, list[int]] = {"converged": [], "cycle": [], "diverged": []}
     for e0 in range(explorer.N):
         fate, val, _ = explorer.classify(e0)
         result[fate].append(e0)
@@ -100,10 +101,10 @@ class BasinExplorer:
             if track_period:
                 if e in seen:
                     period = step - seen[e]
-                    return ('cycle', period, path)
+                    return ("cycle", period, path)
             else:
                 if e in seen:
-                    return ('cycle', e, path)
+                    return ("cycle", e, path)
             seen[e] = step
 
             e_next = self.newton_step(e)
@@ -111,14 +112,14 @@ class BasinExplorer:
 
             if e_next == e:
                 if pow(5, e, 1 << self.k) == self.a:
-                    return ('converged', step + 1 if track_period else e, path)
+                    return ("converged", step + 1 if track_period else e, path)
                 else:
                     period_or_point = 1 if track_period else e
-                    return ('cycle', period_or_point, path)
+                    return ("cycle", period_or_point, path)
 
             e = e_next
 
-        return ('diverged', max_steps if track_period else e, path)
+        return ("diverged", max_steps if track_period else e, path)
 
     def classify(self, e0: int, max_steps: int = 64) -> tuple[str, int, list[int]]:
         """
@@ -142,7 +143,7 @@ class BasinExplorer:
         vec = []
         for e0 in range(self.N):
             fate, _, _ = self.classify(e0)
-            vec.append(0 if fate == 'converged' else (1 if fate == 'cycle' else 2))
+            vec.append(0 if fate == "converged" else (1 if fate == "cycle" else 2))
         return vec
 
     def full_portrait(self) -> dict[str, object]:
@@ -158,20 +159,20 @@ class BasinExplorer:
         }
         """
         result: dict[str, object] = {
-            'converged': [],
-            'cycles': {},
-            'diverged': [],
+            "converged": [],
+            "cycles": {},
+            "diverged": [],
         }
         for e0 in range(self.N):
             fate, val, path = self._classify_with_period(e0)
-            if fate == 'converged':
-                result['converged'].append((e0, val))
-            elif fate == 'cycle':
+            if fate == "converged":
+                result["converged"].append((e0, val))
+            elif fate == "cycle":
                 period = val
                 cycle_path = path[-period:] if period > 0 else path[-1:]
-                result['cycles'].setdefault(period, []).append((e0, cycle_path))
+                result["cycles"].setdefault(period, []).append((e0, cycle_path))
             else:
-                result['diverged'].append(e0)
+                result["diverged"].append(e0)
         return result
 
     def portrait_matrix(self) -> list[int]:
@@ -188,17 +189,15 @@ class BasinExplorer:
         fates = []
         for e0 in range(self.N):
             fate, val, _ = self._classify_with_period(e0)
-            if fate == 'converged':
+            if fate == "converged":
                 fates.append(0)
-            elif fate == 'cycle':
+            elif fate == "cycle":
                 fates.append(-val)
             else:
                 fates.append(-1)
         return fates
 
-    def _classify_with_period(
-        self, e0: int, max_steps: int = 64
-    ) -> tuple[str, int, list[int]]:
+    def _classify_with_period(self, e0: int, max_steps: int = 64) -> tuple[str, int, list[int]]:
         """Classify seed and return cycle period (not cycle point).
 
         Delegates to the shared _trajectory method.
@@ -228,7 +227,7 @@ def precision_sweep(
         a = pow(g, target_e, 1 << k)
         explorer = BasinExplorer(k, g, a)
         portrait = explorer.portrait()
-        n_ghosts = len(portrait['cycle'])
+        n_ghosts = len(portrait["cycle"])
         frac = n_ghosts / explorer.N if explorer.N > 0 else 0.0
         results.append((k, frac))
         if frac > 0 and first_ghost_k is None:
@@ -258,7 +257,8 @@ class LayerGhostDiagnosticV2:
         self.max_iter = max_iter
 
     def diagnostic_matrix(
-        self, weights: np.ndarray,
+        self,
+        weights: np.ndarray,
     ) -> tuple[np.ndarray, float, float, float, float]:
         """
         Analyse each weight in weights and return per-layer ghost stats.
@@ -315,9 +315,7 @@ class GhostHunt:
         self.g = g
         self.max_iter = max_iter
 
-    def precision_threshold_sweep(
-        self, k_min: int, k_max: int, target_e: int
-    ) -> None:
+    def precision_threshold_sweep(self, k_min: int, k_max: int, target_e: int) -> None:
         """
         Print precision sweep table for a single target.
 
@@ -334,7 +332,7 @@ class GhostHunt:
             a = pow(self.g, target_e, 1 << k)
             explorer = BasinExplorer(k, self.g, a)
             portrait = explorer.portrait()
-            n_ghosts = len(portrait['cycle'])
+            n_ghosts = len(portrait["cycle"])
             frac = n_ghosts / explorer.N if explorer.N > 0 else 0.0
             status = "GHOST!" if frac > 0 else "OK"
             print(f"{k:>4}  {explorer.N:>6}  {n_ghosts:>8}  {frac:>8.4f}  {status:>10}")

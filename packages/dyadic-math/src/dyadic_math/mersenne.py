@@ -27,6 +27,7 @@ Cliff Constant Proofs
       - verify_unified_formula()    — verify unified matches direct
       - proof_connection()          — show all proofs are connected
 """
+
 from __future__ import annotations
 
 import math
@@ -42,6 +43,7 @@ from dyadic_core import (
 from dyadic_core.core import dlog_bootstrap
 
 # ── Mersenne coordinates ────────────────────────────────────────────────────
+
 
 def mersenne_coordinates(n: int, k: int) -> tuple[int, int, int] | None:
     """
@@ -112,19 +114,22 @@ def mersenne_cliff_table(n_max: int = 12) -> list[dict]:
                     break
         if stable_k is not None:
             _, e_true, v2_e = mersenne_coordinates(n, stable_k + 1) or (0, 0, 0)
-            rows.append({
-                "n": n,
-                "k*": stable_k,
-                "c": c,
-                "k_pred": _cliff_prediction(n, c),
-                "alpha": 1,
-                "e_true": 1 << (n - 2),
-                "v2_e": v2_e,
-            })
+            rows.append(
+                {
+                    "n": n,
+                    "k*": stable_k,
+                    "c": c,
+                    "k_pred": _cliff_prediction(n, c),
+                    "alpha": 1,
+                    "e_true": 1 << (n - 2),
+                    "v2_e": v2_e,
+                }
+            )
     return rows
 
 
 # ── Bootstrap optimality ────────────────────────────────────────────────────
+
 
 def bootstrap_cost(eprec0: int, k: int) -> int:
     """
@@ -189,6 +194,7 @@ def compare_bootstrap_strategies(k_values: list[int] = None) -> dict[int, dict]:
 
 # ── LUT-based dlog ──────────────────────────────────────────────────────────
 
+
 @lru_cache(maxsize=32)
 def _build_lut(b: int = 8) -> dict[int, int]:
     """
@@ -248,10 +254,11 @@ def verify_lut_dlog(k: int, b: int = 8, n_trials: int = 100) -> bool:
     """
     for _ in range(n_trials):
         import random
+
         a = random.randrange(1, 1 << k)
         if a & 1 == 0:
             continue
-        a_mod = (a if (a & 3) == 1 else (-a) & bitmask(k))
+        a_mod = a if (a & 3) == 1 else (-a) & bitmask(k)
         e1 = dlog_with_lut(a_mod, k, b)
         e2 = dlog_bootstrap(a_mod, k)
         if e1 != e2:
@@ -260,6 +267,7 @@ def verify_lut_dlog(k: int, b: int = 8, n_trials: int = 100) -> bool:
 
 
 # ── cliff constant ──────────────────────────────────────────────────────────────
+
 
 def cliff_constant(g: int = 5, k: int = 20) -> int:
     """
@@ -316,7 +324,7 @@ def cliff_formula(g: int) -> str:
     if s == 999:
         regime = f"g = 5 (fixed point): c = {c_actual}"
     elif s - 2 < 5:
-        regime = f"s={s} < 7: c = s-2 = {s-2} (linear dominates)"
+        regime = f"s={s} < 7: c = s-2 = {s - 2} (linear dominates)"
     elif s - 2 > 5:
         regime = f"s={s} > 7: c = 5 (capped at c(5))"
     else:
@@ -348,9 +356,9 @@ def mersenne_cliff_theorem(verbose: bool = False) -> dict:
     c = cliff_constant(g=5)
 
     gen7_ok = True
-    for n in range(c+2, c+18):
+    for n in range(c + 2, c + 18):
         k_last = None
-        for k in range(n+1, n+c+8):
+        for k in range(n + 1, n + c + 8):
             result = mersenne_coordinates(n, k)
             if result is None:
                 continue
@@ -365,9 +373,9 @@ def mersenne_cliff_theorem(verbose: bool = False) -> dict:
             break
 
     small_ok = True
-    for n in range(3, c+1):
+    for n in range(3, c + 1):
         k_last = None
-        for k in range(n+1, n+c+8):
+        for k in range(n + 1, n + c + 8):
             result = mersenne_coordinates(n, k)
             if result is None:
                 continue
@@ -389,12 +397,12 @@ def mersenne_cliff_theorem(verbose: bool = False) -> dict:
         print("Mersenne Cliff Theorem  (g=5, c=v_2(L_unit+1)=" + str(c) + ")")
         print()
         print(f"    n <= {c}:      k* = 2n-1          [quadratic dominates]")
-        print(f"    n = {c+1}:     k* = n+{c+1}           [boundary]")
-        print(f"    n >= {c+2}:    k* = n+{c}            [linear determines; proved]")
+        print(f"    n = {c + 1}:     k* = n+{c + 1}           [boundary]")
+        print(f"    n >= {c + 2}:    k* = n+{c}            [linear determines; proved]")
         print()
         print(f"    n=3..{c}:  {'PASS' if small_ok else 'FAIL'}")
-        print(f"    n={c+1}:   {'PASS' if boundary_ok else 'FAIL'}")
-        print(f"    n={c+2}..{c+17}: {'PASS' if gen7_ok else 'FAIL'}")
+        print(f"    n={c + 1}:   {'PASS' if boundary_ok else 'FAIL'}")
+        print(f"    n={c + 2}..{c + 17}: {'PASS' if gen7_ok else 'FAIL'}")
 
     return {
         "c": c,
@@ -496,7 +504,7 @@ def exp2_neg4(k: int) -> int:
     result = 1
     odd_nfact = 1
     for n in range(1, k + 1):
-        v_term = n + bin(n).count('1')
+        v_term = n + bin(n).count("1")
         n_odd = n >> valuation(n)
         odd_nfact = (odd_nfact * n_odd) % (1 << (k + 4))
         if v_term >= k:
@@ -534,8 +542,30 @@ def verify_unified_formula(
     Verify cliff_constant_unified(g) == cliff_constant(g) for all test generators.
     """
     if g_values is None:
-        g_values = [5, 13, 21, 29, 37, 45, 53, 61, 69, 77, 85, 93,
-                    133, 261, 389, 517, 645, 773, 901, 1157, 1925, 2053]
+        g_values = [
+            5,
+            13,
+            21,
+            29,
+            37,
+            45,
+            53,
+            61,
+            69,
+            77,
+            85,
+            93,
+            133,
+            261,
+            389,
+            517,
+            645,
+            773,
+            901,
+            1157,
+            1925,
+            2053,
+        ]
 
     failures = []
     for g in g_values:
@@ -569,12 +599,9 @@ def proof_connection(verbose: bool = False) -> bool:
     minus4_mod128 = (-4) % 128
 
     checks = [
-        ("log_2(5) mod 128 = 124 = -4 mod 128",
-         log5_mod128 == minus4_mod128),
-        ("exp_2(-4) mod 128 = 5",
-         exp2_neg4(7) == 5),
-        ("c(5) = v_2(log_2(5)/4 + 1) = 5",
-         cliff_constant(5) == 5),
+        ("log_2(5) mod 128 = 124 = -4 mod 128", log5_mod128 == minus4_mod128),
+        ("exp_2(-4) mod 128 = 5", exp2_neg4(7) == 5),
+        ("c(5) = v_2(log_2(5)/4 + 1) = 5", cliff_constant(5) == 5),
     ]
 
     all_ok = all(ok for _, ok in checks)

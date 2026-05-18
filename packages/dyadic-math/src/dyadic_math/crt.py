@@ -6,6 +6,7 @@ Chinese Remainder Theorem dual system:  Z/(2^k · p)Z  for odd prime p.
 Combines the 2-adic dual-view decomposition with a modular (prime-field)
 residue, allowing joint analysis of weights in the product ring.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -142,8 +143,8 @@ class CRTDualProcessor:
         try:
             explorer = BasinExplorer(self.k, 5, a_val)
             portrait = explorer.portrait()
-            n_converged = len(portrait['converged'])
-            total = n_converged + len(portrait['cycle'])
+            n_converged = len(portrait["converged"])
+            total = n_converged + len(portrait["cycle"])
             return n_converged / total if total > 0 else 0.0
         except Exception:
             return 0.0
@@ -184,9 +185,7 @@ def combined_stability(
         perturbed = (weights[idx] + (1 << t)) % proc.mod_full
         weights_pert = weights[:]
         weights_pert[idx] = perturbed
-        product_pert = proc.cycle_product(
-            [CRTDualNumber(w, k, p, proc.g_p) for w in weights_pert]
-        )
+        product_pert = proc.cycle_product([CRTDualNumber(w, k, p, proc.g_p) for w in weights_pert])
 
         delta = abs(product.component_2.value - product_pert.component_2.value)
         v2_delta = valuation(delta) if delta > 0 else 0

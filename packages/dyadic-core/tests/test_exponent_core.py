@@ -1,4 +1,5 @@
 """Tests for dyadic_core.exponent — ExponentSpace."""
+
 import unittest
 
 from dyadic_core import bitmask
@@ -26,8 +27,10 @@ class TestExponentSpace(unittest.TestCase):
 
     def test_difference_operator(self):
         es = ExponentSpace(5, 8)
+
         def f(e):
             return pow(5, e, 1 << 8)
+
         for e in range(4):
             diff = es.difference(f, e)
             expected = (f(e + 1) - f(e)) & bitmask(8)
@@ -35,8 +38,10 @@ class TestExponentSpace(unittest.TestCase):
 
     def test_integral(self):
         es = ExponentSpace(5, 8)
+
         def f(_e):
             return 1
+
         integral = es.integrate(f)
         self.assertEqual(integral, es.N)
 

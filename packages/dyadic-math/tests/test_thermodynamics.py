@@ -1,4 +1,5 @@
 """Tests for dyadic_math.thermodynamics — SeedThermodynamics."""
+
 import unittest
 
 import numpy as np
@@ -11,15 +12,15 @@ class TestSeedThermodynamics(unittest.TestCase):
         st = SeedThermodynamics(k=8)
         stats = st.analyse(W)
         self.assertIsInstance(stats, dict)
-        self.assertIn('alpha_fraction', stats)
-        self.assertIn('mean_v2_e', stats)
-        self.assertIn('cliff_risk', stats)
+        self.assertIn("alpha_fraction", stats)
+        self.assertIn("mean_v2_e", stats)
+        self.assertIn("cliff_risk", stats)
 
     def test_powers_of_five_have_no_cliff(self):
         W = np.array([pow(5, e, 256) for e in range(8)], dtype=np.int64)
         st = SeedThermodynamics(k=8)
         stats = st.analyse(W)
-        self.assertLess(stats['cliff_risk'], 0.5)
+        self.assertLess(stats["cliff_risk"], 0.5)
 
     def test_even_weights_handled(self):
         W = np.array([2, 4, 6, 8, 10], dtype=np.int64)
@@ -32,7 +33,7 @@ class TestSeedThermodynamics(unittest.TestCase):
         st = SeedThermodynamics.from_precision_sweep(W, range(4, 10), k=8)
         st.compute()
         s = st.summary()
-        for key in ('n_weights', 'n_stable', 'n_ghost', 'ghost_fraction'):
+        for key in ("n_weights", "n_stable", "n_ghost", "ghost_fraction"):
             self.assertIn(key, s)
 
     def test_report_output(self):

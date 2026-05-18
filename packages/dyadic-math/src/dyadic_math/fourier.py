@@ -12,6 +12,7 @@ only at dyadic frequencies j = 0, N/2, N/4, N/8, ...  This module
 computes the analytic closed-form coefficients and verifies them
 against the numeric FFT.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -107,7 +108,7 @@ def dyadic_coefficients(f: np.ndarray) -> dict[str, complex]:
     while length // (2 * m) > 0:
         j = length // (2 * m)
         if j < len(spectrum):
-            coeffs[f"N/{2*m}"] = spectrum[j]
+            coeffs[f"N/{2 * m}"] = spectrum[j]
         m *= 2
     return coeffs
 
@@ -152,7 +153,7 @@ def fourier_summary(k: int, e_true: int) -> str:
     analytic = analytic_coefficients(k)
 
     lines = [
-        f"Fourier Analysis of Step-Count Function  (k={k}, N={1 << (k-2)})",
+        f"Fourier Analysis of Step-Count Function  (k={k}, N={1 << (k - 2)})",
         f"  Numeric == Analytic: {match}",
         f"  Non-zero frequencies: {len([v for v in spec if v > 0])}",
         "",

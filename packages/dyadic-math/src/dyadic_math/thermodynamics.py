@@ -17,6 +17,7 @@ References
 - Mersenne Ghost Theorem (mersenne.py)
 - Trajectory Separation Theorem (separation.py)
 """
+
 from __future__ import annotations
 
 import warnings
@@ -263,8 +264,7 @@ class SeedThermodynamics:
         Indices of weights with no ghost cliff (or cliff >= max_k).
         """
         if max_k is not None:
-            return [idx for idx, c in self.cliffs.items()
-                    if c is None or c >= max_k]
+            return [idx for idx, c in self.cliffs.items() if c is None or c >= max_k]
         return [idx for idx, c in self.cliffs.items() if c is None]
 
     def ghost_weights(self, max_k: int | None = None) -> list[int]:
@@ -272,8 +272,7 @@ class SeedThermodynamics:
         Indices of weights that have a ghost cliff (below max_k).
         """
         if max_k is not None:
-            return [idx for idx, c in self.cliffs.items()
-                    if c is not None and c < max_k]
+            return [idx for idx, c in self.cliffs.items() if c is not None and c < max_k]
         return [idx for idx, c in self.cliffs.items() if c is not None]
 
     def summary(self) -> dict[str, float]:

@@ -7,6 +7,7 @@ Every odd unit modulo 2^k can be written as 5^e with e ∈ Z/N where
 N = 2^(k-2).  This module provides the exponential map e ↦ 5^e
 together with the finite-difference calculus on the exponent domain.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -65,7 +66,7 @@ class ExponentSpace:
         """
         if self.k > max_k:
             raise ValueError(
-                f"integrate with k={self.k} requires 2^{self.k-2} iterations; "
+                f"integrate with k={self.k} requires 2^{self.k - 2} iterations; "
                 f"limit to k ≤ {max_k} or use a closed form"
             )
         total = 0

@@ -1,4 +1,5 @@
 """Tests for dyadic_math.basin module."""
+
 import contextlib
 import io
 import unittest
@@ -14,7 +15,7 @@ class TestBasinExplorer(unittest.TestCase):
         a = pow(5, target_e, 1 << k)
         explorer = BasinExplorer(k, 5, a)
         fate, val, _ = explorer.classify(target_e)
-        self.assertEqual(fate, 'converged')
+        self.assertEqual(fate, "converged")
 
     def test_positive_sector_all_converge(self):
         k = 8
@@ -22,7 +23,7 @@ class TestBasinExplorer(unittest.TestCase):
             a = pow(5, e, 1 << k)
             explorer = BasinExplorer(k, 5, a)
             port = explorer.portrait()
-            self.assertGreater(len(port['converged']), 0)
+            self.assertGreater(len(port["converged"]), 0)
 
     def test_ghost_detection(self):
         k = 8
@@ -30,9 +31,9 @@ class TestBasinExplorer(unittest.TestCase):
         explorer = BasinExplorer(k, 5, a)
         port = explorer.portrait()
         self.assertIsInstance(port, dict)
-        self.assertIn('converged', port)
-        self.assertIn('cycle', port)
-        self.assertIn('diverged', port)
+        self.assertIn("converged", port)
+        self.assertIn("cycle", port)
+        self.assertIn("diverged", port)
 
     def test_portrait_matrix_length(self):
         k = 6
@@ -46,12 +47,12 @@ class TestBasinExplorer(unittest.TestCase):
         a = pow(5, 3, 1 << k)
         explorer = BasinExplorer(k, 5, a)
         port = explorer.full_portrait()
-        self.assertIn('converged', port)
-        self.assertIn('cycles', port)
-        self.assertIn('diverged', port)
-        self.assertIsInstance(port['cycles'], dict)
-        total = len(port['converged']) + len(port['diverged'])
-        for _period, entries in port['cycles'].items():
+        self.assertIn("converged", port)
+        self.assertIn("cycles", port)
+        self.assertIn("diverged", port)
+        self.assertIsInstance(port["cycles"], dict)
+        total = len(port["converged"]) + len(port["diverged"])
+        for _period, entries in port["cycles"].items():
             total += len(entries)
         self.assertEqual(total, explorer.N)
 
@@ -60,7 +61,7 @@ class TestBasinExplorer(unittest.TestCase):
         a = pow(5, 3, 1 << k)
         explorer = BasinExplorer(k, 5, a)
         port = explorer.full_portrait()
-        for period, entries in port['cycles'].items():
+        for period, entries in port["cycles"].items():
             self.assertIsInstance(period, int)
             self.assertGreater(period, 0)
             for _seed, cycle_path in entries:

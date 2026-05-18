@@ -13,6 +13,7 @@ Public names
     TwoAdicProcessor– Arithmetic on DualNumbers
     run_all_tests   – Basic self-check
 """
+
 from __future__ import annotations
 
 import math
@@ -22,14 +23,18 @@ from typing import TypedDict
 
 # ── exception hierarchy ────────────────────────────────────────────────────────
 
+
 class DyadicError(ValueError):
     """Base for all dyadic-core errors."""
+
 
 class NonInvertibleError(DyadicError):
     """Raised when an inversion is attempted on a non-invertible element."""
 
+
 class ConvergenceError(DyadicError):
     """Raised when an iterative method fails to converge."""
+
 
 class DomainError(DyadicError):
     """Raised when a function argument is outside its domain of convergence."""
@@ -49,6 +54,7 @@ del _DLOG10_LUT_INIT
 
 # ── private utilities ──────────────────────────────────────────────────────────
 
+
 def bitmask(k: int) -> int:
     return (1 << k) - 1
 
@@ -56,10 +62,14 @@ def bitmask(k: int) -> int:
 def mat_mul(A: list[list[int]], B: list[list[int]], mod: int) -> list[list[int]]:
     """2×2 matrix multiplication modulo mod."""
     return [
-        [(A[0][0] * B[0][0] + A[0][1] * B[1][0]) % mod,
-         (A[0][0] * B[0][1] + A[0][1] * B[1][1]) % mod],
-        [(A[1][0] * B[0][0] + A[1][1] * B[1][0]) % mod,
-         (A[1][0] * B[0][1] + A[1][1] * B[1][1]) % mod],
+        [
+            (A[0][0] * B[0][0] + A[0][1] * B[1][0]) % mod,
+            (A[0][0] * B[0][1] + A[0][1] * B[1][1]) % mod,
+        ],
+        [
+            (A[1][0] * B[0][0] + A[1][1] * B[1][0]) % mod,
+            (A[1][0] * B[0][1] + A[1][1] * B[1][1]) % mod,
+        ],
     ]
 
 
@@ -77,9 +87,14 @@ def valuation(n: int) -> int | None:
 
 # ── LTE-based dual addition ────────────────────────────────────────────────────
 
+
 def dual_add(
-    v_a: int, alpha_a: int, e_a: int,
-    v_b: int, alpha_b: int, e_b: int,
+    v_a: int,
+    alpha_a: int,
+    e_a: int,
+    v_b: int,
+    alpha_b: int,
+    e_b: int,
     k: int,
 ) -> tuple[int | float, int, int]:
     """
@@ -119,6 +134,7 @@ def dual_add(
 
 # ── Newton modular inverse ─────────────────────────────────────────────────────
 
+
 def modinv_newton(a: int, k: int) -> int:
     """
     a^{-1} mod 2^k via quadratic Newton lifting.  Requires a odd.
@@ -137,6 +153,7 @@ def modinv_newton(a: int, k: int) -> int:
 
 
 # ── 2-adic log of 5 ────────────────────────────────────────────────────────────
+
 
 @lru_cache(maxsize=256)
 def two_adic_log5(k: int) -> int:
@@ -170,6 +187,7 @@ def two_adic_log5(k: int) -> int:
 
 # ── discrete-log helpers (private) ─────────────────────────────────────────────
 
+
 def dlog_bootstrap(a: int, k: int) -> int:
     """
     Bit-by-bit dlog for a ≡ 1 (mod 8).
@@ -183,7 +201,7 @@ def dlog_bootstrap(a: int, k: int) -> int:
     mult = 25 & mask
     for n in range(3, k):
         if ((a >> n) & 1) != ((pow5 >> n) & 1):
-            e |= (1 << (n - 2))
+            e |= 1 << (n - 2)
             pow5 = (pow5 * mult) & mask
         mult = (mult * mult) & mask
     return e
@@ -248,6 +266,7 @@ def _dlog_newton_step(
 
 # ── residual tracking (diagnostic) ─────────────────────────────────────────────
 
+
 class DLogNewtonStep(TypedDict):
     bits: int
     eprec_before: int
@@ -307,16 +326,18 @@ def dlog_residual_tracking(
         tau_after = ((rho_after - 1) & mask) >> 2
         v2_after = valuation(tau_after)
 
-        history.append({
-            "bits": bits,
-            "eprec_before": eprec,
-            "eprec_after": new_eprec,
-            "tau_before": int(tau_before),
-            "v2_before": v2_before,
-            "tau_after": int(tau_after),
-            "v2_after": v2_after,
-            "delta": int(delta),
-        })
+        history.append(
+            {
+                "bits": bits,
+                "eprec_before": eprec,
+                "eprec_after": new_eprec,
+                "tau_before": int(tau_before),
+                "v2_before": v2_before,
+                "tau_after": int(tau_after),
+                "v2_after": v2_after,
+                "delta": int(delta),
+            }
+        )
         eprec = new_eprec
 
     return e, history
@@ -324,9 +345,8 @@ def dlog_residual_tracking(
 
 # ── public discrete-log API ────────────────────────────────────────────────────
 
-def two_adic_dlog(
-    a: int, k: int, L: int | None = None
-) -> tuple[int, int] | None:
+
+def two_adic_dlog(a: int, k: int, L: int | None = None) -> tuple[int, int] | None:
     """
     Decompose the odd part of a as (-1)^alpha · 5^e (mod 2^k).
 
@@ -353,6 +373,7 @@ def two_adic_dlog(
 
 
 # ── DualNumber ─────────────────────────────────────────────────────────────────
+
 
 class DualNumber:
     """
@@ -448,13 +469,11 @@ class DualNumber:
         if self.is_zero:
             return f"DualNumber(0, k={self.k})"
         sign = "-" if self.alpha else "+"
-        return (
-            f"DualNumber({self._n}, k={self.k})"
-            f"  =  2^{self.v} · {sign}5^{self.e}"
-        )
+        return f"DualNumber({self._n}, k={self.k})  =  2^{self.v} · {sign}5^{self.e}"
 
 
 # ── TwoAdicProcessor ──────────────────────────────────────────────────────────
+
 
 class TwoAdicProcessor:
     """
@@ -491,9 +510,7 @@ class TwoAdicProcessor:
     def _check(self, *args: DualNumber) -> None:
         for a in args:
             if a.k != self.k:
-                raise ValueError(
-                    f"DualNumber has k={a.k} but processor has k={self.k}"
-                )
+                raise ValueError(f"DualNumber has k={a.k} but processor has k={self.k}")
 
     def mul(self, a: DualNumber, b: DualNumber) -> DualNumber:
         """Multiply two elements: coordinates add componentwise."""
@@ -574,6 +591,7 @@ class TwoAdicProcessor:
 
 # ── general 2-adic exp / log ──────────────────────────────────────────────────
 
+
 def padic_exp(x: int, k: int) -> int:
     """
     Compute exp(x) mod 2^k via exact integer arithmetic.
@@ -601,8 +619,9 @@ def padic_exp(x: int, k: int) -> int:
         if v_term >= k:
             break
         den_odd = factorial_exact >> v2_fact
-        num_stripped = (power_exact >> (n * vx) if power_exact >= 0
-                        else -((-power_exact) >> (n * vx)))
+        num_stripped = (
+            power_exact >> (n * vx) if power_exact >= 0 else -((-power_exact) >> (n * vx))
+        )
         term = pow(int(den_odd), -1, mod) * int(abs(num_stripped)) % mod
         if num_stripped < 0:
             term = (-term) % mod
@@ -641,8 +660,9 @@ def padic_log(g: int, k: int) -> int:
         if v_term >= k:
             break
         den_odd = n >> vn
-        num_stripped = (power_exact >> (n * vx) if power_exact >= 0
-                        else -((-power_exact) >> (n * vx)))
+        num_stripped = (
+            power_exact >> (n * vx) if power_exact >= 0 else -((-power_exact) >> (n * vx))
+        )
         term = pow(int(den_odd), -1, mod) * int(abs(num_stripped)) % mod
         if num_stripped < 0:
             term = (-term) % mod
@@ -666,6 +686,7 @@ def g0(k: int) -> int:
 
 
 # ── self-test ─────────────────────────────────────────────────────────────────
+
 
 def run_all_tests(k: int = 16, verbose: bool = True) -> None:
     """

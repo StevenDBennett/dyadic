@@ -12,6 +12,7 @@ system, including:
 3. LDU decomposition of any matrix with odd determinant.
 4. Commutator depth theorem: depth([M,N]) ≥ depth(M) + depth(N).
 """
+
 from __future__ import annotations
 
 import random
@@ -29,6 +30,7 @@ from dyadic_core import (
 
 # ── Congruence filtration ───────────────────────────────────────────────────
 
+
 def congruence_depth(matrix: list[list[int]], k: int) -> int:
     """
     Largest j such that matrix ≡ I (mod 2^j).
@@ -38,10 +40,15 @@ def congruence_depth(matrix: list[list[int]], k: int) -> int:
     """
     for j in range(1, k + 1):
         mask = bitmask(j)
-        if (matrix[0][0] & mask) != 1 or (matrix[0][1] & mask) != 0 or \
-           (matrix[1][0] & mask) != 0 or (matrix[1][1] & mask) != 1:
+        if (
+            (matrix[0][0] & mask) != 1
+            or (matrix[0][1] & mask) != 0
+            or (matrix[1][0] & mask) != 0
+            or (matrix[1][1] & mask) != 1
+        ):
             return j - 1
     return k
+
 
 def filtration_residue(matrix: list[list[int]], depth: int, _k: int) -> list[list[int]]:
     """
@@ -56,7 +63,9 @@ def filtration_residue(matrix: list[list[int]], depth: int, _k: int) -> list[lis
     ]
     return residue
 
+
 # ── LDU decomposition ───────────────────────────────────────────────────────
+
 
 def ldu_decompose(matrix: list[list[int]], k: int) -> dict[str, list[list[int]]] | None:
     """
@@ -85,16 +94,20 @@ def ldu_decompose(matrix: list[list[int]], k: int) -> dict[str, list[list[int]]]
         "U": [[1, u_val], [0, 1]],
     }
 
+
 # ── Dual coordinates for matrices ───────────────────────────────────────────
+
 
 @dataclass
 class MatrixCoordinates:
     """Full 2-adic coordinate decomposition of a GL(2) matrix."""
+
     depth: int
     residue: list[list[int]]
     trace_depth: int
     det_dual: DualNumber
     ldu: dict[str, list[list[int]]] | None
+
 
 def matrix_coordinates(matrix: list[list[int]], k: int) -> MatrixCoordinates:
     """
@@ -119,11 +132,11 @@ def matrix_coordinates(matrix: list[list[int]], k: int) -> MatrixCoordinates:
         ldu=ldu,
     )
 
+
 # ── Holonomy depth profiling ────────────────────────────────────────────────
 
-def holonomy_depth_profile(
-    k: int, p: int, cycle_length: int = 4, n_cycles: int = 30
-) -> dict:
+
+def holonomy_depth_profile(k: int, p: int, cycle_length: int = 4, n_cycles: int = 30) -> dict:
     """
     How holonomy congruence depth changes under single-bit perturbation.
     """
@@ -135,8 +148,7 @@ def holonomy_depth_profile(
 
     for _ in range(n_cycles):
         mats = [
-            [[random.randrange(0, nc.mod_full) for _ in range(2)]
-             for _ in range(2)]
+            [[random.randrange(0, nc.mod_full) for _ in range(2)] for _ in range(2)]
             for _ in range(cycle_length)
         ]
         holonomy = nc.holonomy(mats)
@@ -155,7 +167,9 @@ def holonomy_depth_profile(
         "n_cycles": n_cycles,
     }
 
+
 # ── Filtration portrait ─────────────────────────────────────────────────────
+
 
 def filtration_portrait(k: int) -> str:
     """
@@ -168,13 +182,12 @@ def filtration_portrait(k: int) -> str:
     for j in range(k + 1):
         # Quotient Gamma(j) / Gamma(j+1) ≅ gl(2, F₂)
         quotient_size = 16 if j < k else 1
-        lines.append(
-            f"  Γ(2^{j}): |GL| ≈ 2^{4*max(j,1)-3}·3, "
-            f"quotient size = {quotient_size}"
-        )
+        lines.append(f"  Γ(2^{j}): |GL| ≈ 2^{4 * max(j, 1) - 3}·3, quotient size = {quotient_size}")
     return "\n".join(lines)
 
+
 # ── Commutator depth theorem ────────────────────────────────────────────────
+
 
 def matrix_commutator(
     matrix_a: list[list[int]], matrix_b: list[list[int]], k: int
@@ -202,6 +215,7 @@ def matrix_commutator(
     ab = mat_mul(matrix_a, matrix_b, mod)
     inv_ab = mat_mul(inv_a, inv_b, mod)
     return mat_mul(ab, inv_ab, mod)
+
 
 def verify_commutator_depth(
     k: int, depth_pairs: list[tuple[int, int]] = None, n_trials: int = 50

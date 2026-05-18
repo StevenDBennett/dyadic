@@ -1,4 +1,5 @@
 """Additional core tests for coverage."""
+
 import unittest
 
 from dyadic_core import DualNumber, TwoAdicProcessor

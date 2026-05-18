@@ -1,4 +1,5 @@
 """Property-based tests for dyadic_core invariants."""
+
 from dyadic_core import (
     DualNumber,
     TwoAdicProcessor,

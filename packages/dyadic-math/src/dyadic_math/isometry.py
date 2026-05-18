@@ -17,6 +17,7 @@ T6-c  Trace-mod-p Independence
     In GL(2) holonomies over Z/(2^k·p)Z, the 2-adic α-sector of
     det(H) and Tr(H) mod p are statistically independent.
 """
+
 from __future__ import annotations
 
 import random
@@ -28,6 +29,7 @@ from dyadic_core import bitmask, two_adic_dlog, valuation
 from .nonabelian import NonAbelianCRTDual
 
 # ── T6-a: Exponential Map Isometry ──────────────────────────────────────────
+
 
 def verify_isometry(k: int, n_trials: int = 200) -> dict[str, float]:
     """
@@ -91,6 +93,7 @@ def isometry_summary(k: int) -> str:
 
 # ── T6-c: Trace-mod-p Independence ──────────────────────────────────────────
 
+
 def trace_alpha_independence(
     k: int, p: int, cycle_length: int = 4, n_cycles: int = 100
 ) -> dict[str, float]:
@@ -104,8 +107,7 @@ def trace_alpha_independence(
 
     for _ in range(n_cycles):
         mats = [
-            [[random.randrange(0, nc.mod_full) for _ in range(2)]
-             for _ in range(2)]
+            [[random.randrange(0, nc.mod_full) for _ in range(2)] for _ in range(2)]
             for _ in range(cycle_length)
         ]
         inv = nc.invariants(mats)
@@ -147,8 +149,7 @@ def trace_exponent_independence(
 
     for _ in range(n_cycles):
         mats = [
-            [[random.randrange(0, nc.mod_full) for _ in range(2)]
-             for _ in range(2)]
+            [[random.randrange(0, nc.mod_full) for _ in range(2)] for _ in range(2)]
             for _ in range(cycle_length)
         ]
         inv = nc.invariants(mats)
@@ -208,7 +209,4 @@ def exponentvaluation_profile(k: int, n_samples: int = 500) -> dict[int, float]:
             v2_counts[v2] = v2_counts.get(v2, 0) + 1
 
     total = sum(v2_counts.values())
-    return {
-        v: count / total if total > 0 else 0.0
-        for v, count in sorted(v2_counts.items())
-    }
+    return {v: count / total if total > 0 else 0.0 for v, count in sorted(v2_counts.items())}

@@ -1,4 +1,5 @@
 """Tests for dyadic_core.core — DualNumber, modinv, dlog, TwoAdicProcessor."""
+
 import unittest
 
 from dyadic_core import (
@@ -51,6 +52,7 @@ class TestModinvNewton(unittest.TestCase):
 
     def test_random(self):
         import random
+
         for k in [8, 12, 16, 24]:
             for _ in range(20):
                 a = random.randrange(1, 1 << k, 2)
@@ -260,9 +262,16 @@ class TestDlogResidualTracking(unittest.TestCase):
         k = 10
         a = pow(5, 3, 1 << k)
         _, history = dlog_residual_tracking(a, k)
-        required = {"bits", "eprec_before", "eprec_after",
-                     "tau_before", "v2_before",
-                     "tau_after", "v2_after", "delta"}
+        required = {
+            "bits",
+            "eprec_before",
+            "eprec_after",
+            "tau_before",
+            "v2_before",
+            "tau_after",
+            "v2_after",
+            "delta",
+        }
         for entry in history:
             self.assertTrue(required.issubset(entry.keys()))
 
@@ -272,9 +281,9 @@ class TestDlogResidualTracking(unittest.TestCase):
         _, history = dlog_residual_tracking(a, k)
         for entry in history:
             if entry["v2_before"] is not None:
-                self.assertGreaterEqual(entry["v2_after"],
-                                        2 * entry["v2_before"],
-                                        msg=f"v2 {entry}")
+                self.assertGreaterEqual(
+                    entry["v2_after"], 2 * entry["v2_before"], msg=f"v2 {entry}"
+                )
 
     def test_small_k_returns_empty(self):
         e, history = dlog_residual_tracking(1, 2)

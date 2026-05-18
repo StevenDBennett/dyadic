@@ -1,6 +1,7 @@
 """
 Tests for padic_exp, padic_log, g0 (core.py) and MahlerCalculus (mahler.py).
 """
+
 import unittest
 
 from dyadic_core import (
@@ -29,8 +30,7 @@ class TestPadicExp(unittest.TestCase):
             for g in range(1, min(mod, 256), 4):
                 log_g = padic_log(g, k)
                 exp_log = padic_exp(log_g, k)
-                self.assertEqual(exp_log, g % mod,
-                    f"exp(log({g})) ≠ {g} mod 2^{k}")
+                self.assertEqual(exp_log, g % mod, f"exp(log({g})) ≠ {g} mod 2^{k}")
 
     def test_log_exp_roundtrip(self):
         for k in [8, 16]:
@@ -40,8 +40,7 @@ class TestPadicExp(unittest.TestCase):
                     continue
                 exp_x = padic_exp(x, k)
                 log_exp = padic_log(exp_x, k)
-                self.assertEqual(log_exp, x % mod,
-                    f"log(exp({x})) ≠ {x} mod 2^{k}")
+                self.assertEqual(log_exp, x % mod, f"log(exp({x})) ≠ {x} mod 2^{k}")
 
     def test_exp_requires_v2_ge_2(self):
         with self.assertRaises(ValueError):
@@ -81,8 +80,7 @@ class TestG0(unittest.TestCase):
             g = g0(k)
             log_g = padic_log(g, k)
             expected = (-4) % mod
-            self.assertEqual(log_g, expected,
-                f"log(g₀) ≠ −4 mod 2^{k}")
+            self.assertEqual(log_g, expected, f"log(g₀) ≠ −4 mod 2^{k}")
 
     def test_g0_agrees_with_neg123_to_13_bits(self):
         k = 32
@@ -204,8 +202,7 @@ class TestDtTdAsymmetry(unittest.TestCase):
             e_n[n] = 1
             Te_n = MahlerCalculus.volterra_operator(e_n)
             DTe_n = MahlerCalculus.dirac_operator(Te_n)
-            self.assertEqual(DTe_n, e_n,
-                f"D∘T(e_{n}) = {DTe_n}, expected {e_n}")
+            self.assertEqual(DTe_n, e_n, f"D∘T(e_{n}) = {DTe_n}, expected {e_n}")
 
     def test_DT_identity_on_general_ker_epsilon_element(self):
         f = [0, 3, 2, -1, 7, 0, -5]
@@ -219,8 +216,7 @@ class TestDtTdAsymmetry(unittest.TestCase):
             e_n[n] = 1
             De_n = MahlerCalculus.dirac_operator(e_n)
             TDe_n = MahlerCalculus.volterra_operator(De_n)
-            self.assertEqual(TDe_n, e_n,
-                f"T∘D(e_{n}) = {TDe_n}, expected {e_n}")
+            self.assertEqual(TDe_n, e_n, f"T∘D(e_{n}) = {TDe_n}, expected {e_n}")
 
     def test_T_is_right_inverse_not_left_at_e1(self):
         e1 = [0, 1]
@@ -260,20 +256,26 @@ class TestCliffDensityTheory(unittest.TestCase):
 
         for c, expected_prob in theory.items():
             actual_prob = counts.get(c, 0) / total
-            self.assertAlmostEqual(actual_prob, expected_prob, places=4,
-                msg=f"c={c}: prob={actual_prob:.6f}, theory={expected_prob:.6f}")
+            self.assertAlmostEqual(
+                actual_prob,
+                expected_prob,
+                places=4,
+                msg=f"c={c}: prob={actual_prob:.6f}, theory={expected_prob:.6f}",
+            )
 
     def test_expected_cliff_cost_is_quarter(self):
         k = 14
         total = 1 << (k - 2)
         total_c = sum(
             max(0, valuation(abs((L - total if total // 2 < L else L) + 4)) - 2)
-            if (L - total if total // 2 < L else L) + 4 != 0 else k
+            if (L - total if total // 2 < L else L) + 4 != 0
+            else k
             for L in range(total)
         )
         expected_c = total_c / total
-        self.assertAlmostEqual(expected_c, 0.25, delta=0.01,
-            msg=f"E[c] = {expected_c:.4f}, expected 0.25")
+        self.assertAlmostEqual(
+            expected_c, 0.25, delta=0.01, msg=f"E[c] = {expected_c:.4f}, expected 0.25"
+        )
 
     def test_high_cliff_rare(self):
         prob_high_cliff = sum(2 ** (-(j + 3)) for j in range(4, 100))
@@ -311,8 +313,7 @@ class TestDivisorOptimality(unittest.TestCase):
                     pred = min(2 * j + 1, k - 1)
                 else:
                     pred = max(0, j - (d - 2))
-                self.assertEqual(v_new, pred,
-                    f"d={d}, j={j}: v_new={v_new}, predicted={pred}")
+                self.assertEqual(v_new, pred, f"d={d}, j={j}: v_new={v_new}, predicted={pred}")
 
     def test_d2_is_strictly_best(self):
         k = 20
@@ -328,8 +329,9 @@ class TestDivisorOptimality(unittest.TestCase):
                     continue
                 diff = (e_new - target_e) % mod_e
                 v_d = valuation(diff) if diff != 0 else k
-                self.assertGreater(v_d2, v_d,
-                    f"d=2 (v={v_d2}) should beat d={d} (v={v_d}) at j={j}")
+                self.assertGreater(
+                    v_d2, v_d, f"d=2 (v={v_d2}) should beat d={d} (v={v_d}) at j={j}"
+                )
 
 
 if __name__ == "__main__":

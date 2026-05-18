@@ -10,6 +10,7 @@ Theorem (T2)
 
 The theorem is exact (zero variance) and verified empirically.
 """
+
 from __future__ import annotations
 
 from math import ceil, log2
@@ -53,9 +54,7 @@ def newton_trajectory(a: int, k: int, e_seed: int, steps: int = 10) -> list[int]
     return history
 
 
-def separation_step(
-    a: int, a_prime: int, k: int, e_seed: int
-) -> int:
+def separation_step(a: int, a_prime: int, k: int, e_seed: int) -> int:
     """
     First step index at which the two trajectories diverge.
 

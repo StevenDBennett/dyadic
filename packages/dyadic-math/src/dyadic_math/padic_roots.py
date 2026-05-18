@@ -9,6 +9,7 @@ Implements Newton (order 2), Halley (order 3), composed-Newton
 The convergence law is exact: v_p(x_n - x*) = m^n · v_p(x_0 - x*)
 where m is the method order, with zero variance.
 """
+
 from __future__ import annotations
 
 import random
@@ -18,6 +19,7 @@ from collections.abc import Callable
 import numpy as np
 
 # ── p-adic helpers (self-contained for general primes) ──────────────────────
+
 
 def _vp(n: int, p: int) -> int | None:
     """p-adic valuation for prime p. Returns None for zero."""
@@ -47,10 +49,11 @@ def _ext_gcd(a: int, b: int) -> tuple[int, int, int]:
 
 
 def _pk(p: int, k: int) -> int:
-    return p ** k
+    return p**k
 
 
 # ── Hensel lifting ──────────────────────────────────────────────────────────
+
 
 def lift_root(a: int, p: int, k: int) -> int | None:
     """
@@ -84,6 +87,7 @@ def lift_root(a: int, p: int, k: int) -> int | None:
 
 
 # ── Step functions ──────────────────────────────────────────────────────────
+
 
 def newton_step(x: int, a: int, pk: int) -> int:
     """Newton (order 2): x_{n+1} = x_n - f/f'."""
@@ -122,6 +126,7 @@ def newton3_step(x: int, a: int, pk: int) -> int:
 
 
 # ── Convergence analysis ────────────────────────────────────────────────────
+
 
 def convergence_profile(
     x0: int,
@@ -189,10 +194,7 @@ def compare_methods(p: int, k: int, n_trials: int = 20) -> dict[str, float]:
             if prof:
                 results[name].append(float(prof[-1]) if prof[-1] is not None else float(k))
 
-    summary = {
-        name: float(np.mean(vals)) if vals else 0.0
-        for name, vals in results.items()
-    }
+    summary = {name: float(np.mean(vals)) if vals else 0.0 for name, vals in results.items()}
     return summary
 
 
@@ -235,9 +237,7 @@ def verify_order(
     return results
 
 
-def newton_correction_uniformity(
-    p: int, k: int, n_seeds: int = 1000
-) -> dict[str, float]:
+def newton_correction_uniformity(p: int, k: int, n_seeds: int = 1000) -> dict[str, float]:
     """
     Test whether first-step Newton corrections are uniformly
     distributed modulo p (chi-square test).
@@ -277,9 +277,7 @@ def newton_correction_uniformity(
     }
 
 
-def popcount_compression(
-    k: int, n_trials: int = 100
-) -> dict[str, float]:
+def popcount_compression(k: int, n_trials: int = 100) -> dict[str, float]:
     """
     Measure correlation between popcount gap and sum of delta popcounts.
 
