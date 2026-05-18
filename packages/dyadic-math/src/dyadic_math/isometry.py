@@ -126,7 +126,9 @@ def trace_alpha_independence(
         alpha = inv["alpha_det"]
         if alpha is None:
             continue
-        observations.append((alpha, inv["trace_modp"]))
+        t_modp = inv["trace_modp"]
+        assert t_modp is not None
+        observations.append((alpha, t_modp))
 
     # Contingency table: alpha (0,1) × trace_modp (0..p-1)
     table = Counter(observations)
@@ -145,7 +147,7 @@ def trace_alpha_independence(
     df = (2 - 1) * (p - 1)
 
     try:
-        p_value = math.gammaincc(df / 2, chi2 / 2)
+        p_value = math.gammaincc(df / 2, chi2 / 2)  # type: ignore[attr-defined]
     except AttributeError:
         p_value = None
 
@@ -180,10 +182,11 @@ def trace_exponent_independence(
         e_det = inv["e_det"]
         if e_det is None:
             continue
-        trace = inv["trace_modp"]
-        if trace not in groups:
-            groups[trace] = []
-        groups[trace].append(float(e_det))
+        t = inv["trace_modp"]
+        assert t is not None
+        if t not in groups:
+            groups[t] = []
+        groups[t].append(float(e_det))
 
     # One-way ANOVA
     all_vals = [v for vals in groups.values() for v in vals]

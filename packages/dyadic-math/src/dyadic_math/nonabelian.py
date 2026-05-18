@@ -144,7 +144,9 @@ def phase_alignment_experiment(
         if alpha0 is None:
             continue
 
-        eps_mat = _perturbation_matrix(inv["det_mod2k"] + 1, nc.mod_full)
+        det_m = inv["det_mod2k"]
+        assert det_m is not None
+        eps_mat = _perturbation_matrix(det_m + 1, nc.mod_full)
         perturbed = mats[:]
         perturbed[0] = mat_mul(perturbed[0], eps_mat, nc.mod_full)
         inv_p = nc.invariants(perturbed)

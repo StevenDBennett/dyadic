@@ -136,7 +136,9 @@ class WeightStabilityDiagnostics:
             w_mod = w_int & self.mask
             if w_mod == 0:
                 continue
-            odd = w_mod >> valuation(w_mod)
+            v = valuation(w_mod)
+            assert v is not None
+            odd = w_mod >> v
             result = two_adic_dlog(odd, self.k)
             if result is not None:
                 alpha, e_true = result
