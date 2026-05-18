@@ -14,7 +14,7 @@ format:
 	ruff format packages/
 
 typecheck:
-	mypy packages/
+	python3 -m mypy packages/
 
 clean:
 	rm -rf .pytest_cache .ruff_cache .hypothesis

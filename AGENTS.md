@@ -61,7 +61,7 @@ Research code is not installed, not tested in CI, and not referenced in publishe
 
 - All source packages are checked with mypy `--strict` (configured in root `pyproject.toml`).
 - Test directories and `research/` are excluded from strict checking.
-- Run with: `make typecheck` or `mypy packages/`
+- Run with: `make typecheck` or `python3 -m mypy packages/`
 - Test files are not checked in CI (too many untyped test methods).
 - Fix all mypy errors before committing source code.
 
@@ -70,7 +70,8 @@ Research code is not installed, not tested in CI, and not referenced in publishe
 - Create a feature branch for each logical chunk of work (`git checkout -b topic/description`).
 - Commit early and often on the branch. One commit per logical change at merge time.
 - Squash or rebase before merging to `main` if the branch has many small commits.
-- Always run the full test suite (`python3 -m pytest --tb=short`) before merging.
+- Before merging, run all three checks: `ruff check packages/`, `ruff format --check packages/`, and `python3 -m pytest --tb=short`. Fix all mypy errors too.
+- Delete the feature branch after merging.
 
 ## Commit Style
 
