@@ -18,6 +18,7 @@ codebase and is essential for correctness.
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Any
 
 import numpy as np
 from dyadic_core import bitmask, modinv_newton, two_adic_dlog, two_adic_log5, valuation
@@ -146,7 +147,7 @@ class BasinExplorer:
             vec.append(0 if fate == "converged" else (1 if fate == "cycle" else 2))
         return vec
 
-    def full_portrait(self) -> dict[str, object]:
+    def full_portrait(self) -> dict[str, Any]:
         """
         Full basin portrait with cycle period details.
 
@@ -158,7 +159,7 @@ class BasinExplorer:
             'diverged': [seed, ...],
         }
         """
-        result: dict[str, object] = {
+        result: dict[str, Any] = {
             "converged": [],
             "cycles": {},
             "diverged": [],
@@ -291,8 +292,11 @@ class LayerGhostDiagnosticV2:
                 fate[i] = 1  # ghost sector
                 ghost_count += 1
             e_vals.append(e_true)
-            v2_e = valuation(e_true) if e_true != 0 else self.k
-            v2_vals.append(v2_e)
+            if e_true != 0:
+                v2_val = valuation(e_true)
+                v2_vals.append(self.k if v2_val is None else v2_val)
+            else:
+                v2_vals.append(self.k)
 
         total = conv_count + ghost_count
         conv_ratio = conv_count / total if total > 0 else 0.0

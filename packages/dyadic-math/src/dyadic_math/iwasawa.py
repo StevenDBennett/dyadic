@@ -119,7 +119,12 @@ def matrix_coordinates(matrix: list[list[int]], k: int) -> MatrixCoordinates:
     depth = congruence_depth(matrix, k)
     res = filtration_residue(matrix, depth, k)
     trace_val = (matrix[0][0] + matrix[1][1]) & bitmask(k)
-    trace_depth = valuation(trace_val) if trace_val != 0 else k
+    trace_depth_val = valuation(trace_val)
+    trace_depth: int
+    if trace_val != 0:
+        trace_depth = k if trace_depth_val is None else trace_depth_val
+    else:
+        trace_depth = k
     det_val = mat_det(matrix, 1 << k)
     det_dual = DualNumber(det_val, k)
     ldu = ldu_decompose(matrix, k)
@@ -136,7 +141,7 @@ def matrix_coordinates(matrix: list[list[int]], k: int) -> MatrixCoordinates:
 # ── Holonomy depth profiling ────────────────────────────────────────────────
 
 
-def holonomy_depth_profile(k: int, p: int, cycle_length: int = 4, n_cycles: int = 30) -> dict:
+def holonomy_depth_profile(k: int, p: int, cycle_length: int = 4, n_cycles: int = 30) -> dict[str, float | int]:
     """
     How holonomy congruence depth changes under single-bit perturbation.
     """
@@ -218,7 +223,7 @@ def matrix_commutator(
 
 
 def verify_commutator_depth(
-    k: int, depth_pairs: list[tuple[int, int]] = None, n_trials: int = 50
+    k: int, depth_pairs: list[tuple[int, int]] | None = None, n_trials: int = 50
 ) -> list[tuple[int, int, int]]:
     """
     Verify depth([M,N]) >= depth(M) + depth(N) for random matrices.

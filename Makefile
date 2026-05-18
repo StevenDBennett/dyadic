@@ -14,7 +14,7 @@ format:
 	ruff format packages/
 
 typecheck:
-	mypy packages/dyadic-core/src packages/dyadic-math/src
+	mypy packages/
 
 clean:
 	rm -rf .pytest_cache .ruff_cache .hypothesis

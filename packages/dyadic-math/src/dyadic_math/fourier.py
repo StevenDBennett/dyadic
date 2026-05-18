@@ -15,6 +15,8 @@ against the numeric FFT.
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 from dyadic_core import bitmask, modinv_newton, two_adic_log5
 
@@ -83,12 +85,12 @@ def analytic_step_count(k: int, e_true: int) -> np.ndarray:
     return h
 
 
-def dft(f: np.ndarray) -> np.ndarray:
+def dft(f: np.ndarray) -> Any:
     """Discrete Fourier transform (numpy wrapper)."""
     return np.fft.fft(f)
 
 
-def power_spectrum(f: np.ndarray) -> np.ndarray:
+def power_spectrum(f: np.ndarray) -> Any:
     """Power spectrum |DFT(f)|^2."""
     return np.abs(dft(f)) ** 2
 

@@ -55,6 +55,14 @@ Research code is not installed, not tested in CI, and not referenced in publishe
 - Full suite must pass before any commit: 212 tests (104 core + 108 math) as of May 2026.
 - Use `--tb=short` for concise output.
 
+## Type Checking
+
+- All source packages are checked with mypy `--strict` (configured in root `pyproject.toml`).
+- Test directories and `research/` are excluded from strict checking.
+- Run with: `make typecheck` or `mypy packages/`
+- Test files are not checked in CI (too many untyped test methods).
+- Fix all mypy errors before committing source code.
+
 ## Workflow
 
 - Create a feature branch for each logical chunk of work (`git checkout -b topic/description`).

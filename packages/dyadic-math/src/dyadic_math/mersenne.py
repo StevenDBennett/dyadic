@@ -58,7 +58,13 @@ def mersenne_coordinates(n: int, k: int) -> tuple[int, int, int] | None:
     if result is None:
         return None
     alpha, e_true = result
-    v2_e = valuation(e_true) if e_true != 0 else k
+    v2_e: int
+    if e_true != 0:
+        v2_e_val = valuation(e_true)
+        assert v2_e_val is not None  # e_true > 0
+        v2_e = v2_e_val
+    else:
+        v2_e = k
     return alpha, e_true, v2_e
 
 
@@ -93,7 +99,7 @@ def _cliff_prediction(n: int, c: int) -> int:
         return n + c
 
 
-def mersenne_cliff_table(n_max: int = 12) -> list[dict]:
+def mersenne_cliff_table(n_max: int = 12) -> list[dict[str, int]]:
     """
     Find the cliff precision k* for each Mersenne weight 2^n - 1.
 
@@ -147,7 +153,7 @@ def bootstrap_cost(eprec0: int, k: int) -> int:
     return cost
 
 
-def optimal_bootstrap(k_values: list[int] = None) -> dict[int, int]:
+def optimal_bootstrap(k_values: list[int] | None = None) -> dict[int, int]:
     """
     Find the optimal eprec₀ for each k by minimising total cost.
 
@@ -169,7 +175,7 @@ def optimal_bootstrap(k_values: list[int] = None) -> dict[int, int]:
     return results
 
 
-def compare_bootstrap_strategies(k_values: list[int] = None) -> dict[int, dict]:
+def compare_bootstrap_strategies(k_values: list[int] | None = None) -> dict[int, dict[str, int]]:
     """
     Compare sqrt(k) heuristic vs k/2 optimal vs LUT b=8.
 
@@ -178,7 +184,7 @@ def compare_bootstrap_strategies(k_values: list[int] = None) -> dict[int, dict]:
     if k_values is None:
         k_values = [16, 24, 32, 48, 64]
 
-    results: dict[int, dict] = {}
+    results: dict[int, dict[str, int]] = {}
     for k in k_values:
         sqrt_eprec = max(4, int(math.isqrt(k)) + 2)
         half_eprec = max(4, k // 2 + 2)
@@ -283,27 +289,36 @@ def cliff_constant(g: int = 5, k: int = 20) -> int:
     """
     if g == 5:
         log_val = two_adic_log5(k) >> 2
-        return valuation(log_val + 1)
+        c_val = valuation(log_val + 1)
+        assert c_val is not None  # log_val + 1 > 0
+        return c_val
 
     mask = bitmask(k)
     x = (g - 1) & mask
     result = 0
     x_power = x
     for n in range(1, 400):
-        v = valuation(n)
-        v2_term = n * valuation(x) - v
+        vn = valuation(n)
+        assert vn is not None  # n >= 1
+        vx = valuation(x)
+        if vx is None and x == 0:
+            break
+        assert vx is not None  # x > 0 for g ≡ 5 (mod 8)
+        v2_term = n * vx - vn
         if v2_term >= k:
             break
-        odd_n = n >> v
+        odd_n = n >> vn
         inv_odd_n = modinv_newton(odd_n, k)
-        term_shifted = (x_power >> v) * inv_odd_n & mask
+        term_shifted = (x_power >> vn) * inv_odd_n & mask
         if n % 2 == 0:
             result = (result - term_shifted) & mask
         else:
             result = (result + term_shifted) & mask
         x_power = (x_power * x) & mask
     log_g = result >> 2
-    return valuation(log_g + 1)
+    c_val = valuation(log_g + 1)
+    assert c_val is not None  # log_g + 1 > 0
+    return c_val
 
 
 def cliff_formula(g: int) -> str:
@@ -319,7 +334,8 @@ def cliff_formula(g: int) -> str:
         s = 7:  c(g) = 5 + v_2(A + B)  (boundary: recursive)
     """
     diff = g - 5
-    s = valuation(diff) or 999
+    s_val = valuation(diff)
+    s: int = 999 if s_val is None else s_val
     c_actual = cliff_constant(g)
     if s == 999:
         regime = f"g = 5 (fixed point): c = {c_actual}"
@@ -332,7 +348,7 @@ def cliff_formula(g: int) -> str:
     return f"g={g}: {regime}"
 
 
-def mersenne_cliff_theorem(verbose: bool = False) -> dict:
+def mersenne_cliff_theorem(verbose: bool = False) -> dict[str, int | str | bool]:
     """
     State and verify the complete Mersenne Cliff Theorem.
 
@@ -468,6 +484,7 @@ def prove_c_formula(verbose: bool = False) -> bool:
             continue
         diff = g - 5
         s = valuation(diff)
+        assert s is not None  # g > 5, so diff > 0
         if s == 7:
             continue
         s2 = s - 2
@@ -505,7 +522,9 @@ def exp2_neg4(k: int) -> int:
     odd_nfact = 1
     for n in range(1, k + 1):
         v_term = n + bin(n).count("1")
-        n_odd = n >> valuation(n)
+        vn = valuation(n)
+        assert vn is not None  # n >= 1
+        n_odd = n >> vn
         odd_nfact = (odd_nfact * n_odd) % (1 << (k + 4))
         if v_term >= k:
             continue

@@ -166,7 +166,9 @@ def step_count_profile(k: int, e_true: int) -> dict[int, tuple[int, int]]:
         if diff == 0:
             v = k  # true root
         else:
-            v = valuation(diff)
+            v2 = valuation(diff)
+            assert v2 is not None  # diff > 0
+            v = v2
 
         traj = newton_trajectory(pow(5, e_true, 1 << k), k, e_seed, k)
         steps = 0

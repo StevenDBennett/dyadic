@@ -17,9 +17,10 @@ Public names
 from __future__ import annotations
 
 import math
+from collections.abc import Iterator
 from contextlib import contextmanager
 from functools import lru_cache
-from typing import TypedDict
+from typing import TypedDict, cast
 
 # ── exception hierarchy ────────────────────────────────────────────────────────
 
@@ -96,7 +97,7 @@ def dual_add(
     alpha_b: int,
     e_b: int,
     k: int,
-) -> tuple[int | float, int, int]:
+) -> tuple[int | None, int, int]:
     """
     Exact addition in dual (v, alpha, e) coordinates via the Lifting The Exponent Lemma.
 
@@ -104,13 +105,15 @@ def dual_add(
     returns (v_sum, alpha_sum, e_sum) for a + b mod 2^k without converting
     back to the group representation.
 
+    v_sum is None when exact cancellation occurs (a + b ≡ 0 mod 2^k).
+
     Cases
     -----
     1. Different valuations: smaller v dominates (annihilation)
     2. Same sign, same e: exact doubling (v → v+1)
     3. Same sign, different e: v2(sum) = v + 1 via 5^m ≡ 1 mod 4
     4. Opposite signs: v2(sum) = v + 2 + v2(De) via LTE
-    5. Exact cancellation: e_a = e_b and signs oppose -> v = inf
+    5. Exact cancellation: e_a = e_b and signs oppose -> v = None (infinite)
     """
     if v_a > v_b:
         return (v_b, alpha_b, e_b)
@@ -127,8 +130,10 @@ def dual_add(
     else:
         e_diff = e_a - e_b if e_a > e_b else e_b - e_a
         if e_diff == 0:
-            return (float("inf"), 0, 0)
-        v_lte = 2 + valuation(e_diff)
+            return (None, 0, 0)
+        v2 = valuation(e_diff)
+        assert v2 is not None  # e_diff > 0, so valuation is finite
+        v_lte = 2 + v2
         return (min(v + v_lte, k), 0, e_a if e_a < e_b else e_b)
 
 
@@ -171,11 +176,12 @@ def two_adic_log5(k: int) -> int:
     result = 0
     n = 1
     while True:
-        v = valuation(n)
-        exp = 2 * n - v
+        v2 = valuation(n)
+        assert v2 is not None  # n >= 1
+        exp = 2 * n - v2
         if exp >= k:
             break
-        odd_part = n >> v
+        odd_part = n >> v2
         inv_odd = modinv_newton(odd_part, k)
         term = ((1 << exp) * inv_odd) & mask
         if n % 2 == 0:
@@ -305,7 +311,7 @@ def dlog_residual_tracking(
     bootstrap_k = max(4, math.isqrt(k) + 2)
     eprec = min(bootstrap_k - 2, k - 2)
     e = dlog_bootstrap(a, bootstrap_k) & bitmask(eprec)
-    history: list[dict] = []
+    history: list[DLogNewtonStep] = []
 
     while eprec < k - 2:
         new_eprec = min(2 * eprec, k - 2)
@@ -326,18 +332,16 @@ def dlog_residual_tracking(
         tau_after = ((rho_after - 1) & mask) >> 2
         v2_after = valuation(tau_after)
 
-        history.append(
-            {
-                "bits": bits,
-                "eprec_before": eprec,
-                "eprec_after": new_eprec,
-                "tau_before": int(tau_before),
-                "v2_before": v2_before,
-                "tau_after": int(tau_after),
-                "v2_after": v2_after,
-                "delta": int(delta),
-            }
-        )
+        history.append(cast(DLogNewtonStep, {
+            "bits": bits,
+            "eprec_before": eprec,
+            "eprec_after": new_eprec,
+            "tau_before": int(tau_before),
+            "v2_before": v2_before,
+            "tau_after": int(tau_after),
+            "v2_after": v2_after,
+            "delta": int(delta),
+        }))
         eprec = new_eprec
 
     return e, history
@@ -405,7 +409,7 @@ class DualNumber:
         n_mod = n & self.mask
         if n_mod == 0:
             self.is_zero = True
-            self.v = float("inf")
+            self.v = None
             self.alpha = 0
             self.e = 0
             self._n = 0
@@ -413,6 +417,7 @@ class DualNumber:
 
         self.is_zero = False
         self.v = valuation(n_mod)
+        assert self.v is not None  # n_mod > 0, so valuation is finite
         odd = (n_mod >> self.v) & self.mask
 
         result = two_adic_dlog(odd, k)
@@ -422,15 +427,18 @@ class DualNumber:
         self._n = n_mod
 
     @classmethod
-    def from_coords(cls, v: int, alpha: int, e: int, k: int = 64) -> DualNumber:
-        """Build a DualNumber directly from coordinates."""
+    def from_coords(cls, v: int | None, alpha: int, e: int, k: int = 64) -> DualNumber:
+        """Build a DualNumber directly from coordinates.
+
+        Pass v=None to represent zero (infinite valuation).
+        """
         obj = cls.__new__(cls)
         obj.k = k
         obj.mask = bitmask(k)
         obj._ord = 1 << (k - 2)
-        if v >= k:
+        if v is None or v >= k:
             obj.is_zero = True
-            obj.v = float("inf")
+            obj.v = None
             obj.alpha = 0
             obj.e = 0
             obj._n = 0
@@ -445,6 +453,7 @@ class DualNumber:
     def _to_int(self) -> int:
         if self.is_zero:
             return 0
+        assert self.v is not None  # guarded by is_zero
         odd = pow(5, self.e, 1 << self.k)
         if self.alpha:
             odd = (-odd) & self.mask
@@ -461,8 +470,8 @@ class DualNumber:
         """The integer n mod 2^k."""
         return self._n
 
-    def coords(self) -> tuple[int | float, int, int]:
-        """Return (v, alpha, e)."""
+    def coords(self) -> tuple[int | None, int, int]:
+        """Return (v, alpha, e). v is None for zero."""
         return (self.v, self.alpha, self.e)
 
     def __repr__(self) -> str:
@@ -517,6 +526,7 @@ class TwoAdicProcessor:
         self._check(a, b)
         if a.is_zero or b.is_zero:
             return DualNumber(0, self.k)
+        assert a.v is not None and b.v is not None  # guarded by is_zero
         v = a.v + b.v
         if v >= self.k:
             return DualNumber(0, self.k)
@@ -533,7 +543,10 @@ class TwoAdicProcessor:
     def inv(self, a: DualNumber) -> DualNumber:
         """Invert a unit (v = 0).  Raises ValueError if a is not a unit."""
         self._check(a)
-        if a.is_zero or a.v != 0:
+        if a.is_zero:
+            raise NonInvertibleError("Only units (v=0) are invertible")
+        assert a.v is not None  # guarded by is_zero
+        if a.v != 0:
             raise NonInvertibleError("Only units (v=0) are invertible")
         result = DualNumber.from_coords(
             v=0,
@@ -552,6 +565,7 @@ class TwoAdicProcessor:
             return DualNumber(0, self.k)
         if n < 0:
             return self.pow(self.inv(a), -n)
+        assert a.v is not None  # guarded by is_zero
         v = a.v * n
         if v >= self.k:
             return DualNumber(0, self.k)
@@ -565,13 +579,13 @@ class TwoAdicProcessor:
             raise RuntimeError("TwoAdicProcessor.pow invariant failed")
         return result
 
-    def dlog(self, a: DualNumber) -> tuple[int | float, int, int]:
-        """Return full coordinate triple (v, alpha, e)."""
+    def dlog(self, a: DualNumber) -> tuple[int | None, int, int]:
+        """Return full coordinate triple (v, alpha, e). v is None for zero."""
         self._check(a)
         return a.coords()
 
     @contextmanager
-    def verification(self, enabled: bool = True):
+    def verification(self, enabled: bool = True) -> Iterator[None]:
         """
         Temporarily enable or disable round-trip verification.
 
@@ -606,7 +620,7 @@ def padic_exp(x: int, k: int) -> int:
     if x == 0:
         return 1
     vx = valuation(abs(x))
-    if vx < 2:
+    if vx is None or vx < 2:
         raise DomainError(f"exp requires v2(x) ≥ 2, got v2={vx}")
     result = 1
     power_exact = x
@@ -614,7 +628,9 @@ def padic_exp(x: int, k: int) -> int:
     v2_fact = 0
     for n in range(1, k * 2):
         factorial_exact *= n
-        v2_fact += valuation(n)
+        vn = valuation(n)
+        assert vn is not None  # n >= 1
+        v2_fact += vn
         v_term = n * vx - v2_fact
         if v_term >= k:
             break
@@ -650,12 +666,13 @@ def padic_log(g: int, k: int) -> int:
     if x_exact == 0:
         return 0
     vx = valuation(abs(x_exact))
-    if vx < 2:
+    if vx is None or vx < 2:
         raise DomainError(f"log requires v2(g−1) ≥ 2 (g ≡ 1 mod 4), got v2={vx}")
     result = 0
     power_exact = x_exact
     for n in range(1, k * 2):
         vn = valuation(n)
+        assert vn is not None  # n >= 1
         v_term = n * vx - vn
         if v_term >= k:
             break

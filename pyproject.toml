@@ -17,6 +17,23 @@ ignore = [
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
+[tool.mypy]
+python_version = "3.11"
+strict = true
+exclude = [
+    "build/",
+    "dist/",
+    "research/",
+    "packages/dyadic-core/tests/",
+    "packages/dyadic-math/tests/",
+]
+# numpy has no stubs for most functions
+[[tool.mypy.overrides]]
+module = "numpy.*"
+ignore_missing_imports = true
+
+
+
 [tool.pytest.ini_options]
 testpaths = [
     "packages/dyadic-core/tests",

@@ -41,12 +41,16 @@ def verify_isometry(k: int, n_trials: int = 200) -> dict[str, float]:
     for _ in range(n_trials):
         e = random.randrange(1, 1 << (k - 2))
         diff = (pow(5, e, 1 << k) - 1) & bitmask(k)
+        v2_diff: int
         if diff == 0:
             v2_diff = k
         else:
-            v2_diff = valuation(diff)
-        v2_e = valuation(e) if e != 0 else k
-        expected = v2_e + 2
+            v2_diff_val = valuation(diff)
+            v2_diff = k if v2_diff_val is None else v2_diff_val
+        assert e != 0
+        v2_e_val = valuation(e)
+        assert v2_e_val is not None  # e > 0
+        expected = v2_e_val + 2
         if v2_diff == expected or v2_diff >= k:
             passed += 1
     return {"pass_rate": passed / n_trials, "n_trials": n_trials}
@@ -67,9 +71,19 @@ def isometry_pair_test(k: int, n_trials: int = 200) -> dict[str, float]:
         g1 = pow(5, e1, 1 << k)
         g2 = pow(5, e2, 1 << k)
         diff = (g1 - g2) & bitmask(k)
-        v2_diff = valuation(diff) if diff != 0 else k
+        v2_diff: int
+        if diff != 0:
+            v2_diff_val = valuation(diff)
+            v2_diff = k if v2_diff_val is None else v2_diff_val
+        else:
+            v2_diff = k
         e_diff = (e1 - e2) & ((1 << (k - 2)) - 1)
-        v2_e = valuation(e_diff) if e_diff != 0 else k
+        v2_e: int
+        if e_diff != 0:
+            v2_e_val = valuation(e_diff)
+            v2_e = k if v2_e_val is None else v2_e_val
+        else:
+            v2_e = k
         expected = v2_e + 2
         if v2_diff == expected or v2_diff >= k:
             passed += 1
@@ -205,7 +219,12 @@ def exponentvaluation_profile(k: int, n_samples: int = 500) -> dict[int, float]:
         result = two_adic_dlog(w_adj, k)
         if result is not None:
             _, e_true = result
-            v2 = valuation(e_true) if e_true != 0 else k - 2
+            v2: int
+            if e_true != 0:
+                v2_val = valuation(e_true)
+                v2 = k - 2 if v2_val is None else v2_val
+            else:
+                v2 = k - 2
             v2_counts[v2] = v2_counts.get(v2, 0) + 1
 
     total = sum(v2_counts.values())

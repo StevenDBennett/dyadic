@@ -49,7 +49,7 @@ def _ext_gcd(a: int, b: int) -> tuple[int, int, int]:
 
 
 def _pk(p: int, k: int) -> int:
-    return p**k
+    return int(p ** k)
 
 
 # ── Hensel lifting ──────────────────────────────────────────────────────────
@@ -148,7 +148,8 @@ def convergence_profile(
 
     pk = _pk(p, k)
     x = x0
-    profile = [_vp(abs(x - x_true), p)]
+    init_v = _vp(abs(x - x_true), p)
+    profile: list[int] = [k] if init_v is None else [init_v]
 
     for _ in range(k + 1):
         x_new = step_fn(x, a, pk)
@@ -156,9 +157,10 @@ def convergence_profile(
         if diff == 0:
             profile.append(k)  # saturated
             break
-        v = _vp(diff, p)
-        profile.append(v)
-        if v >= k:
+        v_val = _vp(diff, p)
+        assert v_val is not None  # diff > 0, so valuation is finite
+        profile.append(v_val)
+        if v_val >= k:
             break
         x = x_new
 
@@ -171,7 +173,7 @@ def compare_methods(p: int, k: int, n_trials: int = 20) -> dict[str, float]:
 
     Returns dict with mean final v_p per method.
     """
-    methods: dict[str, Callable] = {
+    methods: dict[str, Callable[[int, int, int], int]] = {
         "Newton (ord 2)": newton_step,
         "Halley (ord 3)": halley_step,
         "Comp-Newton (ord 4)": newton2_step,
@@ -209,7 +211,7 @@ def verify_order(
     if primes is None:
         primes = [5, 7, 11, 13]
 
-    methods: dict[str, Callable] = {
+    methods: dict[str, Callable[[int, int, int], int]] = {
         "Newton": newton_step,
         "Halley": halley_step,
     }

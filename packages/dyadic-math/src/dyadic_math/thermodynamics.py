@@ -21,6 +21,7 @@ References
 from __future__ import annotations
 
 import warnings
+from typing import Any
 
 import numpy as np
 from dyadic_core import bitmask, two_adic_dlog, valuation
@@ -56,8 +57,8 @@ class SeedThermodynamics:
         self.N = 1 << (k - 2)
         self._weights: np.ndarray | None = None
         self._k_range: range | None = None
-        self._profiles: dict | None = None
-        self._cliffs: dict | None = None
+        self._profiles: dict[int, dict[int, float]] | None = None
+        self._cliffs: dict[int, int | None] | None = None
 
     @classmethod
     def from_precision_sweep(
@@ -120,7 +121,7 @@ class SeedThermodynamics:
             alpha_fraction, mean_v2_e, std_v2_e, mean_e_norm,
             n_mersenne_zone, cliff_risk
         """
-        alpha_frac, v2_e_vals, e_norms = 0.0, [], []
+        alpha_frac, v2_e_vals, e_norms = 0.0, list[int](), []
         n_odd = 0
 
         for w in weights.flat:
@@ -134,7 +135,12 @@ class SeedThermodynamics:
             result = two_adic_dlog(odd, self.k)
             if result is not None:
                 _, e_true = result
-                v2_e = valuation(e_true) if e_true != 0 else self.k
+                v2_e: int
+                if e_true != 0:
+                    v2_val = valuation(e_true)
+                    v2_e = self.k if v2_val is None else v2_val
+                else:
+                    v2_e = self.k
                 v2_e_vals.append(v2_e)
                 e_norms.append(e_true / self.N)
 
@@ -215,13 +221,15 @@ class SeedThermodynamics:
         """Lazy computation of ghost density profiles per weight."""
         if self._profiles is not None:
             return
+        assert self._weights is not None, "call from_precision_sweep first"
+        assert self._k_range is not None, "call from_precision_sweep first"
         self._profiles = {}
         self._cliffs = {}
         weights_flat = self._weights.ravel()
         for idx in range(len(weights_flat)):
             w = int(weights_flat[idx])
-            profile = {}
-            cliff = None
+            profile: dict[int, float] = {}
+            cliff: int | None = None
             for k in self._k_range:
                 if w & 1 == 0:
                     profile[k] = 0.0
@@ -240,15 +248,17 @@ class SeedThermodynamics:
             self._cliffs[idx] = cliff
 
     @property
-    def profiles(self) -> dict:
+    def profiles(self) -> dict[int, dict[int, float]]:
         if self._profiles is None:
             self.compute()
+        assert self._profiles is not None
         return self._profiles
 
     @property
-    def cliffs(self) -> dict:
+    def cliffs(self) -> dict[int, int | None]:
         if self._cliffs is None:
             self.compute()
+        assert self._cliffs is not None
         return self._cliffs
 
     def cliff_histogram(self) -> dict[int, int]:

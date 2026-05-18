@@ -175,9 +175,9 @@ def combined_stability(
     for _ in range(num_cycles):
         weights = [np.random.randint(0, proc.mod_full) for _ in range(cycle_length)]
         product = proc.cycle_product([CRTDualNumber(w, k, p, proc.g_p) for w in weights])
-        v2_orig = valuation(product.component_2.value)
-        if v2_orig is None:
-            v2_orig = 0.0
+        v2_orig_val = valuation(product.component_2.value)
+        if v2_orig_val is None:
+            v2_orig_val = 0
 
         # Additive 2-adic perturbation: add 2^t to one weight
         idx = np.random.randint(0, cycle_length)
@@ -188,10 +188,13 @@ def combined_stability(
         product_pert = proc.cycle_product([CRTDualNumber(w, k, p, proc.g_p) for w in weights_pert])
 
         delta = abs(product.component_2.value - product_pert.component_2.value)
-        v2_delta = valuation(delta) if delta > 0 else 0
+        v2_delta_val: int = 0
+        if delta > 0:
+            v2_d = valuation(delta)
+            v2_delta_val = v2_d if v2_d is not None else 0
 
-        v2_orig_vals.append(float(v2_orig))
-        delta_v2s.append(float(v2_delta))
+        v2_orig_vals.append(float(v2_orig_val))
+        delta_v2s.append(float(v2_delta_val))
 
     v2_arr = np.array(v2_orig_vals)
     deltas_arr = np.array(delta_v2s)
