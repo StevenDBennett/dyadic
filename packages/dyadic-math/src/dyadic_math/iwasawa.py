@@ -241,7 +241,10 @@ def verify_commutator_depth(
         for _ in range(n_trials):
             shift_a = 1 << depth_a
             shift_b = 1 << depth_b
-            # Diagonal (commuting) matrices — commutator is identity
+            # Diagonal (commuting) matrices — commutator is identity;
+            # depth([M,N]) >= depth(M)+depth(N) trivially holds since
+            # depth(identity) = k.  The real test is the non-commuting
+            # case below (theorem only predicts a lower bound).
             matrix_a = [[1 + shift_a, 0], [0, 1 + shift_a]]
             matrix_b = [[1 + shift_b, 0], [0, 1 + shift_b]]
 

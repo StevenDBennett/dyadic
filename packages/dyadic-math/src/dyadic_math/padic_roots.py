@@ -242,7 +242,7 @@ def verify_order(
 def newton_correction_uniformity(p: int, k: int, n_seeds: int = 1000) -> dict[str, float]:
     """
     Test whether first-step Newton corrections are uniformly
-    distributed modulo p (chi-square test).
+    distributed modulo p (chi-square goodness-of-fit test).
 
     Reference: the first Newton correction term is
     delta = (x^3 - a) / (3 x^2) mod p, and the claim is this is
@@ -267,41 +267,16 @@ def newton_correction_uniformity(p: int, k: int, n_seeds: int = 1000) -> dict[st
         delta = (f * inv_df) % pk
         corrections.append(delta % p)
 
+    n = len(corrections)
+    expected = n / p if n > 0 else 0.0
     counts = Counter(corrections)
-    expected = len(corrections) / p
-    chi2 = sum((c - expected) ** 2 / expected for c in counts.values())
-    n_bins = len(counts)
+    chi2 = (
+        sum(((counts.get(r, 0) - expected) ** 2) / expected for r in range(p))
+        if expected > 0
+        else 0.0
+    )
     return {
         "chi2_stat": chi2,
-        "n_bins": n_bins,
-        "n_samples": len(corrections),
+        "n_samples": n,
         "df": p - 1,
-    }
-
-
-def popcount_compression(k: int, n_trials: int = 100) -> dict[str, float]:
-    """
-    Measure correlation between popcount gap and sum of delta popcounts.
-
-    See parallel report for reference value r ≈ -0.74.
-    """
-    popcounts_num = []
-    popcounts_delta = []
-
-    for _ in range(n_trials):
-        e_boot = random.randrange(0, 1 << (k - 2))
-        e_true = random.randrange(0, 1 << (k - 2))
-        e0 = (e_boot - e_true) & ((1 << (k - 2)) - 1)
-
-        pc0 = e_boot.bit_count()
-        pc_true = e_true.bit_count()
-        pc_delta = e0.bit_count()
-
-        popcounts_num.append(pc0 - pc_true)
-        popcounts_delta.append(pc_delta)
-
-    r = np.corrcoef(popcounts_num, popcounts_delta)[0, 1]
-    return {
-        "pearson_r": float(r),
-        "n_trials": n_trials,
     }

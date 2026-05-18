@@ -44,7 +44,7 @@ Determinant of a 2×2 matrix modulo `mod`.
 `a⁻¹ mod 2^k` via quadratic Newton lifting. Requires `a` odd.
 
 #### `dual_add(v_a, alpha_a, e_a, v_b, alpha_b, e_b, k) -> tuple[int | None, int, int]`
-Exact addition in dual `(v, α, e)` coordinates via LTE. Returns `(v_sum, α_sum, e_sum)` for `a + b mod 2^k` without converting to integer. `v_sum` is `None` on exact cancellation. Handles 5 cases: different valuations (annihilation), same sign (doubling or v+1), opposite signs (v+2+v₂(Δe) via LTE), exact cancellation.
+Add two numbers in dual `(v, α, e)` coordinates.  Internally reconstructs integers, adds, and re-decomposes.  Returns `(v_sum, α_sum, e_sum)` for `a + b mod 2^k`.  `v_sum` is `None` on exact cancellation.
 
 ### `dyadic_core._series` — 2-adic Series
 
@@ -269,9 +269,9 @@ Test α-sector flip under perturbation.
 - `trace_exponent_independence(k, p, ...)` — ANOVA F-test
 - `exponent_valuation_profile(k, n_samples)` — v₂(e_true) distribution
 
-### `dyadic_math.thermodynamics` Module
+### `dyadic_math.weight_stability` Module
 
-#### `SeedThermodynamics(k: int = 16, g: int = 5)`
+#### `WeightStabilityDiagnostics(k: int = 16, g: int = 5)`
 Graded 2-adic weight stability diagnostics.
 
 **Coordinate analysis**:
@@ -281,7 +281,7 @@ Graded 2-adic weight stability diagnostics.
 - `compare_to_random(W, n_samples)` — z-score comparison
 
 **Precision-sweep analysis**:
-- `__call__(weights, k_range)` — configure for sweep
+- `from_precision_sweep(weights, k_range)` — configure for sweep
 - `compute()` — lazy computation of ghost profiles
 - `profiles` — property: per-weight ghost density profiles
 - `cliffs` — property: per-weight cliff thresholds

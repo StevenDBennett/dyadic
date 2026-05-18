@@ -9,6 +9,8 @@ residue, allowing joint analysis of weights in the product ring.
 
 from __future__ import annotations
 
+import functools
+
 import numpy as np
 from dyadic_core import DualNumber, modinv_newton, valuation
 
@@ -41,14 +43,20 @@ def _primitive_root(p: int) -> int | None:
     return None
 
 
-def _prime_dlog(a: int, p: int, g_p: int) -> int:
-    """Brute-force discrete logarithm modulo prime p."""
+@functools.lru_cache(maxsize=32)
+def _prime_dlog_lut(p: int, g_p: int) -> dict[int, int]:
+    """Build a lookup table for discrete logs modulo prime p."""
+    lut: dict[int, int] = {}
     cur = 1
-    for e in range(p):
-        if cur == a:
-            return e
+    for e in range(p - 1):
+        lut[cur] = e
         cur = (cur * g_p) % p
-    return 0
+    return lut
+
+
+def _prime_dlog(a: int, p: int, g_p: int) -> int:
+    """Discrete logarithm modulo prime p via cached LUT."""
+    return _prime_dlog_lut(p, g_p).get(a, 0)
 
 
 class CRTDualNumber:

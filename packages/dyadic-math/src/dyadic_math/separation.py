@@ -13,11 +13,14 @@ The theorem is exact (zero variance) and verified empirically.
 
 from __future__ import annotations
 
+import warnings
 from math import ceil, log2
 
 from dyadic_core import bitmask, two_adic_log5, valuation
 
 from dyadic_math._step import newton_step_core
+
+_WARN_K_LIMIT = 16  # step_count_profile enumerates 2^(k-2) seeds
 
 
 def newton_trajectory(a: int, k: int, e_seed: int, steps: int = 10) -> list[int]:
@@ -155,6 +158,12 @@ def step_count_profile(k: int, e_true: int) -> dict[int, tuple[int, int]]:
 
     Returns dict mapping v → (count, steps_to_converge).
     """
+    if k > _WARN_K_LIMIT:
+        warnings.warn(
+            f"k={k} gives N=2^{k - 2} seeds; enumeration is O(2^k). Consider k ≤ {_WARN_K_LIMIT}.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
     order = 1 << (k - 2)
     profile: dict[int, tuple[int, int]] = {}
 

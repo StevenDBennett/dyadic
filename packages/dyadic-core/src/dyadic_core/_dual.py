@@ -72,7 +72,16 @@ class DualNumber:
         obj.k = k
         obj.mask = bitmask(k)
         obj._ord = 1 << (k - 2)
-        if v is None or v < 0 or v >= k:
+        if v is None:
+            obj.is_zero = True
+            obj.v = None
+            obj.alpha = 0
+            obj.e = 0
+            obj._n = 0
+            return obj
+        if v < 0:
+            raise DomainError(f"v must be non-negative, got {v}")
+        if v >= k:
             obj.is_zero = True
             obj.v = None
             obj.alpha = 0

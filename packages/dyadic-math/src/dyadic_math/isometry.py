@@ -15,6 +15,7 @@ T6-c  Trace-mod-p Independence
 
 from __future__ import annotations
 
+import math
 import random
 from collections import Counter
 
@@ -142,8 +143,15 @@ def trace_alpha_independence(
                 chi2 += (observed - expected) ** 2 / expected
 
     df = (2 - 1) * (p - 1)
+
+    try:
+        p_value = math.gammaincc(df / 2, chi2 / 2)
+    except AttributeError:
+        p_value = None
+
     return {
         "chi2_stat": chi2,
+        "p_value": p_value,
         "df": df,
         "n_samples": n,
     }

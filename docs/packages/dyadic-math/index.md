@@ -17,7 +17,7 @@
 | `dyadic_math.iwasawa` | GL(2) congruence filtration, LDU decomposition |
 | `dyadic_math.mersenne` | Mersenne Ghost Theorem, bootstrap optimality, cliff constants |
 | `dyadic_math.isometry` | Exponential map isometry |
-| `dyadic_math.thermodynamics` | SeedThermodynamics — graded 2-adic weight stability diagnostics |
+| `dyadic_math.weight_stability` | WeightStabilityDiagnostics — graded 2-adic weight stability diagnostics |
 
 ## Quick-Start Examples
 

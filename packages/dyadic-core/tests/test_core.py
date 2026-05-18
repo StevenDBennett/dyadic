@@ -7,6 +7,7 @@ from dyadic_core import (
     TwoAdicProcessor,
     bitmask,
     dlog_residual_tracking,
+    dual_add,
     modinv_newton,
     two_adic_dlog,
     two_adic_log5,
@@ -293,6 +294,65 @@ class TestDlogResidualTracking(unittest.TestCase):
     def test_invalid_a_raises(self):
         with self.assertRaises(ValueError):
             dlog_residual_tracking(3, 8)
+
+
+class TestDualAdd(unittest.TestCase):
+    """dual_add: each structural case verified against integer round-trip."""
+
+    def _check(self, v_a, alpha_a, e_a, v_b, alpha_b, e_b, k):
+        mask = bitmask(k)
+        a = pow(5, e_a, 1 << k)
+        if alpha_a:
+            a = (-a) & mask
+        a = (a << v_a) & mask
+        b = pow(5, e_b, 1 << k)
+        if alpha_b:
+            b = (-b) & mask
+        b = (b << v_b) & mask
+        s = (a + b) & mask
+
+        result = dual_add(v_a, alpha_a, e_a, v_b, alpha_b, e_b, k)
+
+        if s == 0:
+            self.assertIsNone(result[0], f"Expected cancellation, got {result}")
+            return
+
+        d = DualNumber(s, k)
+        self.assertEqual(result, (d.v, d.alpha, d.e), f"{a} + {b} = {s}")
+
+    def test_diff_valuation(self):
+        for v in range(1, 5):
+            self._check(0, 0, 0, v, 0, 0, 8)
+
+    def test_same_sign_same_e(self):
+        for e in range(4):
+            self._check(0, 0, e, 0, 0, e, 8)
+
+    def test_same_sign_same_e_alpha1(self):
+        for e in range(4):
+            self._check(0, 1, e, 0, 1, e, 8)
+
+    def test_same_sign_diff_e(self):
+        for e_a, e_b in [(0, 1), (1, 3), (0, 5), (2, 7)]:
+            self._check(0, 0, e_a, 0, 0, e_b, 8)
+
+    def test_opp_sign_diff_e(self):
+        for e_a, e_b in [(0, 1), (1, 3), (0, 5), (2, 7)]:
+            self._check(0, 0, e_a, 0, 1, e_b, 8)
+
+    def test_exact_cancellation(self):
+        for e in range(4):
+            result = dual_add(0, 0, e, 0, 1, e, 8)
+            self.assertIsNone(result[0])
+
+    def test_different_v_with_signs(self):
+        self._check(0, 1, 1, 2, 0, 3, 8)
+
+    def test_k_edge(self):
+        for k in [3, 4, 8, 16]:
+            self._check(0, 0, 1, 0, 0, 3, k)
+            self._check(0, 0, 1, 0, 1, 3, k)
+            self._check(1, 0, 0, 3, 0, 0, k)
 
 
 if __name__ == "__main__":

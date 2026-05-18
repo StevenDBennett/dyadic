@@ -98,7 +98,6 @@ class TestNewtonCorrectionUniformity(unittest.TestCase):
 
         result = newton_correction_uniformity(5, 2, n_seeds=100)
         self.assertIn("chi2_stat", result)
-        self.assertIn("n_bins", result)
         self.assertIn("n_samples", result)
         self.assertIn("df", result)
         self.assertEqual(result["df"], 4)

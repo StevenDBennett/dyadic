@@ -42,8 +42,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install packages
+      - name: Install packages and test tools
         run: |
+          pip install pytest hypothesis typeguard
           pip install -e packages/dyadic-core
           pip install -e packages/dyadic-math
       - name: Run tests

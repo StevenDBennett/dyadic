@@ -1,13 +1,13 @@
 """
 _modular.py
 -----------
-Newton-lifted modular inverse and LTE-based dual-coordinate addition.
+Newton-lifted modular inverse and dual-coordinate addition.
 """
 
 from __future__ import annotations
 
 from dyadic_core._exceptions import DomainError, NonInvertibleError
-from dyadic_core._util import bitmask, valuation
+from dyadic_core._util import bitmask
 
 __all__ = [
     "dual_add",
@@ -42,39 +42,33 @@ def dual_add(
     k: int,
 ) -> tuple[int | None, int, int]:
     """
-    Exact addition in dual (v, alpha, e) coordinates via the Lifting The Exponent Lemma.
+    Add two numbers given in dual (v, alpha, e) coordinates.
 
-    Given a = 2^{v_a} . (-1)^{alpha_a} . 5^{e_a} and b = 2^{v_b} . (-1)^{alpha_b} . 5^{e_b},
-    returns (v_sum, alpha_sum, e_sum) for a + b mod 2^k without converting
-    back to the group representation.
+    Given a = 2^{v_a} . (-1)^{alpha_a} . 5^{e_a} and
+          b = 2^{v_b} . (-1)^{alpha_b} . 5^{e_b},
+    returns (v_sum, alpha_sum, e_sum) for a + b mod 2^k.
 
-    v_sum is None when exact cancellation occurs (a + b == 0 mod 2^k).
+    Internally reconstructs integers, adds, and re-decomposes.
+    LTE formulas for v_2(sum) hold in the equal-valuation cases
+    but the full (alpha, e) coordinates always require re-decomposition.
 
-    Cases
-    -----
-    1. Different valuations: smaller v dominates (annihilation)
-    2. Same sign, same e: exact doubling (v -> v+1)
-    3. Same sign, different e: v2(sum) = v + 1 via 5^m == 1 mod 4
-    4. Opposite signs: v2(sum) = v + 2 + v2(De) via LTE
-    5. Exact cancellation: e_a = e_b and signs oppose -> v = None (infinite)
+    v_sum is None when exact cancellation occurs.
     """
-    if v_a > v_b:
-        return (v_b, alpha_b, e_b)
-    if v_b > v_a:
-        return (v_a, alpha_a, e_a)
+    from dyadic_core._dual import DualNumber
 
-    v = v_a
-    if alpha_a == alpha_b:
-        e_min = e_a if e_a < e_b else e_b
-        e_diff = e_a - e_b if e_a > e_b else e_b - e_a
-        if e_diff == 0:
-            return (min(v + 1, k), alpha_a, e_a)
-        return (min(v + 1, k), alpha_a, e_min)
-    else:
-        e_diff = e_a - e_b if e_a > e_b else e_b - e_a
-        if e_diff == 0:
-            return (None, 0, 0)
-        v2 = valuation(e_diff)
-        assert v2 is not None  # e_diff > 0, so valuation is finite
-        v_lte = 2 + v2
-        return (min(v + v_lte, k), 0, e_a if e_a < e_b else e_b)
+    mask = bitmask(k)
+    a = pow(5, e_a, 1 << k)
+    if alpha_a:
+        a = (-a) & mask
+    a = (a << v_a) & mask
+
+    b = pow(5, e_b, 1 << k)
+    if alpha_b:
+        b = (-b) & mask
+    b = (b << v_b) & mask
+
+    s = (a + b) & mask
+    if s == 0:
+        return (None, 0, 0)
+    d = DualNumber(s, k)
+    return (d.v, d.alpha, d.e)

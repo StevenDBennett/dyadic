@@ -15,12 +15,15 @@ against the numeric FFT.
 
 from __future__ import annotations
 
+import warnings
 from typing import Any
 
 import numpy as np
 from dyadic_core import bitmask, two_adic_log5
 
 from dyadic_math._step import newton_step_core
+
+_WARN_K_LIMIT = 16  # step_count_fn enumerates 2^(k-2) seeds
 
 
 def step_count_fn(k: int, e_true: int, max_steps: int = 10) -> np.ndarray:
@@ -33,6 +36,12 @@ def step_count_fn(k: int, e_true: int, max_steps: int = 10) -> np.ndarray:
     The function only takes values in {0, 1, 2, 3} for valid inputs;
     h = max_steps + 1 indicates failure to converge within budget.
     """
+    if k > _WARN_K_LIMIT:
+        warnings.warn(
+            f"k={k} gives N=2^{k - 2} seeds; enumeration is O(2^k). Consider k ≤ {_WARN_K_LIMIT}.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
     order = 1 << (k - 2)
     a_val = pow(5, e_true, 1 << k)
     log5_unit = two_adic_log5(k) >> 2
@@ -55,13 +64,17 @@ def step_count_fn(k: int, e_true: int, max_steps: int = 10) -> np.ndarray:
 
 def analytic_step_count(k: int, e_true: int) -> np.ndarray:
     """
-    Closed-form O(N) construction of h(e) using ultrametric balls.
+    Approximate O(N) construction of h(e) using ultrametric balls.
 
     For seed e:
         h = 0  if e == e_true
         h = 1  if v₂(e - e_true) >= 2  (i.e. in ball of radius ≥ 4)
         h = 2  if v₂(e - e_true) == 1  (distance exactly 2)
         h = 3  if v₂(e - e_true) == 0  (distance odd)
+
+    This is a zeroth-order approximation: actual Newton convergence
+    may take 1 more step for some seeds at the boundary of each
+    v₂ class, especially at small k.
     """
     order = 1 << (k - 2)
     h = np.full(order, 3, dtype=np.int32)
@@ -76,8 +89,8 @@ def analytic_step_count(k: int, e_true: int) -> np.ndarray:
         h[mask1 & ~mask0] = 1
 
     if k >= 3:
-        mask2 = (diff & 1) == 0  # v2 >= 1 but < 2
-        h[mask2 & ~mask0] = 2
+        mask2 = (diff & 1) == 0  # v2 >= 1
+        h[mask2 & ~mask1 & ~mask0] = 2  # v2 == 1, exclude v2 >= 2
 
     return h
 
@@ -114,16 +127,29 @@ def dyadic_coefficients(f: np.ndarray) -> dict[str, complex]:
 
 def analytic_coefficients(k: int) -> dict[str, complex]:
     """
-    Closed-form Fourier coefficients for the step-count function.
+    Approximate Fourier coefficients for the step-count function.
 
-    Returns dict with DC, N/2, N/4 components derived analytically.
+    Based on the zeroth-order analytic model where:
+        h = 1  for v2(e - e_true) >= 2   (N/4  seeds)
+        h = 2  for v2(e - e_true) == 1   (N/4  seeds)
+        h = 3  for v2(e - e_true) == 0   (N/2 - 1 seeds; 1 seed has h=0)
+
+    The coefficients do not depend on e_true under this model
+    (translation invariance of v2).  Actual Newton convergence
+    deviates at small k and at class boundaries.
+
+    DC   = sum h(e) = 0 + 1*(N/4) + 2*(N/4) + 3*(N/2 - 1) + 0
+         = 3N/4 - 3
+         ≈ 3N/4  for large N.
+
+    N/2  = contrast even vs odd  => N/2
+    N/4  = contrast within evens => -N/4
     """
     order = 1 << (k - 2)
 
-    n_dc = order - order // 4
+    n_dc = 3 * order // 4
     dc_coeff = complex(n_dc, 0)
 
-    # N/2: contrast between even and odd exponents
     n_half = order // 2
     half_coeff = complex(n_half, 0)
 
@@ -141,11 +167,11 @@ def fourier_summary(k: int, e_true: int) -> str:
     """
     Complete Fourier analysis of the step-count function.
 
-    Compares analytic vs numeric coefficients.
+    Compares numeric vs approximate analytic coefficients.
     """
     h_num = step_count_fn(k, e_true)
     h_an = analytic_step_count(k, e_true)
-    match = np.all(h_num == h_an)
+    frac_match = float(np.mean(h_num == h_an))
 
     spec = power_spectrum(h_num)
     dyadic = dyadic_coefficients(h_num)
@@ -153,7 +179,7 @@ def fourier_summary(k: int, e_true: int) -> str:
 
     lines = [
         f"Fourier Analysis of Step-Count Function  (k={k}, N={1 << (k - 2)})",
-        f"  Numeric == Analytic: {match}",
+        f"  Analytic match: {frac_match:.1%} of seeds",
         f"  Non-zero frequencies: {len([v for v in spec if v > 0])}",
         "",
         "  Dyadic Coefficients:",

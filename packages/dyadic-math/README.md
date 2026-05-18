@@ -11,7 +11,7 @@ p-adic root finding, and the Mersenne Ghost Theorem.
 
 - **BasinExplorer** — classify Newton seeds by convergence fate (converged, ghost cycle, diverged)
 - **GhostHunt** — precision sweep to find quantization cliff thresholds
-- **SeedThermodynamics** — graded 2-adic weight stability diagnostics
+- **WeightStabilityDiagnostics** — graded 2-adic weight stability diagnostics
 - **padic_roots** — Newton, Halley, and higher-order p-adic root finding
 - **CRTDualNumber** — Chinese Remainder Theorem extension to `Z/(2^k * p)Z`
 - **NonAbelianCRTDual** — GL(2) holonomy with phase alignment experiments

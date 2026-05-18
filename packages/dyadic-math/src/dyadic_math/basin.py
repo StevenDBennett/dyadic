@@ -17,6 +17,7 @@ codebase and is essential for correctness.
 
 from __future__ import annotations
 
+import warnings
 from functools import lru_cache
 from typing import Any
 
@@ -24,6 +25,8 @@ import numpy as np
 from dyadic_core import bitmask, two_adic_dlog, two_adic_log5, valuation
 
 from dyadic_math._step import newton_step_core
+
+_WARN_K_LIMIT = 16  # portrait enumerates 2^(k-2) seeds; k > 16 is expensive
 
 
 @lru_cache(maxsize=128)
@@ -62,6 +65,18 @@ class BasinExplorer:
     def __init__(self, k: int, g: int, target_a: int) -> None:
         if k < 3:
             raise ValueError("k must be ≥ 3")
+        if g != 5:
+            raise ValueError(
+                "Only generator g=5 is supported. "
+                "The discrete-log infrastructure (two_adic_dlog) is hardcoded to base 5."
+            )
+        if k > _WARN_K_LIMIT:
+            warnings.warn(
+                f"k={k} gives N=2^{k - 2} seeds; portrait enumeration is O(2^k). "
+                f"Consider k ≤ {_WARN_K_LIMIT}.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
         self.k = k
         self.g = g
         self.mask = bitmask(k)

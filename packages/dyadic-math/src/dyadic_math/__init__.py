@@ -54,7 +54,7 @@ from dyadic_math.separation import (
 )
 
 # 2c. Weight stability analysis
-from dyadic_math.thermodynamics import SeedThermodynamics
+from dyadic_math.weight_stability import WeightStabilityDiagnostics
 
 __all__ = [
     "__version__",
@@ -89,7 +89,7 @@ __all__ = [
     "halley_step",
     "newton2_step",
     "newton3_step",
-    "SeedThermodynamics",
+    "WeightStabilityDiagnostics",
     "CRTDualNumber",
     "CRTDualProcessor",
     "combined_stability",

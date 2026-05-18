@@ -55,10 +55,11 @@ print(f"Converged: {len(portrait['converged'])}, Ghost: {len(portrait['cycle'])}
 
 ```python
 import numpy as np
-from dyadic_math import SeedThermodynamics
+from dyadic_math import WeightStabilityDiagnostics
 
-W = np.random.randint(0, 256, size=(8, 8), dtype=np.int64)
-thermo = SeedThermodynamics(k=8)
+...
+
+thermo = WeightStabilityDiagnostics(k=8)
 result = thermo.analyse(W)
 print(f"Alpha fraction: {result['alpha_fraction']:.3f}")
 ```

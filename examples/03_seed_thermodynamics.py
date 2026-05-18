@@ -1,22 +1,22 @@
 """
-03_seed_thermodynamics.py — Demonstrate SeedThermodynamics weight analysis
+03_weight_stability.py — Demonstrate WeightStabilityDiagnostics
 
-Usage: python examples/03_seed_thermodynamics.py
+Usage: python examples/03_weight_stability.py
 """
 
 import numpy as np
-from dyadic_math import SeedThermodynamics
+from dyadic_math import WeightStabilityDiagnostics
 
 
 def main():
     np.random.seed(42)
 
     print("=" * 60)
-    print("SeedThermodynamics — 2-Adic Weight Stability")
+    print("WeightStabilityDiagnostics — 2-Adic Weight Stability")
     print("=" * 60)
 
     W = np.random.randint(0, 256, size=(8, 8), dtype=np.int64)
-    thermo = SeedThermodynamics(k=8)
+    thermo = WeightStabilityDiagnostics(k=8)
 
     result = thermo.analyse(W)
     print("  Weight analysis:")
@@ -30,7 +30,7 @@ def main():
     print("=" * 60)
 
     weights = np.random.randint(1, 256, size=20, dtype=np.int64)
-    thermo(weights, k_range=range(4, 13))
+    thermo = WeightStabilityDiagnostics.from_precision_sweep(weights, k_range=range(4, 13), k=8)
     thermo.compute()
 
     print(f"  Stable weights: {thermo.stable_weights()}")

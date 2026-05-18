@@ -76,10 +76,9 @@ class TestBasinExplorer(unittest.TestCase):
         for val in pm:
             self.assertLessEqual(val, 0)
 
-    def test_invalid_g_accepts_any_odd(self):
-        k = 8
-        explorer = BasinExplorer(k, 3, 1)
-        self.assertIsInstance(explorer, BasinExplorer)
+    def test_invalid_g_rejects_non_5(self):
+        with self.assertRaises(ValueError):
+            BasinExplorer(8, 3, 1)
 
     def test_invalid_k_raises(self):
         with self.assertRaises(ValueError):

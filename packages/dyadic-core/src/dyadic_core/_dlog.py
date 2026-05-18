@@ -7,7 +7,7 @@ _dlog.py
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import TypedDict, cast
+from typing import TypedDict
 
 from dyadic_core._exceptions import DomainError
 from dyadic_core._modular import modinv_newton
@@ -191,19 +191,16 @@ def dlog_residual_tracking(
         v2_after = valuation(tau_after)
 
         history.append(
-            cast(
-                DLogNewtonStep,
-                {
-                    "bits": bits,
-                    "eprec_before": eprec,
-                    "eprec_after": new_eprec,
-                    "tau_before": int(tau_before),
-                    "v2_before": v2_before,
-                    "tau_after": int(tau_after),
-                    "v2_after": v2_after,
-                    "delta": int(delta),
-                },
-            )
+            {
+                "bits": bits,
+                "eprec_before": eprec,
+                "eprec_after": new_eprec,
+                "tau_before": int(tau_before),
+                "v2_before": v2_before,
+                "tau_after": int(tau_after),
+                "v2_after": v2_after,
+                "delta": int(delta),
+            }
         )
         eprec = new_eprec
 

@@ -92,12 +92,6 @@ class TestPadicRoots(unittest.TestCase):
             prof = convergence_profile(2, a, p, k, newton_step, x_true)
             self.assertGreater(len(prof), 0)
 
-    def test_popcount_compression(self):
-        from dyadic_math.padic_roots import popcount_compression
-
-        result = popcount_compression(8, n_trials=10)
-        self.assertIn("pearson_r", result)
-
 
 class TestIwasawa(unittest.TestCase):
     def test_congruence_depth(self):

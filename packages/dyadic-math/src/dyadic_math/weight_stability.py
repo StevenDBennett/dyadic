@@ -1,6 +1,6 @@
 """
-thermodynamics.py
------------------
+weight_stability.py
+-------------------
 Graded 2-adic weight stability diagnostics for collections of integers.
 
 The primary quantity is v₂(e_true) — the 2-adic valuation of the
@@ -20,15 +20,13 @@ References
 
 from __future__ import annotations
 
-import warnings
-
 import numpy as np
 from dyadic_core import bitmask, two_adic_dlog, valuation
 
 from dyadic_math.basin import BasinExplorer
 
 
-class SeedThermodynamics:
+class WeightStabilityDiagnostics:
     """
     Analysis of 2-adic weight thermodynamics for a collection of integers.
 
@@ -71,7 +69,7 @@ class SeedThermodynamics:
         k_range: range,
         k: int = 16,
         g: int = 5,
-    ) -> SeedThermodynamics:
+    ) -> WeightStabilityDiagnostics:
         """
         Create an instance configured for precision-sweep analysis.
 
@@ -88,7 +86,7 @@ class SeedThermodynamics:
 
         Returns
         -------
-        SeedThermodynamics
+        WeightStabilityDiagnostics
             Instance ready for ``compute()``.
         """
         instance = cls(k=k, g=g)
@@ -135,12 +133,14 @@ class SeedThermodynamics:
             if w_int & 1 == 0:
                 continue
             n_odd += 1
-            _, alpha, _ = self.weight_coordinates(w_int)
-            alpha_frac += alpha
-            odd = abs(w_int) & self.mask
+            w_mod = w_int & self.mask
+            if w_mod == 0:
+                continue
+            odd = w_mod >> valuation(w_mod)
             result = two_adic_dlog(odd, self.k)
             if result is not None:
-                _, e_true = result
+                alpha, e_true = result
+                alpha_frac += alpha
                 v2_e: int
                 if e_true != 0:
                     v2_val = valuation(e_true)
@@ -212,16 +212,6 @@ class SeedThermodynamics:
         }
 
     # ── Precision-sweep analysis (v2-style) ─────────────────────────────────
-
-    def __call__(self, weights: np.ndarray, k_range: range) -> SeedThermodynamics:
-        """Deprecated: use ``SeedThermodynamics.from_precision_sweep()`` instead."""
-        warnings.warn(
-            "Calling SeedThermodynamics(weights, k_range) is deprecated. "
-            "Use SeedThermodynamics.from_precision_sweep(weights, k_range) instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.from_precision_sweep(weights, k_range, k=self.k, g=self.g)
 
     def compute(self) -> None:
         """Lazy computation of ghost density profiles per weight."""
@@ -308,7 +298,7 @@ class SeedThermodynamics:
         """ASCII report of ghost cliff statistics."""
         s = self.summary()
         lines = [
-            "SeedThermodynamics Report",
+            "WeightStabilityDiagnostics Report",
             f"  Weights:        {s['n_weights']}",
             f"  Stable:         {s['n_stable']}",
             f"  Ghost:          {s['n_ghost']} ({s['ghost_fraction']:.1%})",

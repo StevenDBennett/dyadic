@@ -37,7 +37,7 @@ where Newton iteration becomes unstable ("ghost attractors").
 | `dyadic_math.fourier` | 185 | DFT of Newton step-count function |
 | `dyadic_math.padic_roots` | 311 | Multi-order p-adic root finding |
 | `dyadic_math.isometry` | 257 | Exponential isometry, operator algebra theorems |
-| `dyadic_math.thermodynamics` | 289 | SeedThermodynamics — graded 2-adic stability diagnostics |
+| `dyadic_math.weight_stability` | 289 | WeightStabilityDiagnostics — graded 2-adic stability diagnostics |
 | `dyadic_math.crt` | 205 | CRT extension to Z/(2^k·p)Z |
 | `dyadic_math.nonabelian` | 214 | GL(2) matrix utilities with phase alignment |
 | `dyadic_math.iwasawa` | 235 | GL(2) congruence filtration, LDU decomposition |
