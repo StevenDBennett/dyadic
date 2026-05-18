@@ -27,6 +27,7 @@ from dyadic_core import bitmask, two_adic_dlog, two_adic_log5, valuation
 from dyadic_math._step import newton_step_core
 
 _WARN_K_LIMIT = 16  # portrait enumerates 2^(k-2) seeds; k > 16 is expensive
+_MAX_K_ENUMERATE = 20  # hard limit: 2^18 = 262144 seeds
 
 
 @lru_cache(maxsize=128)
@@ -69,6 +70,11 @@ class BasinExplorer:
             raise ValueError(
                 "Only generator g=5 is supported. "
                 "The discrete-log infrastructure (two_adic_dlog) is hardcoded to base 5."
+            )
+        if k > _MAX_K_ENUMERATE:
+            raise ValueError(
+                f"k={k} exceeds the hard limit of {_MAX_K_ENUMERATE} "
+                f"(N=2^{k - 2} seeds). Portrait enumeration is O(2^k)."
             )
         if k > _WARN_K_LIMIT:
             warnings.warn(

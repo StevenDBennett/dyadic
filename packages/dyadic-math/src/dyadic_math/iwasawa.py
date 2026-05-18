@@ -142,11 +142,17 @@ def matrix_coordinates(matrix: list[list[int]], k: int) -> MatrixCoordinates:
 
 
 def holonomy_depth_profile(
-    k: int, p: int, cycle_length: int = 4, n_cycles: int = 30
+    k: int,
+    p: int,
+    cycle_length: int = 4,
+    n_cycles: int = 30,
+    seed: int | None = None,
 ) -> dict[str, float | int]:
     """
     How holonomy congruence depth changes under single-bit perturbation.
     """
+    if seed is not None:
+        random.seed(seed)
     from .nonabelian import NonAbelianCRTDual
 
     nc = NonAbelianCRTDual(k, p)

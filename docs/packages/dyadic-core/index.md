@@ -8,7 +8,11 @@
 
 | Module | Description |
 |--------|-------------|
-| `dyadic_core.core` | DualNumber, TwoAdicProcessor, modinv_newton, padic_exp/log, cliff centre g₀ |
+| `dyadic_core._dual` | DualNumber, TwoAdicProcessor |
+| `dyadic_core._dlog` | 2-adic discrete log (Newton-lifted, LUT bootstrap) |
+| `dyadic_core._series` | 2-adic exp/log via exact integer arithmetic, g₀ |
+| `dyadic_core._modular` | Newton-lifted modular inverse, dual addition |
+| `dyadic_core._util` | bitmask, valuation, 2×2 matrix ops |
 | `dyadic_core.exponent` | ExponentSpace — additive coordinate chart on Z/2^(k-2) |
 | `dyadic_core.mahler` | MahlerCalculus — Mahler basis, Dirac/Volterra operators |
 

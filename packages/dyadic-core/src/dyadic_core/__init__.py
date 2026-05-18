@@ -6,7 +6,7 @@ from dyadic_core._dlog import (
     two_adic_dlog,
     two_adic_log5,
 )
-from dyadic_core._dual import DualNumber, TwoAdicProcessor, run_all_tests
+from dyadic_core._dual import DualNumber, TwoAdicProcessor
 from dyadic_core._exceptions import (
     ConvergenceError,
     DomainError,
@@ -45,5 +45,4 @@ __all__ = [
     "DomainError",
     "ExponentSpace",
     "MahlerCalculus",
-    "run_all_tests",
 ]

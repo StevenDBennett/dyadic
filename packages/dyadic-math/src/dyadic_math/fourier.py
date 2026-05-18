@@ -24,6 +24,7 @@ from dyadic_core import bitmask, two_adic_log5
 from dyadic_math._step import newton_step_core
 
 _WARN_K_LIMIT = 16  # step_count_fn enumerates 2^(k-2) seeds
+_MAX_K_ENUMERATE = 20
 
 
 def step_count_fn(k: int, e_true: int, max_steps: int = 10) -> np.ndarray:
@@ -36,6 +37,11 @@ def step_count_fn(k: int, e_true: int, max_steps: int = 10) -> np.ndarray:
     The function only takes values in {0, 1, 2, 3} for valid inputs;
     h = max_steps + 1 indicates failure to converge within budget.
     """
+    if k > _MAX_K_ENUMERATE:
+        raise ValueError(
+            f"k={k} exceeds the hard limit of {_MAX_K_ENUMERATE} "
+            f"(N=2^{k - 2} seeds). Enumeration is O(2^k)."
+        )
     if k > _WARN_K_LIMIT:
         warnings.warn(
             f"k={k} gives N=2^{k - 2} seeds; enumeration is O(2^k). Consider k ≤ {_WARN_K_LIMIT}.",

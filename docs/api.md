@@ -15,8 +15,6 @@ The package is organised into focused submodules. All names are re-exported from
 from dyadic_core import DualNumber, modinv_newton, padic_exp, ...
 ```
 
-Backward-compatible imports from `dyadic_core.core` also work.
-
 ### `dyadic_core._util` — Basic Utilities
 
 #### `bitmask(k: int) -> int`
@@ -101,9 +99,6 @@ Arithmetic on DualNumbers in coordinate space.
 - `pow(a, n)` — integer power (negative → inverse)
 - `dlog(a)` — returns `(v, alpha, e)`
 
-#### `run_all_tests(k: int = 16, verbose: bool = True) -> None`
-Self-check for core arithmetic: round-trip, multiplication, inversion, powering.
-
 ### `dyadic_core.exponent` Module
 
 #### `ExponentSpace(g: int, k: int)`
@@ -179,7 +174,7 @@ CRT arithmetic.
 - `cycle_product(numbers)` — product of CRTDualNumber list
 - `convergence_ratio_2adic(P)` — 2-adic convergence ratio
 
-#### `combined_stability(k, p, num_cycles=50, cycle_length=4) -> Dict`
+#### `combined_stability(k, p, num_cycles=50, cycle_length=4, seed=None) -> Dict`
 Ultrametric Lipschitz verification: correlates `v₂(prod)` with `v₂(delta)` under additive perturbation `w → w + 2^t`. Positive correlation is structurally guaranteed (ultrametric continuity) — this is a self-consistency check, not a discovery.
 
 ### `dyadic_math.nonabelian` Module
@@ -192,7 +187,7 @@ GL(2) holonomy on a cycle.
 - `invariants(mats)` — dict with det_mod2k, alpha_det, trace_modp, crt views
 - `convergence_ratio_full(mats)` — ghost ratio of determinant
 
-#### `phase_alignment_experiment(k, p, N_cycle=4, n_cycles=30) -> Dict`
+#### `phase_alignment_experiment(k, p, N_cycle=4, n_cycles=30, seed=None) -> Dict`
 Test α-sector flip under perturbation.
 
 ### `dyadic_math.separation` Module
@@ -200,7 +195,7 @@ Test α-sector flip under perturbation.
 - `newton_trajectory(a, k, e_seed, steps=10)` — per-step Newton history
 - `separation_step(a, a_prime, k, e_seed)` — first divergence step
 - `predicted_separation(s, method_order=2)` — theoretical `n*(s)`
-- `verify_separation(k, s_values, n_trials=50)` — zero-variance verification
+- `verify_separation(k, s_values, n_trials, seed=None)` — zero-variance verification
 - `ultrametric_ball_tree(k, e_true, depth=3)` — ASCII tree
 - `step_count_profile(k, e_true)` — v₂ level counts
 
@@ -223,9 +218,9 @@ Test α-sector flip under perturbation.
 - `newton2_step(x, a, pk)` — order 4 (composed Newton)
 - `newton3_step(x, a, pk)` — order 8 (triple Newton)
 - `convergence_profile(x0, a, p, k, step_fn, x_true)` — track v_p
-- `compare_methods(p, k, n_trials)` — rate comparison
-- `verify_order(primes, k, n_trials)` — verify convergence ratio
-- `newton_correction_uniformity(p, k, n_seeds)` — chi-square test
+- `compare_methods(p, k, n_trials, seed=None)` — rate comparison
+- `verify_order(primes, k, n_trials, seed=None)` — verify convergence ratio
+- `newton_correction_uniformity(p, k, n_seeds, seed=None)` — chi-square test
 - `popcount_compression(k, n_trials)` — popcount correlation
 
 ### `dyadic_math.iwasawa` Module
@@ -234,7 +229,7 @@ Test α-sector flip under perturbation.
 - `filtration_residue(M, depth, k)` — gl(2, F₂) direction
 - `ldu_decompose(M, k)` — LDU factorisation
 - `matrix_coordinates(M, k)` — full coordinate decomposition
-- `holonomy_depth_profile(k, p, ...)` — depth under perturbation
+- `holonomy_depth_profile(k, p, ..., seed=None)` — depth under perturbation
 - `filtration_portrait(k)` — GL(2) quotient sizes
 - `matrix_commutator(M, N, k)` — `[M,N]` computation
 - `verify_commutator_depth(k, ...)` — depth theorem verification
@@ -249,25 +244,25 @@ Test α-sector flip under perturbation.
 - `optimal_bootstrap(k_values)` — minimiser search
 - `compare_bootstrap_strategies(k_values)` — sqrt vs k/2 vs LUT
 - `dlog_with_lut(a, k, b=8)` — LUT-based dlog
-- `verify_lut_dlog(k, b=8, n_trials)` — correctness check
+- `verify_lut_dlog(k, b=8, n_trials, seed=None)` — correctness check
 - `cliff_constant(g, k)` — compute `c = v₂(log₂(g)/4 + 1)`
 - `cliff_formula(g)` — human-readable c(g) formula
-- `mersenne_cliff_theorem(verbose)` — state and verify the full theorem
-- `verify_cliff_constant(verbose)` — prove `c=5` from 4 log-series terms
-- `verify_c_formula(verbose)` — prove `c(g) = v₂(g-5) - 2`
+- `mersenne_cliff_theorem(verbose)` — state and verify the full theorem (empirical)
+- `verify_cliff_constant(verbose)` — verify `c=5` from 4 log-series terms
+- `verify_c_formula(verbose)` — verify `c(g) = v₂(g-5) - 2`
 - `exp2_neg4(k)` — delegates to `dyadic_core.g0(k)` (see `padic_exp`)
 - `cliff_constant_unified(g, k)` — unified formula via Newton-Taylor lemma
 - `verify_unified_formula(g_values, k)` — verify unified matches direct
-- `verify_connection(verbose)` — show all proofs connected via `log₂(5) ≡ -4 (mod 128)`
+- `verify_connection(verbose)` — show all checks connected via `log₂(5) ≡ -4 (mod 128)`
 
 ### `dyadic_math.isometry` Module
 
-- `verify_isometry(k, n_trials)` — v₂(5^e-1) = v₂(e)+2
-- `isometry_pair_test(k, n_trials)` — pair form
+- `verify_isometry(k, n_trials, seed=None)` — v₂(5^e-1) = v₂(e)+2
+- `isometry_pair_test(k, n_trials, seed=None)` — pair form
 - `isometry_summary(k)` — full conditioning picture
-- `trace_alpha_independence(k, p, ...)` — chi-square test
-- `trace_exponent_independence(k, p, ...)` — ANOVA F-test
-- `exponent_valuation_profile(k, n_samples)` — v₂(e_true) distribution
+- `trace_alpha_independence(k, p, ..., seed=None)` — chi-square test
+- `trace_exponent_independence(k, p, ..., seed=None)` — ANOVA F-test
+- `exponent_valuation_profile(k, n_samples, seed=None)` — v₂(e_true) distribution
 
 ### `dyadic_math.weight_stability` Module
 
@@ -278,7 +273,7 @@ Graded 2-adic weight stability diagnostics.
 - `weight_coordinates(w)` — return `(v, α, e)`
 - `analyse(W)` — return dict with alpha_fraction, mean_v2_e, std_v2_e, cliff_risk
 - `mersenne_cliff_score(w)` — returns `k* = v₂(e_true) + 2`
-- `compare_to_random(W, n_samples)` — z-score comparison
+- `compare_to_random(W, n_samples, seed=None)` — z-score comparison
 
 **Precision-sweep analysis**:
 - `from_precision_sweep(weights, k_range)` — configure for sweep

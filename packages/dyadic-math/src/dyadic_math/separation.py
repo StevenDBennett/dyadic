@@ -13,6 +13,7 @@ The theorem is exact (zero variance) and verified empirically.
 
 from __future__ import annotations
 
+import random
 import warnings
 from math import ceil, log2
 
@@ -21,6 +22,7 @@ from dyadic_core import bitmask, two_adic_log5, valuation
 from dyadic_math._step import newton_step_core
 
 _WARN_K_LIMIT = 16  # step_count_profile enumerates 2^(k-2) seeds
+_MAX_K_ENUMERATE = 20
 
 
 def newton_trajectory(a: int, k: int, e_seed: int, steps: int = 10) -> list[int]:
@@ -91,7 +93,12 @@ def predicted_separation(s: int, method_order: int = 2) -> int:
     return max(0, ceil(log2(s) / log2(m)) - 1)
 
 
-def verify_separation(k: int, s_values: list[int], n_trials: int = 50) -> dict[int, int]:
+def verify_separation(
+    k: int,
+    s_values: list[int],
+    n_trials: int = 50,
+    seed: int | None = None,
+) -> dict[int, int]:
     """
     Empirical verification that the separation theorem holds
     with zero variance.
@@ -102,8 +109,8 @@ def verify_separation(k: int, s_values: list[int], n_trials: int = 50) -> dict[i
 
     Returns dict mapping s → observed step (or -1 on mismatch).
     """
-    import random
-
+    if seed is not None:
+        random.seed(seed)
     results: dict[int, int] = {}
     for s in s_values:
         observed = -1
@@ -158,6 +165,11 @@ def step_count_profile(k: int, e_true: int) -> dict[int, tuple[int, int]]:
 
     Returns dict mapping v → (count, steps_to_converge).
     """
+    if k > _MAX_K_ENUMERATE:
+        raise ValueError(
+            f"k={k} exceeds the hard limit of {_MAX_K_ENUMERATE} "
+            f"(N=2^{k - 2} seeds). Enumeration is O(2^k)."
+        )
     if k > _WARN_K_LIMIT:
         warnings.warn(
             f"k={k} gives N=2^{k - 2} seeds; enumeration is O(2^k). Consider k ≤ {_WARN_K_LIMIT}.",

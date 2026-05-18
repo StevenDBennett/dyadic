@@ -1,4 +1,4 @@
-"""Tests for dyadic_core.core — DualNumber, modinv, dlog, TwoAdicProcessor."""
+"""Tests for dyadic_core — DualNumber, modinv, dlog, TwoAdicProcessor."""
 
 import unittest
 

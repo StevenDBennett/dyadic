@@ -162,7 +162,11 @@ class CRTDualProcessor:
 
 
 def combined_stability(
-    k: int, p: int, num_cycles: int = 50, cycle_length: int = 4
+    k: int,
+    p: int,
+    num_cycles: int = 50,
+    cycle_length: int = 4,
+    seed: int | None = None,
 ) -> dict[str, float]:
     """
     Verify the ultrametric Lipschitz property of CRT cycle products.
@@ -181,6 +185,8 @@ def combined_stability(
 
     Returns dict with pearson_r, n_samples, and mean_v2.
     """
+    if seed is not None:
+        np.random.seed(seed)
     proc = CRTDualProcessor(k, p)
     v2_orig_vals: list[float] = []
     delta_v2s: list[float] = []

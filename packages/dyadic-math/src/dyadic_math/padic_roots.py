@@ -6,8 +6,9 @@ Multi-order p-adic root finding for x^3 ≡ a (mod p^k), p ≠ 2, 3.
 Implements Newton (order 2), Halley (order 3), composed-Newton
 (order 4), and triple-composed Newton (order 8) iterations.
 
-The convergence law is exact: v_p(x_n - x*) = m^n · v_p(x_0 - x*)
-where m is the method order, with zero variance.
+The convergence law in Z_p is exact: v_p(x_n - x*) = m^n · v_p(x_0 - x*)
+where m is the method order.  At finite precision mod p^k the valuation
+saturates at k.
 """
 
 from __future__ import annotations
@@ -167,12 +168,19 @@ def convergence_profile(
     return profile
 
 
-def compare_methods(p: int, k: int, n_trials: int = 20) -> dict[str, float]:
+def compare_methods(
+    p: int,
+    k: int,
+    n_trials: int = 20,
+    seed: int | None = None,
+) -> dict[str, float]:
     """
     Run all methods and report convergence rates.
 
     Returns dict with mean final v_p per method.
     """
+    if seed is not None:
+        random.seed(seed)
     methods: dict[str, Callable[[int, int, int], int]] = {
         "Newton (ord 2)": newton_step,
         "Halley (ord 3)": halley_step,
@@ -201,13 +209,18 @@ def compare_methods(p: int, k: int, n_trials: int = 20) -> dict[str, float]:
 
 
 def verify_order(
-    primes: list[int] | None = None, k: int = 8, n_trials: int = 10
+    primes: list[int] | None = None,
+    k: int = 8,
+    n_trials: int = 10,
+    seed: int | None = None,
 ) -> dict[str, dict[int, float]]:
     """
     Verify that v_p(x_{n+1} - x*) / v_p(x_n - x*) = m (method order).
 
     Returns nested dict: method -> {trial_index: observed_order}.
     """
+    if seed is not None:
+        random.seed(seed)
     if primes is None:
         primes = [5, 7, 11, 13]
 
@@ -239,7 +252,12 @@ def verify_order(
     return results
 
 
-def newton_correction_uniformity(p: int, k: int, n_seeds: int = 1000) -> dict[str, float]:
+def newton_correction_uniformity(
+    p: int,
+    k: int,
+    n_seeds: int = 1000,
+    seed: int | None = None,
+) -> dict[str, float]:
     """
     Test whether first-step Newton corrections are uniformly
     distributed modulo p (chi-square goodness-of-fit test).
@@ -248,6 +266,8 @@ def newton_correction_uniformity(p: int, k: int, n_seeds: int = 1000) -> dict[st
     delta = (x^3 - a) / (3 x^2) mod p, and the claim is this is
     uniform over F_p for random (x, a).
     """
+    if seed is not None:
+        random.seed(seed)
     pk = _pk(p, k)
     corrections = []
 

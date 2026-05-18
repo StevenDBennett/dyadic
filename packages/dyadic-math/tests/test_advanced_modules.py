@@ -307,10 +307,10 @@ class TestIsometry(unittest.TestCase):
         result = trace_alpha_independence(5, 7, cycle_length=3, n_cycles=20)
         self.assertIn("chi2_stat", result)
 
-    def test_exponentvaluation_profile(self):
-        from dyadic_math.isometry import exponentvaluation_profile
+    def test_exponent_valuation_profile(self):
+        from dyadic_math.isometry import exponent_valuation_profile
 
-        profile = exponentvaluation_profile(8, n_samples=50)
+        profile = exponent_valuation_profile(8, n_samples=50)
         self.assertIsInstance(profile, dict)
         if profile:
             total = sum(profile.values())

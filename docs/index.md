@@ -21,26 +21,31 @@ where Newton iteration becomes unstable ("ghost attractors").
 
 | Package | Description | Key Modules |
 |---------|-------------|-------------|
-| **dyadic-core** | 2-adic arithmetic (stdlib only) | `core`, `exponent`, `mahler` |
+| **dyadic-core** | 2-adic arithmetic (stdlib only) | `_dual`, `_dlog`, `_series`, `exponent`, `mahler` |
 | **dyadic-math** | Newton dynamics for the discrete-log map | `basin`, `mersenne`, `separation`, `fourier`, `thermodynamics`, `padic_roots`, `isometry`, `crt`, `nonabelian`, `iwasawa` |
 
 ## Module Reference
 
 | Module | Lines | Description |
 |--------|-------|-------------|
-| `dyadic_core.core` | 684 | DualNumber, modular inverse, 2-adic exp/log, cliff centre g₀ |
-| `dyadic_core.exponent` | 81 | ExponentSpace — additive coordinate chart on Z/2^(k-2) |
-| `dyadic_core.mahler` | 123 | Mahler basis, Dirac/Volterra operators, boundary asymmetry |
-| `dyadic_math.basin` | 361 | BasinExplorer, ghost detection, Newton basin portraits |
-| `dyadic_math.mersenne` | 585 | Mersenne Ghost Theorem, bootstrap optimality, cliff constant proofs |
-| `dyadic_math.separation` | 185 | Trajectory Separation Theorem |
-| `dyadic_math.fourier` | 185 | DFT of Newton step-count function |
-| `dyadic_math.padic_roots` | 311 | Multi-order p-adic root finding |
-| `dyadic_math.isometry` | 257 | Exponential isometry, operator algebra theorems |
-| `dyadic_math.weight_stability` | 289 | WeightStabilityDiagnostics — graded 2-adic stability diagnostics |
-| `dyadic_math.crt` | 205 | CRT extension to Z/(2^k·p)Z |
-| `dyadic_math.nonabelian` | 214 | GL(2) matrix utilities with phase alignment |
-| `dyadic_math.iwasawa` | 235 | GL(2) congruence filtration, LDU decomposition |
+| `dyadic_core._dual` | — | DualNumber, TwoAdicProcessor |
+| `dyadic_core._dlog` | — | 2-adic discrete log (Newton-lifted, LUT bootstrap) |
+| `dyadic_core._series` | — | 2-adic exp/log via exact integer arithmetic, g₀ |
+| `dyadic_core._modular` | — | Newton-lifted modular inverse, dual addition |
+| `dyadic_core._util` | — | bitmask, valuation, 2×2 matrix ops |
+| `dyadic_core._exceptions` | — | Error hierarchy |
+| `dyadic_core.exponent` | — | ExponentSpace — additive coordinate chart on Z/2^(k-2) |
+| `dyadic_core.mahler` | — | Mahler basis, Dirac/Volterra operators, boundary asymmetry |
+| `dyadic_math.basin` | — | BasinExplorer, ghost detection, Newton basin portraits |
+| `dyadic_math.mersenne` | — | Mersenne Ghost Theorem, bootstrap optimality, cliff constants |
+| `dyadic_math.separation` | — | Trajectory Separation Theorem |
+| `dyadic_math.fourier` | — | DFT of Newton step-count function |
+| `dyadic_math.padic_roots` | — | Multi-order p-adic root finding |
+| `dyadic_math.isometry` | — | Exponential isometry, operator algebra theorems |
+| `dyadic_math.weight_stability` | — | WeightStabilityDiagnostics — graded 2-adic stability diagnostics |
+| `dyadic_math.crt` | — | CRT extension to Z/(2^k·p)Z |
+| `dyadic_math.nonabelian` | — | GL(2) matrix utilities with phase alignment |
+| `dyadic_math.iwasawa` | — | GL(2) congruence filtration, LDU decomposition |
 
 ## Theorem Reference
 

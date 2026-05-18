@@ -27,12 +27,14 @@ from .nonabelian import NonAbelianCRTDual
 # ── T6-a: Exponential Map Isometry ──────────────────────────────────────────
 
 
-def verify_isometry(k: int, n_trials: int = 200) -> dict[str, float]:
+def verify_isometry(k: int, n_trials: int = 200, seed: int | None = None) -> dict[str, float]:
     """
     Verify v₂(5^e - 1) = v₂(e) + 2 for non-zero e.
 
     Returns pass rate and number of trials.
     """
+    if seed is not None:
+        random.seed(seed)
     passed = 0
     for _ in range(n_trials):
         e = random.randrange(1, 1 << (k - 2))
@@ -52,10 +54,12 @@ def verify_isometry(k: int, n_trials: int = 200) -> dict[str, float]:
     return {"pass_rate": passed / n_trials, "n_trials": n_trials}
 
 
-def isometry_pair_test(k: int, n_trials: int = 200) -> dict[str, float]:
+def isometry_pair_test(k: int, n_trials: int = 200, seed: int | None = None) -> dict[str, float]:
     """
     Verify v₂(5^{e1} - 5^{e2}) = v₂(e1 - e2) + 2 for e1 ≠ e2.
     """
+    if seed is not None:
+        random.seed(seed)
     passed = 0
     collected = 0
     while collected < n_trials:
@@ -105,21 +109,24 @@ def isometry_summary(k: int) -> str:
 
 
 def trace_alpha_independence(
-    k: int, p: int, cycle_length: int = 4, n_cycles: int = 100
+    k: int,
+    p: int,
+    cycle_length: int = 4,
+    n_cycles: int = 100,
+    seed: int | None = None,
 ) -> dict[str, float]:
     """
     Chi-square test: α(det(H)) and Tr(H) mod p are independent.
 
     Returns chi2_stat, p_value, and degrees of freedom.
     """
+    if seed is not None:
+        random.seed(seed)
     nc = NonAbelianCRTDual(k, p)
     observations: list[tuple[int, int]] = []
 
     for _ in range(n_cycles):
-        mats = [
-            [[random.randrange(0, nc.mod_full) for _ in range(2)] for _ in range(2)]
-            for _ in range(cycle_length)
-        ]
+        mats = [[[random.randrange(0, nc.mod_full) for _ in range(2)] for _ in range(cycle_length)]]
         inv = nc.invariants(mats)
         if inv["det_even"]:
             continue
@@ -160,7 +167,11 @@ def trace_alpha_independence(
 
 
 def trace_exponent_independence(
-    k: int, p: int, cycle_length: int = 4, n_cycles: int = 100
+    k: int,
+    p: int,
+    cycle_length: int = 4,
+    n_cycles: int = 100,
+    seed: int | None = None,
 ) -> dict[str, float]:
     """
     ANOVA F-test: e(det(H)) vs Tr(H) mod p.
@@ -168,14 +179,13 @@ def trace_exponent_independence(
     Returns F-statistic and p-value from scipy if available,
     otherwise returns effect size estimate.
     """
+    if seed is not None:
+        random.seed(seed)
     nc = NonAbelianCRTDual(k, p)
     groups: dict[int, list[float]] = {}
 
     for _ in range(n_cycles):
-        mats = [
-            [[random.randrange(0, nc.mod_full) for _ in range(2)] for _ in range(2)]
-            for _ in range(cycle_length)
-        ]
+        mats = [[[random.randrange(0, nc.mod_full) for _ in range(2)] for _ in range(cycle_length)]]
         inv = nc.invariants(mats)
         if inv["det_even"]:
             continue
@@ -218,13 +228,19 @@ def trace_exponent_independence(
     }
 
 
-def exponentvaluation_profile(k: int, n_samples: int = 500) -> dict[int, float]:
+def exponent_valuation_profile(
+    k: int,
+    n_samples: int = 500,
+    seed: int | None = None,
+) -> dict[int, float]:
     """
     Profile the distribution of v₂(e_true) across random odd weights.
 
     This is the genuinely graded stability measure (the ghost
     ratio encodes only the α-bit).
     """
+    if seed is not None:
+        random.seed(seed)
     v2_counts: dict[int, int] = {}
     for _ in range(n_samples):
         w = random.randrange(1, 1 << k)

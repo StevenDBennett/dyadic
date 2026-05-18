@@ -2,7 +2,7 @@
 mersenne.py
 -----------
 Mersenne Ghost Theorem, bootstrap optimality analysis, and cliff
-constant proofs.
+constant verification.
 
 Mersenne Ghost Theorem
     For w = 2^n - 1 (a Mersenne number), the 2-adic dual coordinates
@@ -15,22 +15,23 @@ Bootstrap Optimality
     starting precision eprec₀ = k/2 is optimal (saves log₂(√k) - 1
     Newton steps compared to the √k heuristic currently used).
 
-Cliff Constant Proofs
-    Complete proofs of the Mersenne Cliff Theorem:
+Cliff Constant Verification
+    Numerical verification of the Mersenne Cliff Theorem:
       - cliff_constant(g, k)        — compute c = v₂(log₂(g)/4 + 1)
       - cliff_formula(g)            — human-readable c(g) explanation
       - mersenne_cliff_theorem()    — state and verify the full theorem
-      - verify_cliff_constant()      — prove c=5 from 4 log-series terms
-      - verify_c_formula()           — prove c(g) = v₂(g-5) - 2
+      - verify_cliff_constant()      — verify c=5 from 4 log-series terms
+      - verify_c_formula()           — verify c(g) = v₂(g-5) - 2
       - exp2_neg4(k)                — delegates to dyadic_core.g0
       - cliff_constant_unified(g,k) — unified formula
       - verify_unified_formula()    — verify unified matches direct
-      - verify_connection()          — show all proofs are connected
+      - verify_connection()          — show all checks are connected
 """
 
 from __future__ import annotations
 
 import math
+import random
 from functools import lru_cache
 
 from dyadic_core import (
@@ -252,13 +253,13 @@ def dlog_with_lut(a: int, k: int, b: int = 8) -> int:
     return e
 
 
-def verify_lut_dlog(k: int, b: int = 8, n_trials: int = 100) -> bool:
+def verify_lut_dlog(k: int, b: int = 8, n_trials: int = 100, seed: int | None = None) -> bool:
     """
     Verify that LUT-based dlog matches the standard dlog.
     """
+    if seed is not None:
+        random.seed(seed)
     for _ in range(n_trials):
-        import random
-
         a = random.randrange(1, 1 << k)
         if a & 1 == 0:
             continue
@@ -323,10 +324,10 @@ def cliff_formula(g: int) -> str:
 
 def mersenne_cliff_theorem(verbose: bool = False) -> dict[str, int | str | bool]:
     """
-    State and verify the complete Mersenne Cliff Theorem.
+    State and verify the Mersenne Cliff Theorem over a finite range.
 
-    THEOREM
-    ~~~~~~~
+    THEOREM (conjectured form, verified empirically below)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     Let w = 2^n - 1 (Mersenne number, n >= 3) and let c = v_2(L_unit + 1)
     where L_unit = two_adic_log5() >> 2. For g = 5: c = 5.
 
@@ -340,7 +341,7 @@ def mersenne_cliff_theorem(verbose: bool = False) -> dict[str, int | str | bool]
     For g = 5 (c = 5):
         n = 3,4,5:   k* = 5, 7, 9     (= 2n-1)
         n = 6:       k* = 12           (= n+6 = n+c+1)
-        n >= 7:      k* = n + 5        (exact, verified n=7..24)
+        n >= 7:      k* = n + 5        (verified empirically for n=7..23)
     """
     c = cliff_constant(g=5)
 
@@ -387,7 +388,8 @@ def mersenne_cliff_theorem(verbose: bool = False) -> dict[str, int | str | bool]
         print()
         print(f"    n <= {c}:      k* = 2n-1          [quadratic dominates]")
         print(f"    n = {c + 1}:     k* = n+{c + 1}           [boundary]")
-        print(f"    n >= {c + 2}:    k* = n+{c}            [linear determines; proved]")
+        print(f"    n >= {c + 2}:    k* = n+{c}")
+        print(f"        [linear determines; verified n={c + 2}..{c + 17}]")
         print()
         print(f"    n=3..{c}:  {'PASS' if small_ok else 'FAIL'}")
         print(f"    n={c + 1}:   {'PASS' if boundary_ok else 'FAIL'}")
@@ -405,7 +407,7 @@ def mersenne_cliff_theorem(verbose: bool = False) -> dict[str, int | str | bool]
 
 def verify_cliff_constant(verbose: bool = False) -> bool:
     """
-    Prove v_2(log_2(5)/4 + 1) = 5 from first principles.
+    Verify v_2(log_2(5)/4 + 1) = 5 from the first 4 terms of the 2-adic log series.
 
     Uses only the first 4 terms of the 2-adic log series, showing all
     higher terms are O(2^8) and therefore invisible mod 2^8 = 256.
@@ -428,12 +430,12 @@ def verify_cliff_constant(verbose: bool = False) -> bool:
     all_ok = all(ok for _, ok in checks)
 
     if verbose:
-        print("Proof: v_2(log_2(5)/4 + 1) = 5")
+        print("Check: v_2(log_2(5)/4 + 1) = 5")
         print()
         print(f"  log_2(5) ≡ {t1} + {t2} + {t3} + {t4}  (mod 256)")
         print(f"           = {total}  (mod 256)")
         print()
-        print("  v_2(log_2(5)/4 + 1) = 5.  QED")
+        print("  v_2(log_2(5)/4 + 1) = 5.")
         print()
         for msg, ok in checks:
             print(f"  {'✓' if ok else '✗'}  {msg}")
@@ -443,13 +445,10 @@ def verify_cliff_constant(verbose: bool = False) -> bool:
 
 def verify_c_formula(verbose: bool = False) -> bool:
     """
-    Prove c(g) = v_2(g-5) - 2 for g ≡ 5 (mod 8), g ≠ 5, v_2(g-5) ≠ 7.
+    Verify c(g) = v_2(g-5) - 2 for g ≡ 5 (mod 8), g ≠ 5, v_2(g-5) ≠ 7.
 
-    PROOF (by 2-adic log linearisation)
-        Write g = 5 + d where d = g - 5 and s = v_2(d) >= 3.
-        log_2(g) = log_2(5) + d/5 + O(2^(2s-1))
-        log_2(g)/4 + 1 = (L_5+1) + d/20 + ...
-        When s-2 ≠ 5: c(g) = min(5, s-2).  QED
+    The formula c(g) = min(v_2(g-5)-2, 5) follows from 2-adic log
+    linearisation.  This function checks it numerically over g = 13..600.
     """
     failures = []
     for g in range(13, 600, 8):
@@ -468,7 +467,7 @@ def verify_c_formula(verbose: bool = False) -> bool:
 
     ok = len(failures) == 0
     if verbose:
-        print("Proof: c(g) = min(v_2(g-5)-2, 5)  for v_2(g-5) ≠ 7")
+        print("Check: c(g) = min(v_2(g-5)-2, 5)  for v_2(g-5) ≠ 7")
         print()
         print("  Numerical check (g = 13..600, all s ≠ 7):")
         print(f"    Failures: {len(failures)}")
@@ -560,11 +559,11 @@ def verify_unified_formula(
 
 def verify_connection(verbose: bool = False) -> bool:
     """
-    Show that all four proofs are connected through a single identity:
+    Show that all four verification checks are connected through a single identity:
 
         log_2(5)  ≡  -4  (mod 128)
 
-    This single fact, proved using 4 terms of the 2-adic log series,
+    This single fact, computed from 4 terms of the 2-adic log series,
     generates the entire theorem structure.
     """
     log5_mod128 = two_adic_log5(8) & 127
@@ -578,7 +577,7 @@ def verify_connection(verbose: bool = False) -> bool:
 
     all_ok = all(ok for _, ok in checks)
     if verbose:
-        print("Connection between all four proofs")
+        print("Connection between all four checks")
         print()
         print("  Central identity:  log_2(5) ≡ -4  (mod 128)")
         print()

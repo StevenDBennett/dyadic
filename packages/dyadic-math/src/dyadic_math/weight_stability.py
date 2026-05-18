@@ -187,12 +187,19 @@ class WeightStabilityDiagnostics:
             return self.k
         return v2_e + 2
 
-    def compare_to_random(self, weights: np.ndarray, n_samples: int = 1000) -> dict[str, float]:
+    def compare_to_random(
+        self,
+        weights: np.ndarray,
+        n_samples: int = 1000,
+        seed: int | None = None,
+    ) -> dict[str, float]:
         """
         Z-score comparison of statistics against random baseline.
 
         Returns dict with z_alpha, z_v2_e, z_cliff_risk.
         """
+        if seed is not None:
+            np.random.seed(seed)
         stats = self.analyse(weights)
         alphas, v2s, cliffs = [], [], []
 

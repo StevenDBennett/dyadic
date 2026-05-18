@@ -31,6 +31,9 @@ def _series_accumulate(
     Iterates n = 1.., computing v2(term) = n*vx - v2(denominator).
     When v2(term) >= k the series is truncated.
 
+    All intermediate values are kept modulo 2^k to avoid
+    super-linear integer growth.
+
     Parameters
     ----------
     x_exact : int
@@ -48,36 +51,45 @@ def _series_accumulate(
     """
     mod = 1 << k
     result = start
-    power_exact = x_exact
-    factorial_exact = 1
-    v2_denom = 0
+
+    # Odd part of x_exact: x_exact = 2^vx * odd_x
+    odd_x = x_exact >> vx
+    odd_x_abs = abs(odd_x)
+    odd_x_mod = odd_x_abs % mod
+    # power_odd_abs tracks |odd_x|^n mod 2^k
+    power_odd_abs = odd_x_mod
+
+    # For factorial mode: fact_odd tracks the odd part of n! mod 2^k
+    fact_odd = 1
+    v2_fact = 0  # v2(n!) accumulated incrementally
+
     for n in range(1, k * 2):
         vn = valuation(n)
         assert vn is not None  # n >= 1
         if use_factorial:
-            factorial_exact *= n
-            v2_denom += vn
-            den_odd = factorial_exact >> v2_denom
+            fact_odd = (fact_odd * (n >> vn)) % mod
+            v2_fact += vn
+            den_odd = fact_odd
+            v_term = n * vx - v2_fact
         else:
-            v2_denom = vn
             den_odd = n >> vn
-        v_term = n * vx - v2_denom
+            v_term = n * vx - vn
         if v_term >= k:
             break
-        num_stripped = (
-            power_exact >> (n * vx) if power_exact >= 0 else -((-power_exact) >> (n * vx))
-        )
-        term = pow(int(den_odd), -1, mod) * int(abs(num_stripped)) % mod
-        if num_stripped < 0:
+
+        # num_abs = |odd_x|^n mod 2^k
+        num_abs = power_odd_abs % mod
+        term = pow(den_odd, -1, mod) * num_abs % mod
+        # Sign of odd_x^n: negative when odd_x < 0 and n is odd
+        if odd_x < 0 and n % 2 == 1:
             term = (-term) % mod
         if sign_alternate and n % 2 == 0:
             term = (-term) % mod
         term = term * pow(2, v_term, mod) % mod
         result = (result + term) % mod
-        if use_factorial:
-            power_exact *= x_exact
-        else:
-            power_exact *= x_exact
+
+        # Advance power_odd_abs for next iteration
+        power_odd_abs = (power_odd_abs * odd_x_mod) % mod
     return result
 
 

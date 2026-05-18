@@ -115,6 +115,7 @@ def phase_alignment_experiment(
     p: int,
     cycle_length: int = 4,
     n_cycles: int = 30,
+    seed: int | None = None,
 ) -> dict[str, float]:
     """
     Test whether a single-bit perturbation flips the α-sector of the
@@ -124,6 +125,8 @@ def phase_alignment_experiment(
     Returns dict with 'alignment' (fraction of trials where a flip
     occurred) and 'n_trials'.
     """
+    if seed is not None:
+        np.random.seed(seed)
     nc = NonAbelianCRTDual(k, p)
     flips = 0
     valid = 0
