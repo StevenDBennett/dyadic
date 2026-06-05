@@ -1,0 +1,44 @@
+// test_verify.cpp — Compile-time proofs + runtime verification
+// Including the header triggers all static_assert compile-time proofs.
+// The runtime verifications extend coverage beyond what constexpr can handle.
+
+#include "dyadic_verify.h"
+#include <cstdio>
+
+using namespace dyadic;
+using namespace dyadic::verify;
+
+int main() {
+    int failures = 0;
+    int total = 0;
+
+    auto run = [&](const char* name, int f) {
+        total++;
+        if (f > 0) {
+            failures += f;
+            std::printf("  FAIL  %s (%d failures)\n", name, f);
+        } else {
+            std::printf("  PASS  %s\n", name);
+        }
+    };
+
+    std::printf("=== Runtime Verification Suite ===\n");
+
+    run("runtime N=2 uint16_t", run_all_verifications<2, uint16_t>());
+    run("runtime N=3 uint16_t", run_all_verifications<3, uint16_t>());
+    run("runtime N=4 uint16_t", run_all_verifications<4, uint16_t>());
+    run("runtime N=2 uint32_t", run_all_verifications<2, uint32_t>());
+    run("runtime N=3 uint32_t", run_all_verifications<3, uint32_t>());
+    run("runtime N=4 uint32_t", run_all_verifications<4, uint32_t>());
+    run("runtime N=2 uint64_t", run_all_verifications<2, uint64_t>());
+    run("runtime N=3 uint64_t", run_all_verifications<3, uint64_t>());
+    run("runtime N=4 uint64_t", run_all_verifications<4, uint64_t>());
+
+    if (failures == 0) {
+        std::printf("=== All %d runtime checks passed ===\n", total);
+    } else {
+        std::printf("=== %d runtime checks failed out of %d ===\n", failures, total);
+    }
+
+    return failures;
+}
