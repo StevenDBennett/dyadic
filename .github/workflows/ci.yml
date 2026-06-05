@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  gcc:
+    strategy:
+      matrix:
+        proof: [light, heavy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y g++-14
+      - name: Compile standalone headers (light proofs)
+        if: matrix.proof == 'light'
+        run: |
+          printf '#include "dyadic.h"\n' | g++-14 -std=c++20 -O2 -x c++ - -c -o /dev/null -Wall -Wextra -Wpedantic -Werror
+          printf '#include "dyadic_verify.h"\n' | g++-14 -std=c++20 -O2 -x c++ - -c -o /dev/null -Wall -Wextra -Wpedantic -Werror
+      - name: Compile standalone headers (heavy proofs)
+        if: matrix.proof == 'heavy'
+        run: |
+          printf '#include "dyadic.h"\n' | g++-14 -std=c++20 -O2 -x c++ - -c -o /dev/null -Wall -Wextra -Wpedantic -Werror -DDYADIC_HEAVY_PROOFS -fconstexpr-ops-limit=200000000
+          printf '#include "dyadic_verify.h"\n' | g++-14 -std=c++20 -O2 -x c++ - -c -o /dev/null -Wall -Wextra -Wpedantic -Werror -DDYADIC_HEAVY_PROOFS -fconstexpr-ops-limit=200000000
+      - name: Build and test
+        run: |
+          cmake -B build -DDYADIC_BUILD_TESTS=ON -DDYADIC_HEAVY_PROOFS=${{ matrix.proof == 'heavy' && 'ON' || 'OFF' }}
+          cmake --build build
+          ctest --test-dir build --output-on-failure
+
+  clang:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y clang++-18
+      - name: Compile standalone headers
+        run: |
+          printf '#include "dyadic.h"\n' | clang++-18 -std=c++20 -O2 -x c++ - -c -o /dev/null -Wall -Wextra -Wpedantic -Werror -fconstexpr-steps=50000000
+          printf '#include "dyadic_verify.h"\n' | clang++-18 -std=c++20 -O2 -x c++ - -c -o /dev/null -Wall -Wextra -Wpedantic -Werror -fconstexpr-steps=50000000
+      - name: Build and test
+        run: |
+          cmake -B build -DCMAKE_CXX_COMPILER=clang++-18 -DDYADIC_BUILD_TESTS=ON
+          cmake --build build
+          ctest --test-dir build --output-on-failure
+
+  sanitize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y g++-14
+      - name: Build with ASan+UBSan
+        run: |
+          cmake -B build -DCMAKE_CXX_COMPILER=g++-14 -DDYADIC_BUILD_TESTS=ON
+          cmake --build build --target test_verify_san
+      - name: Run sanitized tests
+        run: ./build/test_verify_san
+
+  msvc:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup MSVC dev environment
+        uses: ilammy/msvc-dev-cmd@v1
+      - name: Compile standalone headers
+        shell: pwsh
+        run: |
+          Add-Content -Path "test_header.cpp" -Value '#include "dyadic.h"'
+          cl /std:c++20 /EHsc /c /W4 /WX /D_SILENCE_ALL_CXX20_DEPRECATION_WARNINGS test_header.cpp
+          Add-Content -Path "test_verify.cpp" -Value '#include "dyadic_verify.h"'
+          cl /std:c++20 /EHsc /c /W4 /WX /D_SILENCE_ALL_CXX20_DEPRECATION_WARNINGS /constexpr:steps50000000 test_verify.cpp
+      - name: Build and test with CMake
+        shell: pwsh
+        run: |
+          cmake -B build -DDYADIC_BUILD_TESTS=ON
+          cmake --build build --config Release
+          ctest --test-dir build -C Release --output-on-failure --timeout 120
