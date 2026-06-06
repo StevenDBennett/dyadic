@@ -188,9 +188,11 @@ constexpr Polynomial<N-1, W, FallingFactorialBasis> forward_difference(
 template<int N, std::unsigned_integral W>
 constexpr Polynomial<N-1, W, TaylorBasis> forward_difference(
     const Polynomial<N, W, TaylorBasis>& p) noexcept {
-    auto mono = change_basis<MonomialBasis>(p);
-    auto dmono = forward_difference(mono);
-    return change_basis<TaylorBasis>(dmono);
+    Polynomial<N-1, W, TaylorBasis> r{};
+    for (int i = 1; i < N; ++i) {
+        r[i-1] = p[i];
+    }
+    return r;
 }
 
 } // namespace dyadic

@@ -328,6 +328,8 @@ template<int NL, int NR, std::unsigned_integral W>
 constexpr std::pair<Polynomial<NL, W, MonomialBasis>, Polynomial<NR, W, MonomialBasis>>
 div_unsigned(const Polynomial<NL, W, MonomialBasis>& u,
              const Polynomial<NR, W, MonomialBasis>& v) noexcept {
+    static_assert(NR <= 128,
+        "div_unsigned: NR > 128 not supported (recursion depth + stack frame limit)");
     int eff_nr = NR;
     while (eff_nr > 0 && v[eff_nr - 1] == 0) eff_nr--;
 
@@ -335,7 +337,7 @@ div_unsigned(const Polynomial<NL, W, MonomialBasis>& u,
 
     if (eff_nr == 1) {
         auto [q, rem] = detail::divmod_single(u, v[eff_nr - 1]);
-        Polynomial<NR, W, MonomialBasis> r{};  // zero-initialize all limbs
+        Polynomial<NR, W, MonomialBasis> r{};
         r[0] = rem;
         return {q, r};
     }
@@ -367,6 +369,8 @@ div_unsigned(const Polynomial<NL, W, MonomialBasis>& u,
 template<int NR, std::unsigned_integral W>
 constexpr std::pair<Polynomial<2 * NR, W, MonomialBasis>, int>
 reciprocal_newton(const Polynomial<NR, W, MonomialBasis>& d) noexcept {
+    static_assert(NR > 0 && 4 * NR * sizeof(W) <= 65536,
+        "reciprocal_newton: NR too large, stack arrays (4*NR limbs) may overflow");
     constexpr int TWO_NR = 2 * NR;
     using dw_t = dword_t<W>;
     constexpr int BITS = 8 * sizeof(W);

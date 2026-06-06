@@ -111,9 +111,7 @@ struct WittVector {
     constexpr W operator[](int i) const noexcept { return a[i]; }
 
     constexpr W ghost(int j) const noexcept {
-        detail::GhostPowers<N, W> pows;
-        pows.init(a.data());
-        return static_cast<W>(detail::ghost_j_dword(pows, j));
+        return ghost_vector()[j];
     }
 
     constexpr std::array<W, N> ghost_vector() const noexcept {
