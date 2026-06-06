@@ -271,8 +271,8 @@ template<std::unsigned_integral W>
 constexpr bool verify_d_delta_all_u8() {
     using limits = std::numeric_limits<W>;
     constexpr int domain = static_cast<int>(limits::max()) + 1;
-    static_assert(Polynomial<2, W, MonomialBasis>::degree == 1,
-        "N=2 gives degree 1 polynomials, DΔ and ΔD both degree -1 (size 0)");
+    static_assert(Polynomial<2, W, MonomialBasis>::max_degree == 1,
+        "N=2 gives max_degree 1 polynomials, DΔ and ΔD both degree -1 (size 0)");
     for (int idx = 0; idx < domain * domain; ++idx) {
         W c0 = static_cast<W>(idx / domain);
         W c1 = static_cast<W>(idx % domain);
@@ -465,8 +465,8 @@ inline constexpr bool PROOF_DELTA_EXP = verify_delta_exp_d(
 // These static_asserts fire at compile time if the invariants are violated.
 
 // Polynomial degree must be non-negative
-static_assert(Polynomial<1, uint64_t, MonomialBasis>::degree == 0, "degree invariant");
-static_assert(Polynomial<5, uint64_t, MonomialBasis>::degree == 4, "degree invariant");
+static_assert(Polynomial<1, uint64_t, MonomialBasis>::max_degree == 0, "max_degree invariant");
+static_assert(Polynomial<5, uint64_t, MonomialBasis>::max_degree == 4, "max_degree invariant");
 
 // Word bit-width invariants (previously on DWord, now direct)
 static_assert(8 * sizeof(uint8_t) == 8, "8-bit word");
@@ -750,26 +750,45 @@ static_assert(PROOF_TEICHMULLER_MULT, "PROOF_TEICHMULLER_MULT");
 static_assert(PROOF_ADAMS_IDENTITY,   "PROOF_ADAMS_IDENTITY");
 static_assert(PROOF_ADAMS_GHOST,      "PROOF_ADAMS_GHOST");
 
-// Witt logarithm/exponential roundtrip: log(exp(a)) = a
+// Witt logarithm/exponential roundtrip: exp∘log = identity on odd inputs.
 // Tests both the p-adic series and ghost-map recovery at compile time.
-// The ghost-map approach requires v2(ghost_j(a)) ≥ 9 for all j when using
-// 128-bit ghost precision with 16 exp/log series terms (the fixed max).
-// This holds for Teichmüller lifts (a_j = 0 for j>0) when v2(a_0) ≥ 9.
-// For non-zero higher components, v2(a_j) ≥ 9-j is required, which is
-// more restrictive. The roundtrip is verified for the Teichmüller case;
-// the general case requires additional series terms (future enhancement).
+// With dynamic term counting (2× bit-width budget), v₂(a₀) ≥ 2 suffices
+// for exp convergence. This proof uses a Teichmüller input a₀=512 (v₂=9)
+// which converges with budget to spare.
 inline constexpr bool PROOF_WITT_LOG_EXP = []() constexpr {
     // Teichmüller lift: a[0]=512 (v2=9), higher components zero.
-    // v2(ghost_0)=9, v2(ghost_1)=18, v2(ghost_2)=36 — all ≥ 9.
-    WittVector<3, uint32_t> a{{512, 0, 0}};
+    // N=5 ensures enough ghost-map precision for the exp → log roundtrip.
+    WittVector<5, uint32_t> a{{512, 0, 0, 0, 0}};
     auto b = witt_exp(a);       // b[0] is odd (unit in the Witt ring)
     auto c = witt_log(b);        // should recover a
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 5; ++i) {
         if (a[i] != c[i]) return false;
     }
     return true;
 }();
 static_assert(PROOF_WITT_LOG_EXP,      "PROOF_WITT_LOG_EXP");
+
+// Witt inverse: a·a^{-1} = τ(1) for odd a[0] (Teichmüller unit).
+inline constexpr bool PROOF_WITT_INVERSE = []() constexpr {
+    for (uint32_t a0 : {1u, 3u, 5u, 7u, 9u, 65535u}) {
+        WittVector<3, uint32_t> w{{a0, 2, 3}};
+        if (!check_witt_inverse(w)) return false;
+    }
+    return true;
+}();
+static_assert(PROOF_WITT_INVERSE,       "PROOF_WITT_INVERSE");
+
+// exp∘log roundtrip: witt_exp(witt_log(a)) = a for a[0] ≡ 1 (mod 4).
+// For a[0] ≡ 3 (mod 4), the log yields v₂(log(a₀)) = 1, which doesn't
+// satisfy the exp convergence requirement v₂ ≥ 2.
+inline constexpr bool PROOF_WITT_EXP_LOG_ROUNDTRIP = []() constexpr {
+    for (uint32_t a0 : {1u, 5u, 9u, 13u, 65533u}) {
+        WittVector<3, uint32_t> w{{a0, 2, 3}};
+        if (!check_witt_exp_log_roundtrip(w)) return false;
+    }
+    return true;
+}();
+static_assert(PROOF_WITT_EXP_LOG_ROUNDTRIP, "PROOF_WITT_EXP_LOG_ROUNDTRIP");
 
 // ============================================================================
 // Runtime Verification (for cases too large for constexpr)
@@ -781,7 +800,7 @@ static_assert(PROOF_WITT_LOG_EXP,      "PROOF_WITT_LOG_EXP");
 template<int N, std::unsigned_integral W>
 inline int run_all_verifications() {
     int failures = 0;
-    XorShift64 rng(12345);
+    ::dyadic::detail::XorShift64 rng(12345);
 
     // Verify D∘Δ = Δ∘D for random polynomials
     for (int trial = 0; trial < 500; ++trial) {
@@ -800,7 +819,7 @@ inline int run_all_verifications() {
 
     // Verify basis roundtrip: Monomial → FallingFactorial → Monomial
     {
-        rng = XorShift64(12345);
+        rng = ::dyadic::detail::XorShift64(12345);
         for (int trial = 0; trial < 200; ++trial) {
             Polynomial<N, W, MonomialBasis> p;
             for (int i = 0; i < N; ++i) p[i] = static_cast<W>(rng.next());
@@ -815,7 +834,7 @@ inline int run_all_verifications() {
     }
 
     // Verify ghost homomorphism for random Witt vectors
-    rng = XorShift64(12345);
+    rng = ::dyadic::detail::XorShift64(12345);
     for (int trial = 0; trial < 200; ++trial) {
         WittVector<N, W> a, b;
         for (int i = 0; i < N; ++i) {
@@ -833,7 +852,7 @@ inline int run_all_verifications() {
     }
 
     // Verify Witt multiplication distributivity: a·(b+c) = a·b + a·c
-    rng = XorShift64(12345);
+    rng = ::dyadic::detail::XorShift64(12345);
     for (int trial = 0; trial < 200; ++trial) {
         WittVector<N, W> a, b, c;
         for (int i = 0; i < N; ++i) {
@@ -851,7 +870,7 @@ inline int run_all_verifications() {
     }
 
     // Verify FV = VF for random Witt vectors
-    rng = XorShift64(12345);
+    rng = ::dyadic::detail::XorShift64(12345);
     for (int trial = 0; trial < 200; ++trial) {
         WittVector<N, W> w;
         for (int i = 0; i < N; ++i) w[i] = static_cast<W>(rng.next());

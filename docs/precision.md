@@ -75,39 +75,37 @@ polynomials with small enough Taylor coefficients.
 ## 4. p-Adic exp/log Term Truncation
 
 The exponential series `exp(x) = Σ x^n/n!` and logarithm
-`log(1+y) = Σ (-1)^{n+1} y^n/n` are truncated at `max_terms = 8·sizeof(T)`
-(16 for `uint128_t`, the Witt ghost type for `W = uint32_t`).
+`log(1+y) = Σ (-1)^{n+1} y^n/n` terminate early when term valuation reaches
+the bit width of type `T` (128 for `uint128_t`, the Witt ghost type).
+A generous budget of `2·bits` terms (256 for 128-bit, 128 for 64-bit) covers
+all inputs that can mathematically converge.
 
-For `exp(x)` to converge within this truncation, we need:
+Term valuation for exp (`v₂(x^n/n!) = n·v₂(x) - v₂(n!)`) grows linearly when
+`v₂(x) ≥ 2`; at `v₂(x) = 1` it never reaches full precision (stalls at
+`≤ log₂(n)+1`). The budget scales to the type width at 2×.
 
-```
-v₂(x^n/n!) = n·v₂(x) - v₂(n!) ≥ 8·sizeof(T)
-```
+| v₂(x) | Terms needed (128-bit) | Budget (2×) |
+|-------|----------------------|--------------|
+| ≥ 9   | ≤ 15                 | Full         |
+| 8     | ~18                  | Full         |
+| 5     | ~31                  | Full         |
+| 3     | ~42                  | Full         |
+| 2     | ~63                  | Full         |
+| 1     | ∞ (series stalls)    | Never converges |
 
-for all remaining terms. The smallest `n` where this holds depends on `v₂(x)`:
+For log (`v₂(y^n/n) = n·v₂(y) - v₂(n)`): with `v₂(y) = 1`, needs ~135 terms
+at 128-bit (within 256 budget). With `v₂(y) ≥ 2`, needs ~67 terms.
 
-| v₂(x) | Terms needed (128-bit) | Status with 16 max |
-|-------|----------------------|--------------------|
-| ≥ 9   | ≤ 15                 | Full convergence   |
-| 8     | ~18                  | Missing 2 terms    |
-| 7     | ~21                  | Missing 5 terms    |
-| 5     | ~31                  | Missing 15 terms   |
-| 3     | ~42                  | Missing 26 terms   |
-| 2     | ~63                  | Missing 47 terms   |
-| 1     | ~127                 | Missing 111 terms  |
-
-The Witt exp/log roundtrip at 128-bit ghost precision requires:
-
-```
-v₂(ghost_j(a)) ≥ 9    for all j
-```
+The Witt exp/log roundtrip at 128-bit ghost precision converges for any
+`v₂(ghost_j(a)) ≥ 2` (the exp convergence threshold). For `v₂ = 1` inputs,
+exp can't converge at any finite precision — this is a mathematical limit,
+not a code bug.
 
 For Teichmüller inputs (`a_j = 0` for `j > 0`): `v₂(ghost_j(a)) = 2^j · v₂(a_0)`,
-so `v₂(a_0) ≥ 9` suffices. For non-zero higher components, the constraints
-tighten: `v₂(a₁) ≥ 8`, `v₂(a₂) ≥ 7`, etc.
+so `v₂(a_0) ≥ 2` suffices for convergence.
 
 **Reference**: `dyadic.h:1765–1777` (`p_adic_exp_impl`), `dyadic.h:1738–1760`
-(`p_adic_log_impl`), `dyadic_verify.h:754–768` (proof constraints).
+(`p_adic_log_1plus_impl`), `dyadic_verify.h:754–768` (proof constraints).
 
 ---
 
@@ -171,7 +169,7 @@ the extra bits are unused.
 |----------------------|--------------------------------------|----------------------|
 | Witt ghost recovery  | `r_j < 2^{W-j}`                     | Component index j    |
 | Taylor basis         | `j! · FF_j < 2^W`                   | Degree j             |
-| p-adic exp           | `v₂(x) ≥ 8·sizeof(T) / 8`          | Valuation of input   |
+| p-adic exp           | `v₂(x) ≥ 2, budget = 2·bits`      | Valuation of input   |
 | Mersenne cliff       | `k* = n + 2 + max(0, v₂(n)-1)`     | Target bit n         |
 | Bootstrap optimality | `eprec_0 = k/2`                     | Available bits k     |
 
@@ -184,14 +182,10 @@ operation consumes a predictable amount of that headroom.
 1. **Widen arithmetic** — Use `gw_t = widen_t<dword_t<W>>` (up to 4× word
    width) for ghost-map accumulation. Already implemented in dyadic.
 
-2. **Dynamic term count** — Compute `max_terms` based on `v₂(x)` instead of
-   using a fixed `8·sizeof(T)`. Not yet implemented; would extend Witt exp/log
-   coverage to non-Teichmüller inputs.
-
-3. **Increase word size** — Use `W = uint64_t` (128-bit ghosts) instead of
+2. **Increase word size** — Use `W = uint64_t` (128-bit ghosts) instead of
    `W = uint32_t` for more headroom. The `detail::uint128_t` software type
    makes this portable.
 
-4. **Component scaling** — For Witt vectors, constrain higher components:
+3. **Component scaling** — For Witt vectors, constrain higher components:
    `v₂(a_j) ≥ ceil(log₂(N)) - j` ensures ghost-map precision is sufficient
    for Newton recovery.

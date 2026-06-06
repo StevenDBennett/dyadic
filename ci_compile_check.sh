@@ -41,8 +41,8 @@ check "GCC: verify.h standalone (light proofs)" \
 check "GCC: verify.h standalone (heavy proofs)" \
     "$GCC -std=c++20 -O2 -I '$DIR' -c -x c++ '$DIR/dyadic_verify.h' -o /dev/null -Wall -Wextra -Wpedantic -DDYADIC_HEAVY_PROOFS -fconstexpr-ops-limit=200000000"
 
-# --- GCC v2.h header ---
-check "GCC: v2.h standalone" \
+# --- GCC dyadic.h header ---
+check "GCC: dyadic.h standalone" \
     "$GCC -std=c++20 -O2 -I '$DIR' -c -x c++ '$DIR/dyadic.h' -o /dev/null -Wall -Wextra -Wpedantic"
 
 # --- Clang verify header (exhaustive proofs need extra constexpr steps) ---
@@ -50,7 +50,7 @@ if [ -n "$CLANG" ]; then
     check "Clang: verify.h standalone" \
         "$CLANG -std=c++20 -O2 -I '$DIR' -c -x c++ '$DIR/dyadic_verify.h' -o /dev/null -Wall -Wpedantic -fconstexpr-steps=50000000"
 
-    check "Clang: v2.h standalone" \
+    check "Clang: dyadic.h standalone" \
         "$CLANG -std=c++20 -O2 -I '$DIR' -c -x c++ '$DIR/dyadic.h' -o /dev/null -Wall -Wpedantic"
 else
     red "  SKIP  Clang: not installed"
