@@ -1057,7 +1057,6 @@ constexpr bool verify_divmod_cw(
     const Polynomial<M, W, MonomialBasis>& B,
     const Polynomial<M, W, MonomialBasis>& R) noexcept
 {
-    constexpr int NR = N + M - 1;
     auto QB = poly_mul_cw(Q, B);
     for (int i = 0; i < N; ++i) {
         W rhs = QB[i];
