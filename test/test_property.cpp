@@ -9,7 +9,7 @@ using namespace dyadic;
 template<int N, std::unsigned_integral W>
 static int test_properties() {
     int failures[30] = {};
-    XorShift64 rng(0xDEADBEEF);
+    detail::XorShift64 rng(0xDEADBEEF);
 
     // 1. Polynomial eval consistency
     for (int trial = 0; trial < 100; ++trial) {
@@ -22,7 +22,7 @@ static int test_properties() {
     }
 
     // 2. Basis roundtrip: Monomial <-> FallingFactorial
-    rng = XorShift64(0xCAFEBABE);
+    rng = detail::XorShift64(0xCAFEBABE);
     for (int trial = 0; trial < 100; ++trial) {
         Polynomial<N, W, MonomialBasis> p;
         for (int i = 0; i < N; ++i) p[i] = static_cast<W>(rng.next());
@@ -34,7 +34,7 @@ static int test_properties() {
     }
 
     // 3. Taylor roundtrip (small coefficients)
-    rng = XorShift64(0xDECAFBAD);
+    rng = detail::XorShift64(0xDECAFBAD);
     for (int trial = 0; trial < 50; ++trial) {
         Polynomial<N, W, MonomialBasis> p;
         for (int i = 0; i < N; ++i) p[i] = static_cast<W>(rng.next() & 0xFF);
@@ -46,7 +46,7 @@ static int test_properties() {
     }
 
     // 4. D and Delta commute
-    rng = XorShift64(0xFEEDFACE);
+            rng = detail::XorShift64(0xFEEDFACE);
     for (int trial = 0; trial < 100; ++trial) {
         Polynomial<N, W, MonomialBasis> p;
         for (int i = 0; i < N; ++i) p[i] = static_cast<W>(rng.next());
@@ -58,7 +58,7 @@ static int test_properties() {
     }
 
     // 5. Derivative linearity: D(P+Q) = D(P) + D(Q)
-    rng = XorShift64(0xD1FFACE);
+    rng = detail::XorShift64(0xD1FFACE);
     for (int trial = 0; trial < 50; ++trial) {
         Polynomial<N, W, MonomialBasis> p, q;
         for (int i = 0; i < N; ++i) {
@@ -74,7 +74,7 @@ static int test_properties() {
     }
 
     // 6. Forward difference linearity: Δ(P+Q) = Δ(P) + Δ(Q)
-    rng = XorShift64(0xDE1FA);
+    rng = detail::XorShift64(0xDE1FA);
     for (int trial = 0; trial < 50; ++trial) {
         Polynomial<N, W, MonomialBasis> p, q;
         for (int i = 0; i < N; ++i) {
@@ -90,7 +90,7 @@ static int test_properties() {
     }
 
     // 7. Carry chain idempotency
-    rng = XorShift64(0xC0FFEE01);
+    rng = detail::XorShift64(0xC0FFEE01);
     for (int trial = 0; trial < 100; ++trial) {
         W input[N];
         for (int i = 0; i < N; ++i) input[i] = static_cast<W>(rng.next());
@@ -107,7 +107,7 @@ static int test_properties() {
     }
 
     // 8. Taylor shift by 0 is identity
-    rng = XorShift64(0xF1F7);
+    rng = detail::XorShift64(0xF1F7);
     for (int trial = 0; trial < 50; ++trial) {
         Polynomial<N, W, MonomialBasis> p;
         for (int i = 0; i < N; ++i) p[i] = static_cast<W>(rng.next());
@@ -123,7 +123,7 @@ static int test_properties() {
     }
 
     // 9. Witt vector FV = VF
-    rng = XorShift64(0xF1FFE);
+    rng = detail::XorShift64(0xF1FFE);
     for (int trial = 0; trial < 100; ++trial) {
         WittVector<N, W> w;
         for (int i = 0; i < N; ++i) w[i] = static_cast<W>(rng.next());
@@ -135,7 +135,7 @@ static int test_properties() {
     }
 
     // 10. Witt addition commutativity: a+b = b+a
-    rng = XorShift64(0xC0F1E);
+    rng = detail::XorShift64(0xC0F1E);
     for (int trial = 0; trial < 50; ++trial) {
         WittVector<N, W> a, b;
         for (int i = 0; i < N; ++i) { a[i] = static_cast<W>(rng.next()); b[i] = static_cast<W>(rng.next()); }
@@ -145,7 +145,7 @@ static int test_properties() {
     }
 
     // 11. Witt addition associativity: (a+b)+c = a+(b+c)
-    rng = XorShift64(0xA550C);
+    rng = detail::XorShift64(0xA550C);
     for (int trial = 0; trial < 50; ++trial) {
         WittVector<N, W> a, b, c;
         for (int i = 0; i < N; ++i) { a[i] = static_cast<W>(rng.next()); b[i] = static_cast<W>(rng.next()); c[i] = static_cast<W>(rng.next()); }
@@ -158,7 +158,7 @@ static int test_properties() {
     //      Verified in test_full.cpp with bounded inputs.)
 
     // 13. Teichmüller lift: τ(ab) ghost equivalence
-    rng = XorShift64(0xFE1C);
+    rng = detail::XorShift64(0xFE1C);
     for (int trial = 0; trial < 50; ++trial) {
         W a = static_cast<W>(rng.next() & 0xFF);
         W b = static_cast<W>(rng.next() & 0xFF);
@@ -168,7 +168,7 @@ static int test_properties() {
     }
 
     // 14. Polynomial addition is commutative: P+Q = Q+P
-    rng = XorShift64(0xF1FA);
+    rng = detail::XorShift64(0xF1FA);
     for (int trial = 0; trial < 50; ++trial) {
         Polynomial<N, W, MonomialBasis> p, q;
         for (int i = 0; i < N; ++i) { p[i] = static_cast<W>(rng.next()); q[i] = static_cast<W>(rng.next()); }
@@ -178,7 +178,7 @@ static int test_properties() {
     }
 
     // 15. Coefficient-wise distributivity: poly_mul_cw(P, Q+R) = poly_mul_cw(P, Q) + poly_mul_cw(P, R)
-    rng = XorShift64(0xD157);
+    rng = detail::XorShift64(0xD157);
     for (int trial = 0; trial < 50; ++trial) {
         Polynomial<N, W, MonomialBasis> p, q, r;
         for (int i = 0; i < N; ++i) { p[i] = static_cast<W>(rng.next()); q[i] = static_cast<W>(rng.next()); r[i] = static_cast<W>(rng.next()); }
@@ -188,7 +188,7 @@ static int test_properties() {
     }
 
     // 16. Coefficient-wise commutativity: poly_mul_cw(P, Q) = poly_mul_cw(Q, P)
-    rng = XorShift64(0xC0DE);
+    rng = detail::XorShift64(0xC0DE);
     for (int trial = 0; trial < 50; ++trial) {
         Polynomial<N, W, MonomialBasis> p, q;
         for (int i = 0; i < N; ++i) { p[i] = static_cast<W>(rng.next()); q[i] = static_cast<W>(rng.next()); }
@@ -198,7 +198,7 @@ static int test_properties() {
     }
 
     // 17. Witt multiplication is commutative: witt_mul(a, b) = witt_mul(b, a)
-    rng = XorShift64(0xC0DE2);
+    rng = detail::XorShift64(0xC0DE2);
     for (int trial = 0; trial < 50; ++trial) {
         WittVector<N, W> a, b;
         for (int i = 0; i < N; ++i) { a[i] = static_cast<W>(rng.next()); b[i] = static_cast<W>(rng.next()); }
@@ -208,7 +208,7 @@ static int test_properties() {
     }
 
     // 18. Witt distributivity: a*(b+c) = a*b + a*c
-    rng = XorShift64(0xD1572);
+    rng = detail::XorShift64(0xD1572);
     for (int trial = 0; trial < 50; ++trial) {
         WittVector<N, W> a, b, c;
         for (int i = 0; i < N; ++i) { a[i] = static_cast<W>(rng.next()); b[i] = static_cast<W>(rng.next()); c[i] = static_cast<W>(rng.next()); }
@@ -220,7 +220,7 @@ static int test_properties() {
     // 19. Witt additive identity: a + 0 = a
     {
     WittVector<N, W> zero{};
-    rng = XorShift64(0xADD0);
+    rng = detail::XorShift64(0xADD0);
     for (int trial = 0; trial < 50; ++trial) {
         WittVector<N, W> a;
         for (int i = 0; i < N; ++i) a[i] = static_cast<W>(rng.next());
@@ -232,7 +232,7 @@ static int test_properties() {
     // 20. Witt multiplicative identity: a * 1 = a  (1 = Teichmüller lift of 1)
     {
     auto one = teichmueller_lift<N, W>(W(1));
-    rng = XorShift64(0x1D45);
+    rng = detail::XorShift64(0x1D45);
     for (int trial = 0; trial < 50; ++trial) {
         WittVector<N, W> a;
         for (int i = 0; i < N; ++i) a[i] = static_cast<W>(rng.next());

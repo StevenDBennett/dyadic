@@ -777,7 +777,7 @@ static_assert(PROOF_WITT_LOG_EXP,      "PROOF_WITT_LOG_EXP");
 template<int N, std::unsigned_integral W>
 inline int run_all_verifications() {
     int failures = 0;
-    XorShift64 rng(12345);
+    ::dyadic::detail::XorShift64 rng(12345);
 
     // Verify D∘Δ = Δ∘D for random polynomials
     for (int trial = 0; trial < 500; ++trial) {
@@ -796,7 +796,7 @@ inline int run_all_verifications() {
 
     // Verify basis roundtrip: Monomial → FallingFactorial → Monomial
     {
-        rng = XorShift64(12345);
+        rng = ::dyadic::detail::XorShift64(12345);
         for (int trial = 0; trial < 200; ++trial) {
             Polynomial<N, W, MonomialBasis> p;
             for (int i = 0; i < N; ++i) p[i] = static_cast<W>(rng.next());
@@ -811,7 +811,7 @@ inline int run_all_verifications() {
     }
 
     // Verify ghost homomorphism for random Witt vectors
-    rng = XorShift64(12345);
+    rng = ::dyadic::detail::XorShift64(12345);
     for (int trial = 0; trial < 200; ++trial) {
         WittVector<N, W> a, b;
         for (int i = 0; i < N; ++i) {
@@ -829,7 +829,7 @@ inline int run_all_verifications() {
     }
 
     // Verify Witt multiplication distributivity: a·(b+c) = a·b + a·c
-    rng = XorShift64(12345);
+    rng = ::dyadic::detail::XorShift64(12345);
     for (int trial = 0; trial < 200; ++trial) {
         WittVector<N, W> a, b, c;
         for (int i = 0; i < N; ++i) {
@@ -847,7 +847,7 @@ inline int run_all_verifications() {
     }
 
     // Verify FV = VF for random Witt vectors
-    rng = XorShift64(12345);
+    rng = ::dyadic::detail::XorShift64(12345);
     for (int trial = 0; trial < 200; ++trial) {
         WittVector<N, W> w;
         for (int i = 0; i < N; ++i) w[i] = static_cast<W>(rng.next());

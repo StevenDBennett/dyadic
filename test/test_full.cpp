@@ -365,21 +365,21 @@ static int test_polynomial_gcd() {
         }
     }
 
-    // --- det_laplace ---
+    // --- detail::det_laplace ---
     {
         std::array<std::array<uint64_t, 6>, 6> M{};
         M[0][0] = 1; M[1][1] = 1;
-        if (det_laplace<uint64_t>(M, 2) != 1) { std::printf("FAIL det I2\n"); f++; }
+        if (detail::det_laplace<uint64_t>(M, 2) != 1) { std::printf("FAIL det I2\n"); f++; }
 
         M[0][0] = 1; M[0][1] = 2;
         M[1][0] = 3; M[1][1] = 4;
-        if (det_laplace<uint64_t>(M, 2) != uint64_t(-2)) {
+        if (detail::det_laplace<uint64_t>(M, 2) != uint64_t(-2)) {
             std::printf("FAIL det 2x2\n"); f++;
         }
 
         std::array<std::array<uint64_t, 6>, 6> I3{};
         I3[0][0] = 1; I3[1][1] = 1; I3[2][2] = 1;
-        if (det_laplace<uint64_t>(I3, 3) != 1) { std::printf("FAIL det I3\n"); f++; }
+        if (detail::det_laplace<uint64_t>(I3, 3) != 1) { std::printf("FAIL det I3\n"); f++; }
     }
 
     return f;

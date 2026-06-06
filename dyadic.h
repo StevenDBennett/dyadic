@@ -982,6 +982,8 @@ constexpr W carry_chain_word(W hi, W lo) noexcept {
 // propagating the carry between chunks. CHUNK_COUNT targets ~256 bytes of accum_t
 // entries, so it scales with the word size.
 
+namespace detail {
+
 template<std::unsigned_integral W, typename Accum = quad_width<W>>
 constexpr void poly_mul_unsaturated(Accum* DYADIC_RESTRICT r,
     const W* DYADIC_RESTRICT a, int na,
@@ -1000,6 +1002,8 @@ constexpr void poly_mul_unsaturated(Accum* DYADIC_RESTRICT r,
     }
 }
 
+} // namespace detail
+
 template<std::unsigned_integral W>
 constexpr void poly_mul(W* DYADIC_RESTRICT r, const W* DYADIC_RESTRICT a, int na,
                         const W* DYADIC_RESTRICT b, int nb) noexcept {
@@ -1008,7 +1012,7 @@ constexpr void poly_mul(W* DYADIC_RESTRICT r, const W* DYADIC_RESTRICT a, int na
     int nr = na + nb - 1;
     if (nr <= CHUNK_COUNT) {
         std::array<accum_t, CHUNK_COUNT> buf{};
-        poly_mul_unsaturated(buf.data(), a, na, b, nb);
+        detail::poly_mul_unsaturated(buf.data(), a, na, b, nb);
         carry_chain(r, buf.data(), nr);
     } else {
         std::array<accum_t, CHUNK_COUNT> buf{};
@@ -1272,6 +1276,8 @@ poly_gcd_cw(const Polynomial<N, W, MonomialBasis>& A_,
     return result;
 }
 
+namespace detail {
+
 // Determinant via Laplace expansion for small matrices (dim ≤ 6).
 // Fully constexpr-friendly with no heap allocation. For larger matrices,
 // returns 0 and the caller should use a different method.
@@ -1305,6 +1311,8 @@ constexpr W det_laplace(const std::array<std::array<W, 6>, 6>& M, int n) noexcep
     return det;
 }
 
+} // namespace detail
+
 // Polynomial resultant: det(Sylvester(A, B)).
 // The Sylvester matrix is (deg(A)+deg(B)) × (deg(A)+deg(B)).
 // Uses Laplace expansion (O(n!)), limited to dim ≤ 6.
@@ -1337,7 +1345,7 @@ constexpr W polynomial_resultant_cw(const Polynomial<N, W, MonomialBasis>& A,
         }
     }
 
-    return det_laplace<W>(Mtx, dim);
+    return detail::det_laplace<W>(Mtx, dim);
 }
 
 // Polynomial discriminant: (-1)^{d(d-1)/2} * res(P, P') / lc(P).
@@ -1685,24 +1693,27 @@ reversion(const Polynomial<N, W, MonomialBasis>& P) noexcept {
 // 21. PRNG
 // ============================================================================
 
+namespace detail {
+
 struct XorShift64 {
     uint64_t state;
-    constexpr explicit XorShift64(uint64_t seed) : state(seed) {
-        // XorShift64 has a fixed point at 0; require non-zero seed.
-        // All seeds used in the test suite are non-zero.
-    }
+    constexpr explicit XorShift64(uint64_t seed) noexcept : state(seed) {}
     constexpr uint64_t next() noexcept {
         state ^= state << 13;
         state ^= state >> 7;
         state ^= state << 17;
         return state;
     }
-    static constexpr bool is_valid_seed(uint64_t s) { return s != 0; }
+    static constexpr bool is_valid_seed(uint64_t s) noexcept { return s != 0; }
 };
+
+} // namespace detail
 
 // ============================================================================
 // 22. Verification Helpers
 // ============================================================================
+
+namespace detail {
 
 enum TestResult : int { PASS = 0, FAIL = 1 };
 
@@ -1710,6 +1721,8 @@ inline int report(const char* name, bool ok) noexcept {
     std::printf("%s  %s\n", name, ok ? "PASS" : "FAIL");
     return ok ? PASS : FAIL;
 }
+
+} // namespace detail
 
 // Precision window checks — return true when recovery will be exact.
 //
