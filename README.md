@@ -3,7 +3,7 @@
 Header-only C++20 library for arithmetic in ℤ₂[[t]]: carry chains, formal derivatives, forward differences, Witt vectors, basis conversions, power series composition and reversion. Umbrella header `dyadic.h` includes all sub-headers from `include/dyadic/`.
 
 ```cpp
-#include "dyadic.h"
+#include <dyadic.h>
 #include <cstdio>
 using namespace dyadic;
 
@@ -138,7 +138,7 @@ if (!check_witt_recovery_precision(w))
 
 ## Build & Integrate
 
-**As a header collection** — copy `dyadic.h` and the `include/dyadic/` directory into your project's include path, then `#include <dyadic.h>` or `#include <dyadic/core.h>`.
+**As a header collection** — copy `dyadic.h` and the `include/dyadic/` directory into your project's include path, then `#include <dyadic.h>` (umbrella) or `#include <dyadic/core.h>` (individual header).
 
 **With CMake**:
 ```bash
@@ -163,7 +163,7 @@ Optional: `-DDYADIC_HEAVY_PROOFS=ON` for exhaustive compile-time proofs.
 | `test_property.cpp` | Randomized property-based tests: 18 invariants × 10 (N,W) combos |
 | `test_full.cpp` | 17 functional test groups covering the entire API surface |
 | `test_negatives.cpp` | Fork-based assertion verification (6 precondition checks) |
-| `benchmark.cpp` | Runtime benchmarks for key operations (build manually: `g++ -O2 -std=c++20 -I.. -I../include benchmark.cpp`) |
+| `benchmark.cpp` | Runtime benchmarks for key operations (build manually: `g++ -O2 -std=c++20 -I. -Iinclude test/benchmark.cpp`) |
 
 All tests pass under GCC 14+ and Clang 17+ with ASan+UBSan. CI covers GCC (light + heavy proofs), Clang, and MSVC on Windows.
 

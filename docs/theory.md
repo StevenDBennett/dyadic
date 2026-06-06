@@ -23,7 +23,7 @@ double truncation.
 
 ---
 
-## 2. Operator Calculus (dyadic, BigInteger/carryline)
+## 2. Operator Calculus (dyadic)
 
 Three operators on ℤ₂[[t]] form the foundation.
 
@@ -100,9 +100,8 @@ The Artin-Schreier operator `℘(x) = x² - x` on ℤ₂ satisfies `℘(0) = ℘
 and `℘(x) = ℘(1-x)` for all x. It classifies the additive group modulo the
 Frobenius: `ℤ₂/℘(ℤ₂) ≅ ℤ/2ℤ`.
 
-**Reference**: `BigInteger/validation_paper.md` (audit of 18 claims),
-`dyadic.h:269–272` (artin_schreier), `dyadic.h:678–719` (D/Δ operators), `dyadic_verify.h:366–497`
-(compile-time Artin-Schreier proofs).
+**Reference**: `include/dyadic/core.h` (artin_schreier),
+`include/dyadic/verify.h` (compile-time Artin-Schreier proofs).
 
 ---
 
@@ -177,8 +176,8 @@ result_j = f(j, inputs_{i≤j})
 with an **invertible triangular system**: given the outputs, the inputs are
 recovered by iterative subtraction and division by a power of 2.
 
-**Reference**: `dyadic.h:1432–1529` (Witt operations), `dyadic.h:1725–1905`
-(Witt exp/log), `dyadic_verify.h:502–560` (compile-time Witt proofs).
+**Reference**: `include/dyadic/witt.h` (Witt operations, exp/log),
+`include/dyadic/verify.h` (compile-time Witt proofs).
 
 ---
 
@@ -284,7 +283,7 @@ Kronecker-power operator `S^{⊗n}`. Its thermodynamic classification governs:
 - **Quantum circuits**: unitary seeds give quantum gates
 - **p-adic Fourier**: contractive seeds give 2-adic convolution kernels
 
-**Reference**: `butterfly-cpp/include/butterfly/thermodynamics.hpp:1–198`
+**Reference**: `butterfly-cpp/include/butterfly/thermodynamics.hpp`
 (classification + properties), `butterfly-cpp/include/butterfly/spectral.hpp`
 (product spectrum + butterfly polynomial).
 
@@ -311,7 +310,7 @@ Every operation in this ecosystem follows the same pattern:
 
 The precision windows (ghost recovery `r_j < 2^{W-j}`, factorial constraint
 `j!·FF_j < 2^W`, Mersenne cliff `k*`, bootstrap optimality `eprec_0 = k/2`,
-exp truncation `v₂(x) ≥ 9`) are all the same phenomenon: **step 3 fails when
+exp truncation `v₂(x) ≥ 2`) are all the same phenomenon: **step 3 fails when
 step 1 didn't provide enough headroom**.
 
 ### 6.3 The Spectral Sequence
@@ -335,12 +334,12 @@ The six axioms implemented in dyadic span all four domains:
 
 | # | Axiom | Domain | Implementation |
 |---|-------|--------|----------------|
-| 1 | Carry chain = synthetic division | Operator | `synthetic_divide` |
-| 2 | Formal derivative D | Operator | `formal_derivative` |
-| 3 | Forward difference Δ | Operator | `forward_difference` |
-| 4 | Exact D | Operator | `exact_derivative` |
-| 5 | Exact Δ | Operator | `exact_forward_diff` |
-| 6 | Basis change | Unification | `change_basis` |
+| 1 | Carry chain = synthetic division | Operator | `synthetic_divide` in `core.h` |
+| 2 | Formal derivative D | Operator | `formal_derivative` in `core.h` |
+| 3 | Forward difference Δ | Operator | `forward_difference` in `core.h` |
+| 4 | Exact D | Operator | `exact_derivative` in `core.h` |
+| 5 | Exact Δ | Operator | `exact_forward_diff` in `core.h` |
+| 6 | Basis change | Unification | `change_basis` in `basis.h` |
 
 ---
 

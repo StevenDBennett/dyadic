@@ -4,7 +4,7 @@
 
 The compile-time proofs are not ceremonial — they found real bugs during development:
 
-- `dyadic.h` was missing `artin_schreier()` entirely; `PROOF_AS_KERNEL` and `PROOF_AS_SYMMETRY_8` forced its addition.
+- `core.h` was missing `artin_schreier()` entirely; `PROOF_AS_KERNEL` and `PROOF_AS_SYMMETRY_8` forced its addition.
 - `stirling_1` returns signed values as unsigned wrapping; the proof `s(3,1) = 2` caught a sign error in the expected value.
 - `div_2k_adic` was originally a plain right shift; `taylor_to_monomial` produced wrong results for negative 2-adic values, caught by the roundtrip proofs.
 - `reversion`'s initial powers were zero-initialised but never computed before the first iteration, producing garbage coefficients.
@@ -39,11 +39,11 @@ Several additional hotspots were identified and fixed:
 
 - **`taylor_to_monomial`: O(N³) → O(N²)** — factorial was recomputed from scratch (`for i=2..j`) inside the inner j-loop of a double sum. Precomputed once into a `facts[N]` array.
 
-- **`reversion`: O(N⁴) → O(N³)** — the power matrix `R, R², ..., R^{N-1}` was fully recomputed from scratch each time a new coefficient `R[n]` was set. With incremental updates, only the O(N²) entries affected by the new `R[n]` are propagated through the power hierarchy. The m=2 case required special handling because R×R is symmetric (R[n] contributes through both factors with 2× weight).
+- **`reversion`: O(N⁴) → O(N³)** — the power matrix `R, R², ..., R^{N-1}` was fully recomputed from scratch each time a new coefficient `R[n]` was set. With incremental updates, only the O(N²) entries affected by the new `R[n]` are propagated through the power hierarchy.
 
-- **Stirling functions: O(N²) space → O(N)** — `stirling_2`, `stirling_1`, and `stirling_1_unsigned` originally allocated full 2D `std::array<std::array<W, MaxN>, MaxN>` tables (32KB for MaxN=64, uint64_t) even for small `n`. Refactored to 1D in-place DP using the backward-iteration pattern `dp[j] = dp[j-1] + j * dp[j]`, reducing stack to `std::array<W, MaxN + 1>` (520 bytes).
+- **Stirling functions: O(N²) space → O(N)** — `stirling_2`, `stirling_1`, and `stirling_1_unsigned` originally allocated full 2D `std::array<std::array<W, MaxN>, MaxN>` tables even for small `n`. Refactored to 1D in-place DP using the backward-iteration pattern `dp[j] = dp[j-1] + j * dp[j]`, reducing stack to `std::array<W, MaxN + 1>`.
 
-## Recent additions (Phases A–C)
+## Development history
 
 ### Phase A: Compile-time cached Stirling/Pascal tables
 
@@ -73,11 +73,15 @@ The inner multiply-accumulate loop of `poly_mul_unsaturated` and the tiled `poly
 
 These hints let the compiler generate SIMD (SSE/AVX2) code for runtime invocations while remaining valid in `constexpr` context (the pragma and restrict are ignored during constexpr evaluation).
 
+### Phase D: Repo consolidation
+
+The `dyadic-core` repository was merged into `dyadic`. Extension headers (`dynamic_polynomial.h`, `pade.h`, `continued_fractions.h`, `matrix.h`) moved from `dyadic-examples` into `dyadic/include/dyadic/`. The umbrella `dyadic.h` at the repo root includes all sub-headers. The `dyadic-examples` repo now contains only example code, with no standalone extension headers.
+
 ## Future Directions
 
 ### Wider coefficient types
 
-The Taylor basis precision window and Witt vector overflow are both instances of the same problem: 2-adic arithmetic with 64-bit words runs out of headroom when intermediate values exceed 2^64. A natural extension is `dword_t<uint64_t>` → `detail::uint128_t` (already done) and then `W` → `detail::uint128_t` for the coefficient type itself. This would push the precision window from ~2^64/k! to ~2^128/k! — enough to cover all practical polynomial degrees. However, this doubles memory and register pressure and requires a `dword_t<uint128_t>` (there is no `uint256_t` in standard C++).
+The Taylor basis precision window and Witt vector overflow are both instances of the same problem: 2-adic arithmetic with 64-bit words runs out of headroom when intermediate values exceed 2^64. A natural extension is `dword_t<uint64_t>` → `detail::uint128_t` (already done) and then `W` → `detail::uint128_t` for the coefficient type itself. This would push the precision window from ~2^64/k! to ~2^128/k! — enough to cover all practical polynomial degrees.
 
 ### Ghost-map verification beyond N=2
 
@@ -91,14 +95,6 @@ For `uint8_t`, `PROOF_D_DELTA_U8_N2` covers ALL 65536 degree-1 polynomials for D
 
 `detail::uint128_t` already provides a compiler-abstraction layer for 128-bit arithmetic (software pair with optional `__int128` conversion). The remaining `__int128` dependency is confined to `binom()` as an optimization. Clang supports `unsigned __int128` with different constexpr evaluation limits. MSVC support for `__int128` is limited; `detail::uint128_t` works on any C++20 compiler since it is pure software.
 
-### Runtime-parameterized N
-
-All polynomials and Witt vectors are templated on N. For applications needing variable-degree polynomials, a type-erased or heap-allocated variant (e.g., `DynamicPolynomial<W>`) would trade compile-time optimization for runtime flexibility. The carry chain, basis conversions, and Witt addition all work with runtime N trivially — only the compile-time proofs depend on template N.
-
 ### Hardware carry-chain acceleration
 
 The carry chain is a linear scan — O(N) per pass. Modern x86-64 offers `addc` (add with carry) via `_addcarry_u64`, which the carry chain could use directly. The current implementation decomposes into dword accumulation then carry propagation, which is correct but not optimal. A `constexpr` path using `std::array` and a runtime path using BMI2/ADX intrinsics would cover both compile-time and maximum-throughput use cases.
-
-~~### Witt vector logarithm and exponential~~ **Done**
-
-~~Future extensions could include the logarithm and exponential maps~~ — both `witt_log`, `witt_exp`, and `witt_inverse` are now implemented, with full ghost-map recovery. Ring axioms verified by compile-time proofs and property tests.

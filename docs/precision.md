@@ -43,7 +43,7 @@ When this holds, the division by `2^j` is lossless. When it fails (e.g., a
 Witt component is large enough that `G_j - S_j` overflows `gw_t`), the
 recovered component is corrupted.
 
-**Reference**: `dyadic.h:1389–1390`, `ghost_recover` at `dyadic.h:1417–1445`.
+**Reference**: `include/dyadic/witt.h`, `ghost_recover` function.
 
 ---
 
@@ -67,8 +67,8 @@ T_j = j! · FF_j < 2^W
 This is a **factorial precision window**: basis roundtrips are exact only for
 polynomials with small enough Taylor coefficients.
 
-**Reference**: `dyadic.h:568–571`, `check_taylor_roundtrip_precision` at
-`dyadic.h:1643–1656`.
+**Reference**: `include/dyadic/basis.h`, `check_taylor_roundtrip_precision`
+(in `include/dyadic/verify.h`).
 
 ---
 
@@ -104,8 +104,8 @@ not a code bug.
 For Teichmüller inputs (`a_j = 0` for `j > 0`): `v₂(ghost_j(a)) = 2^j · v₂(a_0)`,
 so `v₂(a_0) ≥ 2` suffices for convergence.
 
-**Reference**: `dyadic.h:1765–1777` (`p_adic_exp_impl`), `dyadic.h:1738–1760`
-(`p_adic_log_1plus_impl`), `dyadic_verify.h:754–768` (proof constraints).
+**Reference**: `include/dyadic/witt.h` (`p_adic_exp_impl`, `p_adic_log_1plus_impl`),
+`include/dyadic/verify.h` (proof constraints).
 
 ---
 
@@ -137,7 +137,7 @@ For n = 4: ε(4) = 1, giving k* = 4 + 2 + 1 = 7 (instead of 6).
 **Cliff density**: the expected cliff cost is only 0.25 extra bits,
 and Pr[c ≥ 4] ≈ 1.56%.
 
-**Reference**: `dual-view/docs/mersenne_ghost_theorem.md:76–90`.
+**Reference**: `dual-view/docs/mersenne_ghost_theorem.md`.
 
 ---
 
@@ -159,7 +159,7 @@ Verified by exhaustive search for all `k ≤ 128`. At `eprec_0 < k/2`, the
 bootstrap undershoots and the final result is incorrect; at `eprec_0 > k/2`,
 the extra bits are unused.
 
-**Reference**: `dual-view/docs/mersenne_ghost_theorem.md:104–114`.
+**Reference**: `dual-view/docs/mersenne_ghost_theorem.md`.
 
 ---
 
