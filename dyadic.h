@@ -466,7 +466,7 @@ struct Polynomial : std::array<W, N> {
         return -1;
     }
 
-    constexpr Polynomial() = default;
+    constexpr Polynomial() noexcept = default;
     constexpr Polynomial(std::array<W, N> coeffs) noexcept : std::array<W, N>(coeffs) {}
 
     constexpr W eval(W x) const noexcept {
@@ -549,7 +549,7 @@ constexpr Polynomial<N, W, MonomialBasis> falling_to_monomial(const Polynomial<N
     for (int k = 0; k < N; ++k) {
         W sum = 0;
         for (int n = k; n < N; ++n) {
-            sum += 1u * p[n] * cache.s1[n][k];
+            sum += W(1) * p[n] * cache.s1[n][k];
         }
         r[k] = sum;
     }
@@ -584,7 +584,7 @@ constexpr Polynomial<N, W, MonomialBasis> taylor_to_monomial(const Polynomial<N,
     constexpr auto& cache = detail::STIRLING_CACHE<N, W>;
     using accum_t = quad_width<W>;
     // Precompute factorials 0!..(N-1)!
-    W facts[N];
+    std::array<W, N> facts{};
     facts[0] = 1;
     for (int i = 1; i < N; ++i) facts[i] = facts[i-1] * static_cast<W>(i);
 
@@ -826,8 +826,8 @@ template<int N, std::unsigned_integral W>
 struct WittVector {
     std::array<W, N> a{};
 
-    constexpr WittVector() = default;
-    constexpr WittVector(std::array<W, N> c) : a(c) {}
+    constexpr WittVector() noexcept = default;
+    constexpr WittVector(std::array<W, N> c) noexcept : a(c) {}
 
     constexpr W& operator[](int i) noexcept { return a[i]; }
     constexpr W operator[](int i) const noexcept { return a[i]; }
@@ -942,8 +942,7 @@ constexpr bool mul_overflow(T a, T b, T* result) noexcept {
     return __builtin_mul_overflow(a, b, result);
 #else
     *result = a * b;
-    (void)a; (void)b;
-    return false;
+    return a != 0 && *result / a != b;
 #endif
 }
 
