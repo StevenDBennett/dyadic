@@ -722,31 +722,42 @@ inline constexpr bool PROOF_ADAMS_GHOST = []() constexpr {
 // error message — no need to count or maintain a master total.
 
 // Ghost homomorphism
+// Ghost map is a ring homomorphism: ghost_j(a + b) = ghost_j(a) + ghost_j(b)
 static_assert(PROOF_GHOST_HOM_2_32,   "PROOF_GHOST_HOM_2_32");
 static_assert(PROOF_GHOST_HOM_U8_N2,  "PROOF_GHOST_HOM_U8_N2");
 static_assert(PROOF_GHOST_HOM_U8_N3,  "PROOF_GHOST_HOM_U8_N3");
 
+// Formal derivative D and forward difference Δ commute: D∘Δ = Δ∘D
 static_assert(PROOF_D_DELTA_U8_N2,    "PROOF_D_DELTA_U8_N2");
 
+// Basis conversion roundtrip: Monomial → FallingFactorial → Monomial = identity
 static_assert(PROOF_ROUNDTRIP_1,      "PROOF_ROUNDTRIP_1");
 static_assert(PROOF_ROUNDTRIP_2,      "PROOF_ROUNDTRIP_2");
 
+// Artin-Schreier kernel: ℘(0) = ℘(1) = 0, and symmetry ℘(x) = ℘(1-x)
 static_assert(PROOF_AS_KERNEL,        "PROOF_AS_KERNEL");
 static_assert(PROOF_AS_SYMMETRY_8,    "PROOF_AS_SYMMETRY_8");
 
+// Carry chain is idempotent: C(C(x)) = C(x)
 static_assert(PROOF_C_IDEMPOTENT,     "PROOF_C_IDEMPOTENT");
 
+// Forward difference equals truncated exponential series: Δ = e^D − I
 static_assert(PROOF_DELTA_EXP,        "PROOF_DELTA_EXP");
 
+// Witt vector Frobenius F and Verschiebung V commute: F(V(a)) = V(F(a))
 static_assert(PROOF_FV_VF,            "PROOF_FV_VF");
 
+// Ghost map is a ring homomorphism for multiplication: ghost_j(a·b) = ghost_j(a)·ghost_j(b)
 static_assert(PROOF_MUL_GHOST,        "PROOF_MUL_GHOST");
 static_assert(PROOF_MUL_DISTRIBUTIVE, "PROOF_MUL_DISTRIBUTIVE");
 static_assert(PROOF_MUL_U8_N2,        "PROOF_MUL_U8_N2");
 static_assert(PROOF_MUL_U8_N3,        "PROOF_MUL_U8_N3");
 
+// Teichmüller lift is multiplicative: τ(ab) = τ(a)·τ(b) and τ(1) = 1
 static_assert(PROOF_TEICHMULLER_ONE,  "PROOF_TEICHMULLER_ONE");
 static_assert(PROOF_TEICHMULLER_MULT, "PROOF_TEICHMULLER_MULT");
+
+// Adams operation ψ^1 is the identity; ghost_j(ψⁿ(a)) = ghost_j(a)ⁿ
 static_assert(PROOF_ADAMS_IDENTITY,   "PROOF_ADAMS_IDENTITY");
 static_assert(PROOF_ADAMS_GHOST,      "PROOF_ADAMS_GHOST");
 
@@ -798,11 +809,17 @@ static_assert(PROOF_WITT_EXP_LOG_ROUNDTRIP, "PROOF_WITT_EXP_LOG_ROUNDTRIP");
 // invariants; runtime tests verify numerical stability.
 
 template<int N, std::unsigned_integral W>
-inline int run_all_verifications() {
+inline int run_all_verifications(uint64_t base_seed = 0xDEADBEEF) {
     int failures = 0;
-    ::dyadic::detail::XorShift64 rng(12345);
+    // Derive per-section seeds from base_seed using multiplicative mixing.
+    // Default base_seed matches the original hardcoded value for backward compat.
+    auto section_seed = [base_seed](uint64_t tag) {
+        return base_seed ? (base_seed ^ tag) : tag;
+    };
 
     // Verify D∘Δ = Δ∘D for random polynomials
+    {
+    ::dyadic::detail::XorShift64 rng(section_seed(0xD1FFACE1));
     for (int trial = 0; trial < 500; ++trial) {
         Polynomial<N, W, MonomialBasis> p;
         for (int i = 0; i < N; ++i) p[i] = static_cast<W>(rng.next());
@@ -816,25 +833,27 @@ inline int run_all_verifications() {
         }
         if (!ok) failures++;
     }
+    }
 
     // Verify basis roundtrip: Monomial → FallingFactorial → Monomial
     {
-        rng = ::dyadic::detail::XorShift64(12345);
-        for (int trial = 0; trial < 200; ++trial) {
-            Polynomial<N, W, MonomialBasis> p;
-            for (int i = 0; i < N; ++i) p[i] = static_cast<W>(rng.next());
-            auto ff = change_basis<FallingFactorialBasis>(p);
-            auto back = change_basis<MonomialBasis>(ff);
-            bool ok = true;
-            for (int i = 0; i < N; ++i) {
-                if (p[i] != back[i]) { ok = false; break; }
-            }
-            if (!ok) failures++;
+    ::dyadic::detail::XorShift64 rng(section_seed(0xCAFEBABE));
+    for (int trial = 0; trial < 200; ++trial) {
+        Polynomial<N, W, MonomialBasis> p;
+        for (int i = 0; i < N; ++i) p[i] = static_cast<W>(rng.next());
+        auto ff = change_basis<FallingFactorialBasis>(p);
+        auto back = change_basis<MonomialBasis>(ff);
+        bool ok = true;
+        for (int i = 0; i < N; ++i) {
+            if (p[i] != back[i]) { ok = false; break; }
         }
+        if (!ok) failures++;
+    }
     }
 
     // Verify ghost homomorphism for random Witt vectors
-    rng = ::dyadic::detail::XorShift64(12345);
+    {
+    ::dyadic::detail::XorShift64 rng(section_seed(0xFEEDFACE));
     for (int trial = 0; trial < 200; ++trial) {
         WittVector<N, W> a, b;
         for (int i = 0; i < N; ++i) {
@@ -850,9 +869,11 @@ inline int run_all_verifications() {
         }
         if (!ok) failures++;
     }
+    }
 
     // Verify Witt multiplication distributivity: a·(b+c) = a·b + a·c
-    rng = ::dyadic::detail::XorShift64(12345);
+    {
+    ::dyadic::detail::XorShift64 rng(section_seed(0xD15C0DE5));
     for (int trial = 0; trial < 200; ++trial) {
         WittVector<N, W> a, b, c;
         for (int i = 0; i < N; ++i) {
@@ -868,9 +889,11 @@ inline int run_all_verifications() {
         }
         if (!ok) failures++;
     }
+    }
 
     // Verify FV = VF for random Witt vectors
-    rng = ::dyadic::detail::XorShift64(12345);
+    {
+    ::dyadic::detail::XorShift64 rng(section_seed(0xF1FFE));
     for (int trial = 0; trial < 200; ++trial) {
         WittVector<N, W> w;
         for (int i = 0; i < N; ++i) w[i] = static_cast<W>(rng.next());
@@ -881,6 +904,7 @@ inline int run_all_verifications() {
             if (fv[i] != vf[i]) { ok = false; break; }
         }
         if (!ok) failures++;
+    }
     }
 
     return failures;

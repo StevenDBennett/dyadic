@@ -4,16 +4,37 @@ set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 FAIL=0
 
-# Detect available compilers
-GCC=""
-for c in g++ g++-14 g++-13 g++-12; do
-    if command -v "$c" &>/dev/null; then GCC="$c"; break; fi
-done
+# Detect available compilers — discover by pattern instead of hardcoded version ranges
+find_compiler() {
+    local base="$1"
+    local found=""
+    # Check base name first (might be a versioned wrapper already)
+    if command -v "$base" &>/dev/null && "$base" -std=c++20 -x c++ - -o /dev/null </dev/null &>/dev/null; then
+        echo "$base"
+        return
+    fi
+    # Search PATH for version-suffixed names, pick the highest version
+    for dir in $(echo "$PATH" | tr ':' ' '); do
+        [ -d "$dir" ] || continue
+        for f in "$dir/$base"-[0-9]*; do
+            [ -x "$f" ] || continue
+            local name="${f##*/}"
+            # Take the first one that works (they're found in PATH order)
+            if [ -z "$found" ] && "$name" -std=c++20 -x c++ - -o /dev/null </dev/null &>/dev/null; then
+                found="$name"
+            fi
+        done
+    done
+    if [ -n "$found" ]; then
+        echo "$found"
+    else
+        # Final fallback: try the base name
+        command -v "$base" &>/dev/null && echo "$base" || echo ""
+    fi
+}
 
-CLANG=""
-for c in clang++-20 clang++-19 clang++-18 clang++-17 clang++; do
-    if command -v "$c" &>/dev/null; then CLANG="$c"; break; fi
-done
+GCC=$(find_compiler g++)
+CLANG=$(find_compiler clang++)
 
 red() { printf '\033[31m%s\033[0m\n' "$1"; }
 green() { printf '\033[32m%s\033[0m\n' "$1"; }

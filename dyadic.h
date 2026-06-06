@@ -894,7 +894,10 @@ struct WittVector {
     }
 
     static constexpr WittVector zero() noexcept { return WittVector{}; }
-    static constexpr WittVector one() noexcept { WittVector r; r[0] = W(1); return r; }
+    static constexpr WittVector one() noexcept {
+        std::array<W, N> arr{}; arr[0] = W(1);
+        return WittVector(arr);
+    }
 };
 
 template<int N, std::unsigned_integral W>
@@ -986,17 +989,21 @@ constexpr W carry_chain_word(W hi, W lo) noexcept {
 }
 
 
-// Restrict pointer annotation for auto-vectorization (GCC/Clang).
+// Restrict pointer annotation for auto-vectorization.
+// GCC/Clang use __restrict__, MSVC uses __restrict.
 #if defined(__GNUC__) || defined(__clang__)
 #define DYADIC_RESTRICT __restrict__
+#elif defined(_MSC_VER)
+#define DYADIC_RESTRICT __restrict
 #else
 #define DYADIC_RESTRICT
 #endif
 
 // ============================================================================
-// 15. Polynomial Multiplication
+// 15. Polynomial Multiplication (O(N²) naive convolution)
 // ============================================================================
 // Two-phase multiplication: unsaturated dword accumulation + carry chain.
+// Complexity: O(N²) — no FFT (2-adic carry propagation prevents linear convolution).
 // For results larger than the per-specialization CHUNK_COUNT, uses a tiled carry
 // chain that processes the unsaturated product in fixed-size chunks while
 // propagating the carry between chunks. CHUNK_COUNT targets ~256 bytes of accum_t
@@ -1493,7 +1500,7 @@ constexpr Polynomial<N+1, W, TaylorBasis> indefinite_sum(const Polynomial<N, W, 
 }
 
 // ============================================================================
-// 18–19. Witt Addition & Multiplication (ghost-map + Newton recovery)
+// 18–19. Witt Addition & Multiplication (ghost-map + Newton recovery) — O(N²)
 // ============================================================================
 // Algorithm: compute ghost values G_j = combine(ghost(a)_j, ghost(b)_j)
 // (sum for addition, product for multiplication), then recover Witt
@@ -1628,6 +1635,8 @@ constexpr WittVector<N, W> teichmueller_lift(W x) noexcept {
 
 // ============================================================================
 // 20. Power Series Composition and Reversion
+// Complexity: compose is O(N²·M²) naive power accumulation;
+//             reversion is O(N³) with incremental power update vs O(N⁴) naive.
 // ============================================================================
 
 template<int N, int M, std::unsigned_integral W>

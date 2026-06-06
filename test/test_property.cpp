@@ -1,17 +1,28 @@
 // test_property.cpp — Property-based runtime tests
 // Exercises invariants that must hold for all random inputs.
+// Usage: test_property [--seed <uint64>]
+//   Default seed is 0 (uses hardcoded per-section seeds for reproducibility).
 
 #include "dyadic_verify.h"
 #include <cstdio>
+#include <cstdlib>
 
 using namespace dyadic;
 
+// Derive a per-section seed from the base seed and a section constant.
+// When base_seed is 0, returns the section constant (original behavior).
+static constexpr uint64_t section_seed(uint64_t base, uint64_t section) noexcept {
+    return base ? (base ^ section) : section;
+}
+
 template<int N, std::unsigned_integral W>
-static int test_properties() {
+static int test_properties(uint64_t base_seed = 0) {
     int failures[30] = {};
-    detail::XorShift64 rng(0xDEADBEEF);
+    auto SEED = [&](uint64_t s) { return section_seed(base_seed, s); };
 
     // 1. Polynomial eval consistency
+    {
+    detail::XorShift64 rng(SEED(0xDEADBEEF));
     for (int trial = 0; trial < 100; ++trial) {
         Polynomial<N, W, MonomialBasis> p;
         for (int i = 0; i < N; ++i) p[i] = static_cast<W>(rng.next());
@@ -20,9 +31,11 @@ static int test_properties() {
         for (int i = 0; i < N; ++i) sum += p[i];
         if (p.eval(W(1)) != sum) failures[0]++;
     }
+    }
 
     // 2. Basis roundtrip: Monomial <-> FallingFactorial
-    rng = detail::XorShift64(0xCAFEBABE);
+    {
+    detail::XorShift64 rng(SEED(0xCAFEBABE));
     for (int trial = 0; trial < 100; ++trial) {
         Polynomial<N, W, MonomialBasis> p;
         for (int i = 0; i < N; ++i) p[i] = static_cast<W>(rng.next());
@@ -32,9 +45,11 @@ static int test_properties() {
             if (p[i] != back[i]) { failures[1]++; break; }
         }
     }
+    }
 
     // 3. Taylor roundtrip (small coefficients)
-    rng = detail::XorShift64(0xDECAFBAD);
+    {
+    detail::XorShift64 rng(SEED(0xDECAFBAD));
     for (int trial = 0; trial < 50; ++trial) {
         Polynomial<N, W, MonomialBasis> p;
         for (int i = 0; i < N; ++i) p[i] = static_cast<W>(rng.next() & 0xFF);
@@ -44,9 +59,11 @@ static int test_properties() {
             if (p[i] != back[i]) { failures[2]++; break; }
         }
     }
+    }
 
     // 4. D and Delta commute
-            rng = detail::XorShift64(0xFEEDFACE);
+    {
+    detail::XorShift64 rng(SEED(0xFEEDFACE));
     for (int trial = 0; trial < 100; ++trial) {
         Polynomial<N, W, MonomialBasis> p;
         for (int i = 0; i < N; ++i) p[i] = static_cast<W>(rng.next());
@@ -56,9 +73,11 @@ static int test_properties() {
             if (d_delta[i] != delta_d[i]) { failures[3]++; break; }
         }
     }
+    }
 
     // 5. Derivative linearity: D(P+Q) = D(P) + D(Q)
-    rng = detail::XorShift64(0xD1FFACE);
+    {
+    detail::XorShift64 rng(SEED(0xD1FFACE));
     for (int trial = 0; trial < 50; ++trial) {
         Polynomial<N, W, MonomialBasis> p, q;
         for (int i = 0; i < N; ++i) {
@@ -72,9 +91,11 @@ static int test_properties() {
             if (d_sum[i] != static_cast<W>(d_p[i] + d_q[i])) { failures[4]++; break; }
         }
     }
+    }
 
     // 6. Forward difference linearity: Δ(P+Q) = Δ(P) + Δ(Q)
-    rng = detail::XorShift64(0xDE1FA);
+    {
+    detail::XorShift64 rng(SEED(0xDE1FA));
     for (int trial = 0; trial < 50; ++trial) {
         Polynomial<N, W, MonomialBasis> p, q;
         for (int i = 0; i < N; ++i) {
@@ -88,9 +109,11 @@ static int test_properties() {
             if (delta_sum[i] != static_cast<W>(delta_p[i] + delta_q[i])) { failures[5]++; break; }
         }
     }
+    }
 
     // 7. Carry chain idempotency
-    rng = detail::XorShift64(0xC0FFEE01);
+    {
+    detail::XorShift64 rng(SEED(0xC0FFEE01));
     for (int trial = 0; trial < 100; ++trial) {
         W input[N];
         for (int i = 0; i < N; ++i) input[i] = static_cast<W>(rng.next());
@@ -105,9 +128,11 @@ static int test_properties() {
             if (first[i] != second[i]) { failures[6]++; break; }
         }
     }
+    }
 
     // 8. Taylor shift by 0 is identity
-    rng = detail::XorShift64(0xF1F7);
+    {
+    detail::XorShift64 rng(SEED(0xF1F7));
     for (int trial = 0; trial < 50; ++trial) {
         Polynomial<N, W, MonomialBasis> p;
         for (int i = 0; i < N; ++i) p[i] = static_cast<W>(rng.next());
@@ -121,9 +146,11 @@ static int test_properties() {
             if (ff[i] != ff_shift0[i]) { failures[7]++; break; }
         }
     }
+    }
 
     // 9. Witt vector FV = VF
-    rng = detail::XorShift64(0xF1FFE);
+    {
+    detail::XorShift64 rng(SEED(0xF1FFE));
     for (int trial = 0; trial < 100; ++trial) {
         WittVector<N, W> w;
         for (int i = 0; i < N; ++i) w[i] = static_cast<W>(rng.next());
@@ -133,9 +160,11 @@ static int test_properties() {
             if (fv[i] != vf[i]) { failures[8]++; break; }
         }
     }
+    }
 
     // 10. Witt addition commutativity: a+b = b+a
-    rng = detail::XorShift64(0xC0F1E);
+    {
+    detail::XorShift64 rng(SEED(0xC0F1E));
     for (int trial = 0; trial < 50; ++trial) {
         WittVector<N, W> a, b;
         for (int i = 0; i < N; ++i) { a[i] = static_cast<W>(rng.next()); b[i] = static_cast<W>(rng.next()); }
@@ -143,9 +172,11 @@ static int test_properties() {
         auto sum_ba = witt_add(b, a);
         for (int i = 0; i < N; ++i) { if (sum_ab[i] != sum_ba[i]) { failures[9]++; break; } }
     }
+    }
 
     // 11. Witt addition associativity: (a+b)+c = a+(b+c)
-    rng = detail::XorShift64(0xA550C);
+    {
+    detail::XorShift64 rng(SEED(0xA550C));
     for (int trial = 0; trial < 50; ++trial) {
         WittVector<N, W> a, b, c;
         for (int i = 0; i < N; ++i) { a[i] = static_cast<W>(rng.next()); b[i] = static_cast<W>(rng.next()); c[i] = static_cast<W>(rng.next()); }
@@ -153,12 +184,14 @@ static int test_properties() {
         auto rhs = witt_add(a, witt_add(b, c));
         for (int i = 0; i < N; ++i) { if (lhs[i] != rhs[i]) { failures[10]++; break; } }
     }
+    }
 
     // 12. (Skipped: Adams ghost precision requires small ghost values.
     //      Verified in test_full.cpp with bounded inputs.)
 
     // 13. Teichmüller lift: τ(ab) ghost equivalence
-    rng = detail::XorShift64(0xFE1C);
+    {
+    detail::XorShift64 rng(SEED(0xFE1C));
     for (int trial = 0; trial < 50; ++trial) {
         W a = static_cast<W>(rng.next() & 0xFF);
         W b = static_cast<W>(rng.next() & 0xFF);
@@ -166,9 +199,11 @@ static int test_properties() {
         auto rhs = teichmueller_lift<N, W>(static_cast<W>(a * b));
         for (int j = 0; j < N; ++j) { if (lhs.ghost(j) != rhs.ghost(j)) { failures[12]++; break; } }
     }
+    }
 
     // 14. Polynomial addition is commutative: P+Q = Q+P
-    rng = detail::XorShift64(0xF1FA);
+    {
+    detail::XorShift64 rng(SEED(0xF1FA));
     for (int trial = 0; trial < 50; ++trial) {
         Polynomial<N, W, MonomialBasis> p, q;
         for (int i = 0; i < N; ++i) { p[i] = static_cast<W>(rng.next()); q[i] = static_cast<W>(rng.next()); }
@@ -176,9 +211,11 @@ static int test_properties() {
         auto sum2 = q + p;
         for (int i = 0; i < N; ++i) { if (sum1[i] != sum2[i]) { failures[13]++; break; } }
     }
+    }
 
     // 15. Coefficient-wise distributivity: poly_mul_cw(P, Q+R) = poly_mul_cw(P, Q) + poly_mul_cw(P, R)
-    rng = detail::XorShift64(0xD157);
+    {
+    detail::XorShift64 rng(SEED(0xD157));
     for (int trial = 0; trial < 50; ++trial) {
         Polynomial<N, W, MonomialBasis> p, q, r;
         for (int i = 0; i < N; ++i) { p[i] = static_cast<W>(rng.next()); q[i] = static_cast<W>(rng.next()); r[i] = static_cast<W>(rng.next()); }
@@ -186,9 +223,11 @@ static int test_properties() {
         auto rhs = poly_mul_cw(p, q) + poly_mul_cw(p, r);
         for (int i = 0; i < N; ++i) { if (lhs[i] != rhs[i]) { failures[14]++; break; } }
     }
+    }
 
     // 16. Coefficient-wise commutativity: poly_mul_cw(P, Q) = poly_mul_cw(Q, P)
-    rng = detail::XorShift64(0xC0DE);
+    {
+    detail::XorShift64 rng(SEED(0xC0DE));
     for (int trial = 0; trial < 50; ++trial) {
         Polynomial<N, W, MonomialBasis> p, q;
         for (int i = 0; i < N; ++i) { p[i] = static_cast<W>(rng.next()); q[i] = static_cast<W>(rng.next()); }
@@ -196,9 +235,11 @@ static int test_properties() {
         auto swapped = poly_mul_cw(q, p);
         for (int i = 0; i < N; ++i) { if (direct[i] != swapped[i]) { failures[15]++; break; } }
     }
+    }
 
     // 17. Witt multiplication is commutative: witt_mul(a, b) = witt_mul(b, a)
-    rng = detail::XorShift64(0xC0DE2);
+    {
+    detail::XorShift64 rng(SEED(0xC0DE2));
     for (int trial = 0; trial < 50; ++trial) {
         WittVector<N, W> a, b;
         for (int i = 0; i < N; ++i) { a[i] = static_cast<W>(rng.next()); b[i] = static_cast<W>(rng.next()); }
@@ -206,9 +247,11 @@ static int test_properties() {
         auto ba = witt_mul(b, a);
         for (int i = 0; i < N; ++i) { if (ab[i] != ba[i]) { failures[16]++; break; } }
     }
+    }
 
     // 18. Witt distributivity: a*(b+c) = a*b + a*c
-    rng = detail::XorShift64(0xD1572);
+    {
+    detail::XorShift64 rng(SEED(0xD1572));
     for (int trial = 0; trial < 50; ++trial) {
         WittVector<N, W> a, b, c;
         for (int i = 0; i < N; ++i) { a[i] = static_cast<W>(rng.next()); b[i] = static_cast<W>(rng.next()); c[i] = static_cast<W>(rng.next()); }
@@ -216,11 +259,12 @@ static int test_properties() {
         auto rhs = witt_add(witt_mul(a, b), witt_mul(a, c));
         for (int i = 0; i < N; ++i) { if (lhs[i] != rhs[i]) { failures[17]++; break; } }
     }
+    }
 
     // 19. Witt additive identity: a + 0 = a
     {
     WittVector<N, W> zero{};
-    rng = detail::XorShift64(0xADD0);
+    detail::XorShift64 rng(SEED(0xADD0));
     for (int trial = 0; trial < 50; ++trial) {
         WittVector<N, W> a;
         for (int i = 0; i < N; ++i) a[i] = static_cast<W>(rng.next());
@@ -232,7 +276,7 @@ static int test_properties() {
     // 20. Witt multiplicative identity: a * 1 = a  (1 = Teichmüller lift of 1)
     {
     auto one = teichmueller_lift<N, W>(W(1));
-    rng = detail::XorShift64(0x1D45);
+    detail::XorShift64 rng(SEED(0x1D45));
     for (int trial = 0; trial < 50; ++trial) {
         WittVector<N, W> a;
         for (int i = 0; i < N; ++i) a[i] = static_cast<W>(rng.next());
@@ -244,23 +288,32 @@ static int test_properties() {
     int total = 0;
     for (int i = 0; i < 30; ++i) total += failures[i];
 
-    // Verbose failure output for debugging (uncomment for per-property breakdown)
-    //if (total > 0) {
-        std::printf("    [N=%d W=%d] eval=%d bt=%d taylor=%d DΔ=%d "
-                    "Dlin=%d Δlin=%d carry=%d shift0=%d FV=VF=%d "
-                    "addComm=%d addAssoc=%d polyComm=%d dist=%d mulComm=%d "
-                    "wittMulComm=%d wittDist=%d explog=%d expHom=%d\n",
-            N, int(8*sizeof(W)),
-            failures[0], failures[1], failures[2], failures[3],
-            failures[4], failures[5], failures[6], failures[7], failures[8],
-            failures[9], failures[10], failures[13],
-            failures[14], failures[15], failures[16], failures[17], failures[18], failures[19]);
-    //}
+    std::printf("    [N=%d W=%d] eval=%d bt=%d taylor=%d DΔ=%d "
+                "Dlin=%d Δlin=%d carry=%d shift0=%d FV=VF=%d "
+                "addComm=%d addAssoc=%d polyComm=%d dist=%d mulComm=%d "
+                "wittMulComm=%d wittDist=%d explog=%d expHom=%d\n",
+        N, int(8*sizeof(W)),
+        failures[0], failures[1], failures[2], failures[3],
+        failures[4], failures[5], failures[6], failures[7], failures[8],
+        failures[9], failures[10], failures[13],
+        failures[14], failures[15], failures[16], failures[17], failures[18], failures[19]);
 
     return total;
 }
 
-int main() {
+int main(int argc, char** argv) {
+    uint64_t base_seed = 0;
+    for (int i = 1; i < argc; ++i) {
+        if (argv[i][0] == '-' && argv[i][1] == '-' && argv[i][2] == 's' &&
+            argv[i][3] == 'e' && argv[i][4] == 'e' && argv[i][5] == 'd' &&
+            argv[i][6] == '=') {
+            base_seed = static_cast<uint64_t>(std::atoll(argv[i] + 7));
+        } else if (argv[i][0] == '-' && argv[i][1] == '-' && argv[i][2] == 's' &&
+                   argv[i][3] == 'e' && argv[i][4] == 'e' && argv[i][5] == 'd') {
+            if (i + 1 < argc) base_seed = static_cast<uint64_t>(std::atoll(argv[++i]));
+        }
+    }
+
     int failures = 0;
     int total = 0;
 
@@ -274,18 +327,19 @@ int main() {
         }
     };
 
-    std::printf("=== Property-Based Tests ===\n");
+    if (base_seed != 0) std::printf("=== Property-Based Tests (seed=%llu) ===\n", (unsigned long long)base_seed);
+    else                std::printf("=== Property-Based Tests ===\n");
 
-    run("props N=2 uint16_t", test_properties<2, uint16_t>());
-    run("props N=3 uint16_t", test_properties<3, uint16_t>());
-    run("props N=4 uint16_t", test_properties<4, uint16_t>());
-    run("props N=5 uint16_t", test_properties<5, uint16_t>());
-    run("props N=2 uint32_t", test_properties<2, uint32_t>());
-    run("props N=3 uint32_t", test_properties<3, uint32_t>());
-    run("props N=4 uint32_t", test_properties<4, uint32_t>());
-    run("props N=2 uint64_t", test_properties<2, uint64_t>());
-    run("props N=3 uint64_t", test_properties<3, uint64_t>());
-    run("props N=4 uint64_t", test_properties<4, uint64_t>());
+    run("props N=2 uint16_t", test_properties<2, uint16_t>(base_seed));
+    run("props N=3 uint16_t", test_properties<3, uint16_t>(base_seed));
+    run("props N=4 uint16_t", test_properties<4, uint16_t>(base_seed));
+    run("props N=5 uint16_t", test_properties<5, uint16_t>(base_seed));
+    run("props N=2 uint32_t", test_properties<2, uint32_t>(base_seed));
+    run("props N=3 uint32_t", test_properties<3, uint32_t>(base_seed));
+    run("props N=4 uint32_t", test_properties<4, uint32_t>(base_seed));
+    run("props N=2 uint64_t", test_properties<2, uint64_t>(base_seed));
+    run("props N=3 uint64_t", test_properties<3, uint64_t>(base_seed));
+    run("props N=4 uint64_t", test_properties<4, uint64_t>(base_seed));
 
     if (failures == 0) {
         std::printf("=== All %d property test suites passed ===\n", total);

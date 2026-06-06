@@ -173,6 +173,25 @@ All tests pass under GCC 14+ and Clang 17+ with ASan+UBSan. CI covers GCC (light
 - **Compile-time cached Stirling/Pascal tables**: `detail::STIRLING_CACHE<N,W>` and `detail::PASCAL_CACHE<N,W>` are `inline constexpr` globals — computed once per (N,W) at compile time, shared across all basis conversion and difference calls.
 - **Auto-vectorization hints**: `poly_mul_unsaturated` and `poly_mul` use `DYADIC_RESTRICT` (`__restrict__`) and `#pragma GCC ivdep` on their inner multiply-accumulate loops, enabling the compiler to generate SIMD code for runtime invocations without breaking `constexpr`.
 
+## Complexity
+
+| Operation | Complexity | Notes |
+|-----------|-----------|-------|
+| `eval` | O(N) | Horner's method in monomial basis |
+| `formal_derivative` | O(N) | Direct coefficient scaling |
+| `forward_difference` | O(N²) | Pascal-cache binomial transform |
+| `taylor_shift` | O(N²) | Pascal-cache binomial transform |
+| `poly_mul` (operator*) | O(N²) | Naive convolution + carry chain. No FFT (infeasible over ℤ₂ with carries) |
+| `compose` | O(N²·M²) | Naive power-series accumulation |
+| `reversion` | O(N³) | Incremental power update (vs O(N⁴) naive) |
+| `change_basis` | O(N²) | Stirling-cache matrix multiply |
+| `witt_add` / `witt_mul` | O(N²) | Ghost-map + Newton recovery |
+| `witt_log` / `witt_exp` | O(N² + N·T) | T = ghost-series terms (~2× bit width) |
+| `poly_gcd_cw` | O(N²) | Pseudo-remainder PRS Euclidean algorithm |
+| `polynomial_resultant_cw` | O(dim!) | Laplace expansion — limited to dim ≤ 6 |
+
+All operations are constexpr; runtime performance matches compile-time complexity bounds. The carry-chain `poly_mul` is auto-vectorized with SIMD hints (`#pragma GCC ivdep`, `DYADIC_RESTRICT`).
+
 ## Known Limitations
 
 - **`Polynomial::degree()` renamed to `max_degree()`**: The old name was misleading (it returned `N−1`, the maximum possible degree, not the actual degree). Added `actual_degree()` member function.
