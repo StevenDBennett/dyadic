@@ -157,8 +157,8 @@ Optional: `-DDYADIC_HEAVY_PROOFS=ON` for exhaustive compile-time proofs.
 
 | File | What |
 |------|------|
-| `test_verify.cpp` | 22 named compile-time proofs (~55 assertions) + runtime verification across 9 (N,W) combos |
-| `test_property.cpp` | Randomized property-based tests: 15 invariants × 10 (N,W) combos |
+| `test_verify.cpp` | 24 named compile-time proofs (~55 assertions) + runtime verification across 9 (N,W) combos |
+| `test_property.cpp` | Randomized property-based tests: 18 invariants × 10 (N,W) combos |
 | `test_full.cpp` | 17 functional test groups covering the entire API surface |
 | `test_negatives.cpp` | Fork-based assertion verification (6 precondition checks) |
 | `benchmark.cpp` | Runtime benchmarks for key operations (build manually: `g++ -O2 -std=c++20 -I.. benchmark.cpp`) |
@@ -169,7 +169,7 @@ All tests pass under GCC 14+ and Clang 17+ with ASan+UBSan. CI covers GCC (light
 
 - **Two ring semantics**: `operator*` uses carry-chain `poly_mul` (correct ℤ₂ arithmetic with overflow propagation). Functions with `_cw` suffix (`poly_divmod_cw`, `poly_gcd_cw`, `poly_mul_cw`) operate coefficient-wise (standard ring). These are **different rings** — use `poly_mul_cw()` and `verify_divmod_cw()` to verify divmod/gcd results.
 - **`quad_width<W>` alias**: Shorthand for `widen_t<dword_t<W>>` (up to 4× word width), used by ghost-map accumulation and unsaturated polynomial products.
-- **`assert` preconditions**: All silent-failure points (`poly_divmod_cw` with zero/even divisor, `witt_exp` with v₂(a₀) < 2, `witt_log`/`witt_inverse` with even a₀, `reversion` with even P[1]) now use `assert()`. Invalid inputs trigger `SIGABRT` in debug builds.
+- **`assert` preconditions**: All silent-failure points (`poly_divmod_cw` with zero/even divisor, `witt_exp` with v₂(a₀) < 2, `witt_log`/`witt_inverse` with even a₀, `reversion` with even P[1]) now use `assert()`. Invalid inputs trigger `SIGABRT` in debug builds. A few functions return 0 for invalid inputs by design rather than asserting: `poly_discriminant_cw` returns 0 when degree < 1 or leading coefficient is even; `det_laplace` returns 0 for dim > 6 (use Bareiss via `determinant_cw` instead).
 - **Compile-time cached Stirling/Pascal tables**: `detail::STIRLING_CACHE<N,W>` and `detail::PASCAL_CACHE<N,W>` are `inline constexpr` globals — computed once per (N,W) at compile time, shared across all basis conversion and difference calls.
 - **Auto-vectorization hints**: `poly_mul_unsaturated` and `poly_mul` use `DYADIC_RESTRICT` (`__restrict__`) and `#pragma GCC ivdep` on their inner multiply-accumulate loops, enabling the compiler to generate SIMD code for runtime invocations without breaking `constexpr`.
 

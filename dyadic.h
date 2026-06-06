@@ -531,13 +531,14 @@ struct Polynomial : std::array<W, N> {
 template<int N, std::unsigned_integral W>
 constexpr Polynomial<N, W, FallingFactorialBasis> monomial_to_falling(const Polynomial<N, W, MonomialBasis>& p) noexcept {
     constexpr auto& cache = detail::STIRLING_CACHE<N, W>;
+    using dw_t = dword_t<W>;
     Polynomial<N, W, FallingFactorialBasis> r{};
     for (int k = 0; k < N; ++k) {
-        W sum = 0;
+        dw_t sum = 0;
         for (int n = k; n < N; ++n) {
-            sum += p[n] * cache.S2[n][k];
+            sum += static_cast<dw_t>(p[n]) * static_cast<dw_t>(cache.S2[n][k]);
         }
-        r[k] = sum;
+        r[k] = static_cast<W>(sum);
     }
     return r;
 }
@@ -545,13 +546,14 @@ constexpr Polynomial<N, W, FallingFactorialBasis> monomial_to_falling(const Poly
 template<int N, std::unsigned_integral W>
 constexpr Polynomial<N, W, MonomialBasis> falling_to_monomial(const Polynomial<N, W, FallingFactorialBasis>& p) noexcept {
     constexpr auto& cache = detail::STIRLING_CACHE<N, W>;
+    using dw_t = dword_t<W>;
     Polynomial<N, W, MonomialBasis> r{};
     for (int k = 0; k < N; ++k) {
-        W sum = 0;
+        dw_t sum = 0;
         for (int n = k; n < N; ++n) {
-            sum += W(1) * p[n] * cache.s1[n][k];
+            sum += static_cast<dw_t>(p[n]) * static_cast<dw_t>(cache.s1[n][k]);
         }
-        r[k] = sum;
+        r[k] = static_cast<W>(sum);
     }
     return r;
 }
@@ -697,6 +699,13 @@ constexpr Polynomial<N-1, W, FallingFactorialBasis> formal_derivative(const Poly
     return change_basis<FallingFactorialBasis>(dmono);
 }
 
+template<int N, std::unsigned_integral W>
+constexpr Polynomial<N-1, W, TaylorBasis> formal_derivative(const Polynomial<N, W, TaylorBasis>& p) noexcept {
+    auto mono = change_basis<MonomialBasis>(p);
+    auto dmono = formal_derivative(mono);
+    return change_basis<TaylorBasis>(dmono);
+}
+
 // ============================================================================
 // 11. Forward Difference (Axiom 3)
 // ============================================================================
@@ -722,6 +731,13 @@ constexpr Polynomial<N-1, W, FallingFactorialBasis> forward_difference(const Pol
         r[i-1] = static_cast<W>(i) * p[i];
     }
     return r;
+}
+
+template<int N, std::unsigned_integral W>
+constexpr Polynomial<N-1, W, TaylorBasis> forward_difference(const Polynomial<N, W, TaylorBasis>& p) noexcept {
+    auto mono = change_basis<MonomialBasis>(p);
+    auto dmono = forward_difference(mono);
+    return change_basis<TaylorBasis>(dmono);
 }
 
 // ============================================================================
@@ -914,7 +930,11 @@ constexpr std::pair<W, W> adc(W a, W b, W carry_in) noexcept {
 
 // ADX-accelerated 64-bit add with carry.
 #if defined(__x86_64__) && defined(__ADX__)
+#if defined(_MSC_VER)
+#include <intrin.h>
+#else
 #include <x86intrin.h>
+#endif
 template<>
 inline std::pair<uint64_t, uint64_t> adc<uint64_t>(uint64_t a, uint64_t b, uint64_t carry_in) noexcept {
     unsigned char cf = static_cast<unsigned char>(carry_in);
@@ -1425,6 +1445,13 @@ constexpr Polynomial<N, W, FallingFactorialBasis> taylor_shift(const Polynomial<
     return r;
 }
 
+template<int N, std::unsigned_integral W>
+constexpr Polynomial<N, W, TaylorBasis> taylor_shift(const Polynomial<N, W, TaylorBasis>& p, W delta) noexcept {
+    auto mono = change_basis<MonomialBasis>(p);
+    auto shifted = taylor_shift(mono, delta);
+    return change_basis<TaylorBasis>(shifted);
+}
+
 // ============================================================================
 // 17. Indefinite Sum Σ (Inverse of Δ)
 // ============================================================================
@@ -1456,6 +1483,13 @@ constexpr Polynomial<N+1, W, MonomialBasis> indefinite_sum(const Polynomial<N, W
     auto ff = change_basis<FallingFactorialBasis>(p);
     auto sum_ff = indefinite_sum(ff);
     return change_basis<MonomialBasis>(sum_ff);
+}
+
+template<int N, std::unsigned_integral W>
+constexpr Polynomial<N+1, W, TaylorBasis> indefinite_sum(const Polynomial<N, W, TaylorBasis>& p) noexcept {
+    auto mono = change_basis<MonomialBasis>(p);
+    auto sum = indefinite_sum(mono);
+    return change_basis<TaylorBasis>(sum);
 }
 
 // ============================================================================
@@ -1494,6 +1528,7 @@ constexpr auto ghost_j_full(const W* a, int j) noexcept {
 // S_j = Σ_{i<j} 2^i · r_i^{2^{j-i}}.
 template<int N, std::unsigned_integral W>
 constexpr WittVector<N, W> ghost_recover(const std::array<quad_width<W>, N>& G) noexcept {
+    static_assert(N <= 32, "ghost_recover: N too large, stack overflow risk (N^2 * sizeof(gw_t))");
     using gw_t = quad_width<W>;
     WittVector<N, W> r;
     r[0] = static_cast<W>(G[0]);
@@ -1600,6 +1635,7 @@ constexpr Polynomial<(N-1)*(M-1)+1, W, MonomialBasis>
 compose(const Polynomial<N, W, MonomialBasis>& P,
         const Polynomial<M, W, MonomialBasis>& Q) noexcept {
     constexpr int R_SIZE = (N - 1) * (M - 1) + 1;
+    static_assert(R_SIZE <= 4096, "compose: result too large, stack overflow risk");
 
     std::array<W, R_SIZE> result{};
     std::array<W, R_SIZE> power{};
@@ -1781,13 +1817,10 @@ constexpr int v2_128(uint128_t x) noexcept {
 
 constexpr uint128_t modinv_odd_128(uint128_t a) noexcept {
     uint128_t x = 1;
-    x = x * (uint128_t(2) - a * x);
-    x = x * (uint128_t(2) - a * x);
-    x = x * (uint128_t(2) - a * x);
-    x = x * (uint128_t(2) - a * x);
-    x = x * (uint128_t(2) - a * x);
-    x = x * (uint128_t(2) - a * x);
-    x = x * (uint128_t(2) - a * x);
+    constexpr int iterations = std::bit_width(128u) - 1;
+    for (int i = 0; i < iterations; ++i) {
+        x = x * (uint128_t(2) - a * x);
+    }
     return x;
 }
 

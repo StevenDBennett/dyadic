@@ -757,15 +757,38 @@ static_assert(PROOF_ADAMS_GHOST,      "PROOF_ADAMS_GHOST");
 // which converges with budget to spare.
 inline constexpr bool PROOF_WITT_LOG_EXP = []() constexpr {
     // Teichmüller lift: a[0]=512 (v2=9), higher components zero.
-    WittVector<3, uint32_t> a{{512, 0, 0}};
+    // N=5 ensures enough ghost-map precision for the exp → log roundtrip.
+    WittVector<5, uint32_t> a{{512, 0, 0, 0, 0}};
     auto b = witt_exp(a);       // b[0] is odd (unit in the Witt ring)
     auto c = witt_log(b);        // should recover a
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 5; ++i) {
         if (a[i] != c[i]) return false;
     }
     return true;
 }();
 static_assert(PROOF_WITT_LOG_EXP,      "PROOF_WITT_LOG_EXP");
+
+// Witt inverse: a·a^{-1} = τ(1) for odd a[0] (Teichmüller unit).
+inline constexpr bool PROOF_WITT_INVERSE = []() constexpr {
+    for (uint32_t a0 : {1u, 3u, 5u, 7u, 9u, 65535u}) {
+        WittVector<3, uint32_t> w{{a0, 2, 3}};
+        if (!check_witt_inverse(w)) return false;
+    }
+    return true;
+}();
+static_assert(PROOF_WITT_INVERSE,       "PROOF_WITT_INVERSE");
+
+// exp∘log roundtrip: witt_exp(witt_log(a)) = a for a[0] ≡ 1 (mod 4).
+// For a[0] ≡ 3 (mod 4), the log yields v₂(log(a₀)) = 1, which doesn't
+// satisfy the exp convergence requirement v₂ ≥ 2.
+inline constexpr bool PROOF_WITT_EXP_LOG_ROUNDTRIP = []() constexpr {
+    for (uint32_t a0 : {1u, 5u, 9u, 13u, 65533u}) {
+        WittVector<3, uint32_t> w{{a0, 2, 3}};
+        if (!check_witt_exp_log_roundtrip(w)) return false;
+    }
+    return true;
+}();
+static_assert(PROOF_WITT_EXP_LOG_ROUNDTRIP, "PROOF_WITT_EXP_LOG_ROUNDTRIP");
 
 // ============================================================================
 // Runtime Verification (for cases too large for constexpr)
