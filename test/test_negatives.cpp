@@ -4,7 +4,7 @@
 // POSIX-only (fork/waitpid); skipped on Windows.
 
 #include "dyadic.h"
-#include "dyadic_verify.h"
+#include <dyadic/verify.h>
 #include <cstdio>
 
 #if defined(_WIN32) || defined(_WIN64)

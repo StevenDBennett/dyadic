@@ -1,6 +1,6 @@
 # dyadic — Six-Axiom 2-Adic Operator Calculus
 
-Single-header C++20 library for arithmetic in ℤ₂[[t]]: carry chains, formal derivatives, forward differences, Witt vectors, basis conversions, power series composition and reversion.
+Header-only C++20 library for arithmetic in ℤ₂[[t]]: carry chains, formal derivatives, forward differences, Witt vectors, basis conversions, power series composition and reversion. Umbrella header `dyadic.h` includes all sub-headers from `include/dyadic/`.
 
 ```cpp
 #include "dyadic.h"
@@ -54,7 +54,8 @@ int main() {
 | **Witt Vectors** | `WittVector<N,W>` with ghost map, Frobenius, Verschiebung, `+`, `*`, `exp`, `log`, `inverse`, `adams_operation`, `teichmueller_lift` |
 | **Carry Chain** | Full-width carry propagation `C = (I−N)⁻¹` — converges in one pass |
 | **Compose / Reversion** | Power series composition P(Q(t)) and Lagrange inversion |
-| **Compile-Time Proofs** | 22 named `static_assert` proofs (~55 total assertions) verifying ring axioms, basis roundtrips, D∘Δ=Δ∘D, ghost homomorphism, carry idempotence, Witt exp/log roundtrip (see `dyadic_verify.h`) |
+| **Compile-Time Proofs** | 22 named `static_assert` proofs (~55 total assertions) verifying ring axioms, basis roundtrips, D∘Δ=Δ∘D, ghost homomorphism, carry idempotence, Witt exp/log roundtrip (see `dyadic/verify.h`) |
+| **Combinatorial** | `binom`, `stirling_2`, `stirling_1`, `stirling_1_unsigned` — all `constexpr`, cached at compile time |
 
 ## More Examples
 
@@ -110,7 +111,7 @@ auto R  = reversion(P);   // Lagrange inverse: P(R(t)) = t
 ### Compile-time verification
 
 ```cpp
-#include "dyadic_verify.h"  // triggers all static_asserts at compile time
+#include <dyadic/verify.h>  // triggers all static_asserts at compile time
 // If it compiles, all 22 named static_assert proofs passed.
 ```
 
@@ -137,7 +138,7 @@ if (!check_witt_recovery_precision(w))
 
 ## Build & Integrate
 
-**As a single header** — copy `dyadic.h` into your project and `#include "dyadic.h"`.
+**As a header collection** — copy `dyadic.h` and the `include/dyadic/` directory into your project's include path, then `#include <dyadic.h>` or `#include <dyadic/core.h>`.
 
 **With CMake**:
 ```bash
@@ -157,11 +158,12 @@ Optional: `-DDYADIC_HEAVY_PROOFS=ON` for exhaustive compile-time proofs.
 
 | File | What |
 |------|------|
+| `test_core.cpp` | Core axiom unit tests: six axioms, carry chain, arithmetic, evaluation |
 | `test_verify.cpp` | 24 named compile-time proofs (~55 assertions) + runtime verification across 9 (N,W) combos |
 | `test_property.cpp` | Randomized property-based tests: 18 invariants × 10 (N,W) combos |
 | `test_full.cpp` | 17 functional test groups covering the entire API surface |
 | `test_negatives.cpp` | Fork-based assertion verification (6 precondition checks) |
-| `benchmark.cpp` | Runtime benchmarks for key operations (build manually: `g++ -O2 -std=c++20 -I.. benchmark.cpp`) |
+| `benchmark.cpp` | Runtime benchmarks for key operations (build manually: `g++ -O2 -std=c++20 -I.. -I../include benchmark.cpp`) |
 
 All tests pass under GCC 14+ and Clang 17+ with ASan+UBSan. CI covers GCC (light + heavy proofs), Clang, and MSVC on Windows.
 
@@ -198,7 +200,7 @@ All operations are constexpr; runtime performance matches compile-time complexit
 - **Taylor basis roundtrip**: `T_k = k! · FF_k` wraps when `FF_k ≥ 2^W / k!`. Use small coefficients for exact roundtrips. FallingFactorial basis has no such limitation.
 - **Witt precision window**: Recovery `r_j = (G_j − S_j) / 2^j` requires `r_j < 2^{W−j}`.
 - **Witt exp/log term truncation**: Uses valuation-aware dynamic term counting with 2× bit-width budget. Requires `v₂(x) ≥ 2` for exp convergence (mathematical limit — `v₂(x) = 1` stalls at `≤ log₂(n)+1`). Log converges for `v₂(y) ≥ 1` (~135 terms at 128-bit).
-- **`detail::uint128_t`** is a software 128-bit pair — no `unsigned __int128` required. `__int128` is used only as an optimization in `binom()`, guarded by feature-test macros.
+- **`detail::uint128_t`** is a software 128-bit pair — no `unsigned __int128` required. `__int128` is used only as an optimization in `binom()` (`dyadic/combinatorial.h`), guarded by feature-test macros.
 
 ## License
 

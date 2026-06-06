@@ -3,7 +3,8 @@
 // Usage: test_property [--seed <uint64>]
 //   Default seed is 0 (uses hardcoded per-section seeds for reproducibility).
 
-#include "dyadic_verify.h"
+#include <dyadic/verify.h>
+#include <dyadic/calculus.h>
 #include <cstdio>
 #include <cstdlib>
 

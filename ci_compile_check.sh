@@ -4,6 +4,9 @@ set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 FAIL=0
 
+# Include paths: root (for umbrella dyadic.h) and include/ (for sub-headers)
+INC="-I '$DIR' -I '$DIR/include'"
+
 # Detect available compilers — discover by pattern instead of hardcoded version ranges
 find_compiler() {
     local base="$1"
@@ -53,26 +56,26 @@ check() {
     green "  PASS  $label"
 }
 
-echo "=== Compile-time Verification (GCC: $GCC, Clang: ${CLANG:-none}) ==="
+echo "=== Compile-Time Verification (GCC: $GCC, Clang: ${CLANG:-none}) ==="
 
 # --- GCC verify header ---
 check "GCC: verify.h standalone (light proofs)" \
-    "$GCC -std=c++20 -O2 -I '$DIR' -c -x c++ '$DIR/dyadic_verify.h' -o /dev/null -Wall -Wextra -Wpedantic -fconstexpr-ops-limit=200000000"
+    "$GCC -std=c++20 -O2 $INC -c -x c++ '$DIR/include/dyadic/verify.h' -o /dev/null -Wall -Wextra -Wpedantic -fconstexpr-ops-limit=200000000"
 
 check "GCC: verify.h standalone (heavy proofs)" \
-    "$GCC -std=c++20 -O2 -I '$DIR' -c -x c++ '$DIR/dyadic_verify.h' -o /dev/null -Wall -Wextra -Wpedantic -DDYADIC_HEAVY_PROOFS -fconstexpr-ops-limit=200000000"
+    "$GCC -std=c++20 -O2 $INC -c -x c++ '$DIR/include/dyadic/verify.h' -o /dev/null -Wall -Wextra -Wpedantic -DDYADIC_HEAVY_PROOFS -fconstexpr-ops-limit=200000000"
 
 # --- GCC dyadic.h header ---
 check "GCC: dyadic.h standalone" \
-    "$GCC -std=c++20 -O2 -I '$DIR' -c -x c++ '$DIR/dyadic.h' -o /dev/null -Wall -Wextra -Wpedantic"
+    "$GCC -std=c++20 -O2 $INC -c -x c++ '$DIR/dyadic.h' -o /dev/null -Wall -Wextra -Wpedantic"
 
 # --- Clang verify header (exhaustive proofs need extra constexpr steps) ---
 if [ -n "$CLANG" ]; then
     check "Clang: verify.h standalone" \
-        "$CLANG -std=c++20 -O2 -I '$DIR' -c -x c++ '$DIR/dyadic_verify.h' -o /dev/null -Wall -Wpedantic -fconstexpr-steps=50000000"
+        "$CLANG -std=c++20 -O2 $INC -c -x c++ '$DIR/include/dyadic/verify.h' -o /dev/null -Wall -Wpedantic -fconstexpr-steps=50000000"
 
     check "Clang: dyadic.h standalone" \
-        "$CLANG -std=c++20 -O2 -I '$DIR' -c -x c++ '$DIR/dyadic.h' -o /dev/null -Wall -Wpedantic"
+        "$CLANG -std=c++20 -O2 $INC -c -x c++ '$DIR/dyadic.h' -o /dev/null -Wall -Wpedantic"
 else
     red "  SKIP  Clang: not installed"
 fi
@@ -81,31 +84,37 @@ echo ""
 echo "=== Full Test Suite ==="
 
 # --- GCC test suite ---
+check "GCC: core unit tests" \
+    "$GCC -std=c++20 -O2 $INC '$DIR/test/test_core.cpp' -o /tmp/_ci_core 2>&1 && /tmp/_ci_core"
+
 check "GCC: verify + runtime proofs" \
-    "$GCC -std=c++20 -O2 -I '$DIR' '$DIR/test/test_verify.cpp' -o /tmp/_ci_verify 2>&1 && /tmp/_ci_verify"
+    "$GCC -std=c++20 -O2 $INC '$DIR/test/test_verify.cpp' -o /tmp/_ci_verify 2>&1 && /tmp/_ci_verify"
 
 check "GCC: property-based tests" \
-    "$GCC -std=c++20 -O2 -I '$DIR' '$DIR/test/test_property.cpp' -o /tmp/_ci_property 2>&1 && /tmp/_ci_property"
+    "$GCC -std=c++20 -O2 $INC '$DIR/test/test_property.cpp' -o /tmp/_ci_property 2>&1 && /tmp/_ci_property"
 
 check "GCC: full functional tests" \
-    "$GCC -std=c++20 -O2 -I '$DIR' '$DIR/test/test_full.cpp' -o /tmp/_ci_full 2>&1 && /tmp/_ci_full"
+    "$GCC -std=c++20 -O2 $INC '$DIR/test/test_full.cpp' -o /tmp/_ci_full 2>&1 && /tmp/_ci_full"
 
 # --- Clang test suite ---
 if [ -n "$CLANG" ]; then
-    check "Clang: verify + runtime proofs" \
-        "$CLANG -std=c++20 -O2 -I '$DIR' -fconstexpr-steps=50000000 '$DIR/test/test_verify.cpp' -o /tmp/_ci_verify_c 2>&1 && /tmp/_ci_verify_c"
+    check "Clang: core unit tests" \
+        "$CLANG -std=c++20 -O2 $INC -fconstexpr-steps=50000000 '$DIR/test/test_core.cpp' -o /tmp/_ci_core_c 2>&1 && /tmp/_ci_core_c"
 
-check "Clang: property-based tests" \
-    "$CLANG -std=c++20 -O2 -I '$DIR' -fconstexpr-steps=50000000 '$DIR/test/test_property.cpp' -o /tmp/_ci_property_c 2>&1 && /tmp/_ci_property_c"
+    check "Clang: verify + runtime proofs" \
+        "$CLANG -std=c++20 -O2 $INC -fconstexpr-steps=50000000 '$DIR/test/test_verify.cpp' -o /tmp/_ci_verify_c 2>&1 && /tmp/_ci_verify_c"
+
+    check "Clang: property-based tests" \
+        "$CLANG -std=c++20 -O2 $INC -fconstexpr-steps=50000000 '$DIR/test/test_property.cpp' -o /tmp/_ci_property_c 2>&1 && /tmp/_ci_property_c"
 
     check "Clang: full functional tests" \
-        "$CLANG -std=c++20 -O2 -I '$DIR' -fconstexpr-steps=50000000 '$DIR/test/test_full.cpp' -o /tmp/_ci_full_c 2>&1 && /tmp/_ci_full_c"
+        "$CLANG -std=c++20 -O2 $INC -fconstexpr-steps=50000000 '$DIR/test/test_full.cpp' -o /tmp/_ci_full_c 2>&1 && /tmp/_ci_full_c"
 fi
 
 echo ""
 echo "=== Sanitized Build (GCC) ==="
 check "GCC: ASan + UBSan" \
-    "$GCC -std=c++20 -O1 -fsanitize=address,undefined -I '$DIR' '$DIR/test/test_verify.cpp' -o /tmp/_ci_san 2>&1 && /tmp/_ci_san"
+    "$GCC -std=c++20 -O1 -fsanitize=address,undefined $INC '$DIR/test/test_verify.cpp' -o /tmp/_ci_san 2>&1 && /tmp/_ci_san"
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then

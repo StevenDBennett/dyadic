@@ -1,0 +1,68 @@
+// continued_fractions.h — Continued Fraction Expansion (Dyadic extension)
+// Requires: dyadic/dynamic_polynomial.h
+
+#pragma once
+
+#include <dyadic/dynamic_polynomial.h>
+
+#include <utility>
+#include <vector>
+
+namespace dyadic {
+
+template<std::unsigned_integral W>
+std::vector<W> cf_expand(const DynamicPolynomial<W, MonomialBasis>& series, int max_terms) {
+    std::vector<W> result;
+    auto s = series;
+    for (int k = 0; k < max_terms; ++k) {
+        if (s.size() == 0) break;
+        result.push_back(s[0]);
+        if (s.size() == 1) break;
+        DynamicPolynomial<W, MonomialBasis> next(s.size() - 2);
+        for (int i = 0; i < next.size(); ++i)
+            next[i] = s[i + 1];
+        s = std::move(next);
+    }
+    return result;
+}
+
+template<std::unsigned_integral W>
+std::pair<DynamicPolynomial<W, MonomialBasis>, DynamicPolynomial<W, MonomialBasis>>
+cf_convergent(const std::vector<W>& c, int n) {
+    using DP = DynamicPolynomial<W, MonomialBasis>;
+    if (n < 0 || c.empty()) return {DP{}, DP{}};
+    std::vector<W> Pm1 = {1};
+    std::vector<W> P0  = {c[0]};
+    std::vector<W> Qm1 = {0};
+    std::vector<W> Q0  = {1};
+    for (int k = 1; k <= n && k < (int)c.size(); ++k) {
+        int deg = std::max((int)P0.size(), (int)Pm1.size() + 1);
+        std::vector<W> Pk(deg, 0);
+        for (int i = 0; i < (int)P0.size(); ++i)
+            Pk[i] = c[k] * P0[i];
+        for (int i = 0; i < (int)Pm1.size(); ++i)
+            Pk[i + 1] += Pm1[i];
+        std::vector<W> Qk(deg, 0);
+        for (int i = 0; i < (int)Q0.size(); ++i)
+            Qk[i] = c[k] * Q0[i];
+        for (int i = 0; i < (int)Qm1.size(); ++i)
+            Qk[i + 1] += Qm1[i];
+        Pm1 = std::move(P0);
+        P0  = std::move(Pk);
+        Qm1 = std::move(Q0);
+        Q0  = std::move(Qk);
+    }
+    return {DP(P0), DP(Q0)};
+}
+
+template<std::unsigned_integral W>
+DynamicPolynomial<W, MonomialBasis>
+cf_eval(const std::vector<W>& c, int max_terms, W x) {
+    using DP = DynamicPolynomial<W, MonomialBasis>;
+    auto [P, Q] = cf_convergent(c, max_terms);
+    if (Q.eval(x) % 2 == 1)
+        return DP({P.eval(x) * modinv_odd(Q.eval(x))});
+    return DP({});
+}
+
+} // namespace dyadic

@@ -10,6 +10,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_library(dyadic INTERFACE)
 target_include_directories(dyadic INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 target_compile_features(dyadic INTERFACE cxx_std_20)
@@ -40,6 +41,7 @@ if(DYADIC_BUILD_TESTS AND (NOT DEFINED PROJECT_IS_SUBMODULE OR NOT PROJECT_IS_SU
         add_test(NAME ${name} COMMAND ${name})
     endfunction()
 
+    add_dyadic_test(test_core      test/test_core.cpp)
     add_dyadic_test(test_verify    test/test_verify.cpp)
     add_dyadic_test(test_property  test/test_property.cpp)
     add_dyadic_test(test_full      test/test_full.cpp)

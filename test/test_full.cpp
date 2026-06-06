@@ -184,10 +184,10 @@ static int test_polynomial_edge() {
     auto ff = change_basis<FallingFactorialBasis>(mono);
     auto taylor = change_basis<TaylorBasis>(mono);
     for (uint64_t x = 0; x < 10; ++x) {
-        if (ff.eval(x) != mono.eval(x)) {
+        if (eval(ff, x) != mono.eval(x)) {
             std::printf("FAIL ff eval mismatch at %lu\n", x); f++;
         }
-        if (taylor.eval(x) != mono.eval(x)) {
+        if (eval(taylor, x) != mono.eval(x)) {
             std::printf("FAIL taylor eval mismatch at %lu\n", x); f++;
         }
     }
@@ -427,10 +427,10 @@ static int test_change_basis() {
     for (int i = 0; i < 4; ++i) if (mono[i] != identity[i]) { f++; break; }
 
     // Falling factorial eval matches monomial eval
-    if (ff.eval(0) != 1) { f++; }
-    if (ff.eval(1) != mono.eval(1)) { f++; }
-    if (ff.eval(2) != mono.eval(2)) { f++; }
-    if (ff.eval(5) != mono.eval(5)) { f++; }
+    if (eval(ff, uint64_t(0)) != 1) { f++; }
+    if (eval(ff, uint64_t(1)) != mono.eval(1)) { f++; }
+    if (eval(ff, uint64_t(2)) != mono.eval(2)) { f++; }
+    if (eval(ff, uint64_t(5)) != mono.eval(5)) { f++; }
 
     return f;
 }
@@ -1057,7 +1057,7 @@ static int test_precision_windows() {
     // Taylor roundtrip: small coefficients should be exact
     {
         Polynomial<4, uint64_t, MonomialBasis> small{{0, 1, 0, 0}};
-        if (!check_taylor_roundtrip_precision(small)) {
+        if (!verify::check_taylor_roundtrip_precision(small)) {
             std::printf("FAIL taylor precision small\n"); f++;
         }
     }
@@ -1068,7 +1068,7 @@ static int test_precision_windows() {
         // So for N=6 (degree 5), FF_5 needs FF_5 < 256/120 = ~2.1 for exactness.
         // Coefficients larger than 2 will cause precision loss.
         Polynomial<6, uint8_t, MonomialBasis> large{{0, 0, 0, 0, 0, 255}};
-        bool exact = check_taylor_roundtrip_precision(large);
+        bool exact = verify::check_taylor_roundtrip_precision(large);
         // This is expected to fail — verify that the check detects it
         auto taylor = change_basis<TaylorBasis>(large);
         auto back = change_basis<MonomialBasis>(taylor);

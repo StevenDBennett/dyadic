@@ -3,7 +3,7 @@
 // The runtime verifications extend coverage beyond what constexpr can handle.
 // Usage: test_verify [--seed <uint64>]
 
-#include "dyadic_verify.h"
+#include <dyadic/verify.h>
 #include <cstdio>
 #include <cstdlib>
 
