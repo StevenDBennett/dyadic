@@ -50,6 +50,13 @@ if(DYADIC_BUILD_TESTS AND (NOT DEFINED PROJECT_IS_SUBMODULE OR NOT PROJECT_IS_SU
     # Benchmark (not part of default CTest — run manually)
     add_executable(benchmark test/benchmark.cpp)
     target_link_libraries(benchmark PRIVATE dyadic)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+        target_compile_options(benchmark PRIVATE -fconstexpr-ops-limit=200000000)
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_compile_options(benchmark PRIVATE -fconstexpr-steps=50000000)
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+        target_compile_options(benchmark PRIVATE /constexpr:steps50000000)
+    endif()
 
     # Sanitized build target (ASan + UBSan) — GCC/Clang only
     if(NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
