@@ -990,7 +990,11 @@ constexpr void poly_mul_unsaturated(Accum* DYADIC_RESTRICT r,
     int nr = na + nb - 1;
     for (int i = 0; i < nr; ++i) r[i] = 0;
     for (int i = 0; i < na; ++i) {
+#if defined(__clang__)
+        #pragma clang loop vectorize(enable)
+#elif defined(__GNUC__)
         #pragma GCC ivdep
+#endif
         for (int j = 0; j < nb; ++j) {
             r[i + j] += static_cast<Accum>(a[i]) * static_cast<Accum>(b[j]);
         }
@@ -1022,7 +1026,11 @@ constexpr void poly_mul(W* DYADIC_RESTRICT r, const W* DYADIC_RESTRICT a, int na
                 int j_start = (pos > i) ? pos - i : 0;
                 int j_end = nb;
                 if (i + j_end > end) j_end = end - i;
+#if defined(__clang__)
+                #pragma clang loop vectorize(enable)
+#elif defined(__GNUC__)
                 #pragma GCC ivdep
+#endif
                 for (int j = j_start; j < j_end; ++j) {
                     buf[i + j - pos] += static_cast<accum_t>(a[i]) * static_cast<accum_t>(b[j]);
                 }
