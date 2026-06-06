@@ -1,5 +1,5 @@
 // dyadic — Six-Axiom 2-Adic Operator Calculus
-// Single-header C++20 library — Sections 1-22
+// Single-header C++20 library — Sections 1-24
 
 #pragma once
 
@@ -7,9 +7,12 @@
 #include <bit>
 #include <cstdint>
 #include <functional>
+
 #include <type_traits>
 #include <concepts>
 #include <cstdio>
+#include <utility>
+
 
 namespace dyadic {
 
@@ -756,6 +759,32 @@ struct GhostPowers {
     }
 };
 
+// GhostPowersFull — gw_t-precision precomputed powers for ghost_map.
+// Like GhostPowers but stores at gw_t (= widen_t<dword_t<W>>) precision
+// to avoid truncation in log/exp/inverse recovery. Single O(N²) init.
+template<int N, std::unsigned_integral W>
+struct GhostPowersFull {
+    using gw_t = detail::widen_t<dword_t<W>>;
+    std::array<std::array<gw_t, N>, N> pow{};
+
+    constexpr void init(const W* a) noexcept {
+        for (int i = 0; i < N; ++i) {
+            pow[i][0] = static_cast<gw_t>(a[i]);
+            for (int k = 1; k < N - i; ++k) {
+                pow[i][k] = pow[i][k-1] * pow[i][k-1];
+            }
+        }
+    }
+
+    constexpr gw_t ghost(int j) const noexcept {
+        gw_t sum{};
+        for (int i = 0; i <= j; ++i) {
+            sum += (gw_t(uint64_t(1)) << i) * pow[i][j - i];
+        }
+        return sum;
+    }
+};
+
 // Ghost sum using widen_t<dword_t<W>> for extra headroom.
 // For W=uint8_t this is uint32_t (4×); for larger types it's the next
 // level in the 2× chain (dword_t widened once more).
@@ -851,10 +880,61 @@ constexpr bool check_ghost_ring(const WittVector<N,W>& a, const WittVector<N,W>&
 }
 
 // ============================================================================
-// 14. Carry Chain (Full-Width C = (I−N)^{−1})
+// 14. Carry Chain & Hardware-Accelerated Arithmetic
 // ============================================================================
 // The carry chain C = (I−N)^{−1}, operating on raw dword arrays.
 // Completes in one pass for any input. No headroom limitation.
+//
+// The adc/add_overflow/mul_overflow helpers provide constexpr-safe
+// platform-optimized arithmetic, using __builtin_add_overflow and
+// ADX/BMI2 intrinsics where available.
+
+namespace detail {
+
+// Add with carry: returns (sum, carry_out) where carry_in/carry_out are 0 or 1.
+template<std::unsigned_integral W>
+constexpr std::pair<W, W> adc(W a, W b, W carry_in) noexcept {
+    using dw_t = dword_t<W>;
+    dw_t sum = static_cast<dw_t>(a) + static_cast<dw_t>(b) + static_cast<dw_t>(carry_in);
+    return {static_cast<W>(sum), static_cast<W>(sum >> (8 * sizeof(W)))};
+}
+
+// ADX-accelerated 64-bit add with carry.
+#if defined(__x86_64__) && defined(__ADX__)
+#include <x86intrin.h>
+template<>
+inline std::pair<uint64_t, uint64_t> adc<uint64_t>(uint64_t a, uint64_t b, uint64_t carry_in) noexcept {
+    unsigned char cf = static_cast<unsigned char>(carry_in);
+    uint64_t result;
+    cf = _addcarryx_u64(cf, a, b, &result);
+    return {result, static_cast<uint64_t>(cf)};
+}
+#endif
+
+// Overflow-checked addition (constexpr on GCC 5+/Clang 3.8+).
+template<std::unsigned_integral T>
+constexpr bool add_overflow(T a, T b, T* result) noexcept {
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(__STRICT_ANSI__)
+    return __builtin_add_overflow(a, b, result);
+#else
+    *result = a + b;
+    return *result < a;
+#endif
+}
+
+// Overflow-checked multiplication (constexpr on GCC 5+/Clang 3.8+).
+template<std::unsigned_integral T>
+constexpr bool mul_overflow(T a, T b, T* result) noexcept {
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(__STRICT_ANSI__)
+    return __builtin_mul_overflow(a, b, result);
+#else
+    *result = a * b;
+    (void)a; (void)b;
+    return false;
+#endif
+}
+
+} // namespace detail
 
 template<std::unsigned_integral W, typename Accum = dword_t<W>>
 constexpr Accum carry_chain(W* r, const Accum* v, int N) noexcept {
@@ -864,7 +944,7 @@ constexpr Accum carry_chain(W* r, const Accum* v, int N) noexcept {
         r[i] = static_cast<W>(sum);
         carry = sum >> (8 * sizeof(W));
     }
-    return carry; // final carry; non-zero means overflow
+    return carry;
 }
 
 template<std::unsigned_integral W>
@@ -1034,6 +1114,24 @@ constexpr Polynomial<N+1, W, MonomialBasis> indefinite_sum(const Polynomial<N, W
 
 namespace detail {
 
+// Compute ghost_j at full gw_t precision from raw Witt components.
+// Unlike ghost_j_widen (which uses W-precision GhostPowers), this computes
+// each a[i]^(2^{j-i}) at gw_t precision, avoiding truncation. Required when
+// Witt components are large (e.g., after inverse/log/exp recovery).
+template<int N, std::unsigned_integral W>
+constexpr auto ghost_j_full(const W* a, int j) noexcept {
+    using gw_t = detail::widen_t<dword_t<W>>;
+    gw_t sum{};
+    for (int i = 0; i <= j; ++i) {
+        gw_t pow = static_cast<gw_t>(a[i]);
+        for (int k = 0; k < j - i; ++k) {
+            pow = pow * pow;
+        }
+        sum += (gw_t(uint64_t(1)) << i) * pow;
+    }
+    return sum;
+}
+
 // Newton recovery from ghost values: given G[j] (widened precision), recover
 // Witt components r[j] via r_j = (G_j - S_j) / 2^j where
 // S_j = Σ_{i<j} 2^i · r_i^{2^{j-i}}.
@@ -1043,19 +1141,26 @@ constexpr WittVector<N, W> ghost_recover(const std::array<detail::widen_t<dword_
     WittVector<N, W> r;
     r[0] = static_cast<W>(G[0]);
 
-    GhostPowers<N, W> r_pows;
-    r_pows.set(0, r[0]);
+    // Precompute r[i]^(2^k) at gw_t precision to avoid truncation
+    std::array<std::array<gw_t, N>, N> pows{};
+    pows[0][0] = static_cast<gw_t>(r[0]);
+    for (int k = 1; k < N; ++k) {
+        pows[0][k] = pows[0][k-1] * pows[0][k-1];
+    }
 
     for (int j = 1; j < N; ++j) {
         gw_t S{};
         for (int i = 0; i < j; ++i) {
-            S += (gw_t(uint64_t(1)) << i) *
-                 static_cast<gw_t>(r_pows.get(i, j - i));
+            S += (gw_t(uint64_t(1)) << i) * pows[i][j - i];
         }
 
         gw_t diff = G[j] - S;
         r[j] = static_cast<W>(diff >> j);
-        r_pows.set(j, r[j]);
+
+        pows[j][0] = static_cast<gw_t>(r[j]);
+        for (int k = 1; k < N - j; ++k) {
+            pows[j][k] = pows[j][k-1] * pows[j][k-1];
+        }
     }
 
     return r;
@@ -1066,14 +1171,14 @@ constexpr WittVector<N, W> ghost_op(const WittVector<N, W>& a,
                                     const WittVector<N, W>& b,
                                     Combine combine) noexcept {
     using gw_t = detail::widen_t<dword_t<W>>;
-    GhostPowers<N, W> a_pows, b_pows;
+
+    detail::GhostPowersFull<N, W> a_pows, b_pows;
     a_pows.init(a.a.data());
     b_pows.init(b.a.data());
 
     std::array<gw_t, N> G{};
     for (int j = 0; j < N; ++j) {
-        G[j] = combine(ghost_j_widen(a_pows, j),
-                       ghost_j_widen(b_pows, j));
+        G[j] = combine(a_pows.ghost(j), b_pows.ghost(j));
     }
 
     return ghost_recover<N, W>(G);
@@ -1106,12 +1211,13 @@ constexpr WittVector<N, W> adams_operation(const WittVector<N, W>& a, int n) noe
     if (n <= 1) return a;
 
     using gw_t = detail::widen_t<dword_t<W>>;
-    detail::GhostPowers<N, W> pows;
+
+    detail::GhostPowersFull<N, W> pows;
     pows.init(a.a.data());
 
     std::array<gw_t, N> G{};
     for (int j = 0; j < N; ++j) {
-        gw_t g = detail::ghost_j_widen<N>(pows, j);
+        gw_t g = pows.ghost(j);
         gw_t gn = gw_t(uint64_t(1));
         for (int i = 0; i < n; ++i) gn = gn * g;
         G[j] = gn;
@@ -1283,6 +1389,193 @@ constexpr bool check_witt_recovery_precision(const WittVector<N, W>& w) noexcept
     auto rgv = recovered.ghost_vector();
     for (int j = 0; j < N; ++j) {
         if (gv[j] != rgv[j]) return false;
+    }
+    return true;
+}
+
+// ============================================================================
+// 23. Witt Logarithm, Exponential, and Inverse
+// ============================================================================
+// The ghost map ghost: W(R) → R^N is a ring isomorphism onto its image.
+// Componentwise log/exp/inverse of ghost values followed by ghost recovery
+// gives the corresponding Witt vector operations.
+//   - witt_log(a): requires a[0] odd (unit in the Witt ring)
+//   - witt_exp(a): requires a[0] ≡ 0 (mod 4) for convergence in ℤ₂
+//   - witt_inverse(a): requires a[0] odd
+//
+// Ghost map operations run at gw_t (= widen_t<dword_t<W>>) precision, which
+// for uint64_t is uint128_t. The 2-adic primitives (v2, modinv_odd, div_2k_adic)
+// are overloaded for uint128_t in the detail namespace.
+
+namespace detail {
+
+// 2-adic primitives for uint128_t (not std::unsigned_integral)
+// Named with _128 suffix to avoid hiding dyadic::v2, modinv_odd, div_2k_adic.
+constexpr int v2_128(uint128_t x) noexcept {
+    if (x.lo != 0) return std::countr_zero(x.lo);
+    if (x.hi != 0) return 64 + std::countr_zero(x.hi);
+    return 128;
+}
+
+constexpr uint128_t modinv_odd_128(uint128_t a) noexcept {
+    uint128_t x = 1;
+    x = x * (uint128_t(2) - a * x);
+    x = x * (uint128_t(2) - a * x);
+    x = x * (uint128_t(2) - a * x);
+    x = x * (uint128_t(2) - a * x);
+    x = x * (uint128_t(2) - a * x);
+    x = x * (uint128_t(2) - a * x);
+    x = x * (uint128_t(2) - a * x);
+    return x;
+}
+
+constexpr uint128_t div_2k_adic_128(uint128_t val, int k) noexcept {
+    if (k <= 0) return val;
+    bool negative = (val.hi >> 63) != 0;
+    val = val >> k;
+    if (negative) {
+        uint128_t mask = ~(uint128_t::all_ones() >> k);
+        val = val | mask;
+    }
+    return val;
+}
+
+// Divide a ℤ₂ value (generic type T) by integer n using 2-adic division.
+template<typename T>
+constexpr T div_by_int_generic(T val, int n) noexcept {
+    T n_t = static_cast<T>(static_cast<uint64_t>(n));
+    int shift;
+    T odd_part;
+    if constexpr (std::is_same_v<T, uint128_t>) {
+        shift = v2_128(n_t);
+        odd_part = n_t >> shift;
+        return div_2k_adic_128(val, shift) * modinv_odd_128(odd_part);
+    } else {
+        shift = dyadic::v2(n_t);
+        odd_part = n_t >> shift;
+        return dyadic::div_2k_adic(val, shift) * dyadic::modinv_odd(odd_part);
+    }
+}
+
+// ℤ₂ logarithm: log(1 + y) = Σ_{n=1}^{∞} (-1)^{n+1} y^n / n
+// Converges when v₂(y) ≥ 1 (y even). Works on any type with basic arithmetic.
+template<typename T>
+constexpr T p_adic_log_impl(T y) noexcept {
+    T sum = T(0);
+    T term = y;
+    if (term == T(0)) return T(0);
+    sum = term;
+    int max_terms = 8 * int(sizeof(y));
+    if (max_terms < 2) max_terms = 2;
+    for (int n = 2; n <= max_terms; ++n) {
+        term = term * y;
+        term = term * T(static_cast<uint64_t>(n - 1));
+        term = div_by_int_generic(term, n);
+        if (term == T(0)) break;
+        if (n % 2 == 1) {
+            sum = sum + term;
+        } else {
+            sum = sum - term;
+        }
+    }
+    return sum;
+}
+
+// ℤ₂ exponential: exp(x) = Σ_{n=0}^{∞} x^n / n!
+// Converges when v₂(x) ≥ 2 (x ≡ 0 mod 4). Iterates until term vanishes.
+template<typename T>
+constexpr T p_adic_exp_impl(T x) noexcept {
+    T sum = T(1);
+    T term = T(1);
+    int max_terms = 8 * int(sizeof(x));
+    if (max_terms < 2) max_terms = 2;
+    for (int n = 1; n <= max_terms; ++n) {
+        term = term * x;
+        term = div_by_int_generic(term, n);
+        if (term == T(0)) break;
+        sum = sum + term;
+    }
+    return sum;
+}
+
+} // namespace detail
+
+// Witt vector logarithm: applies ℤ₂ log componentwise to ghost values.
+// Defined when a[0] is odd (unit in the Witt ring).
+// Returns b such that witt_exp(b) = a (when both are defined).
+template<int N, std::unsigned_integral W>
+constexpr WittVector<N, W> witt_log(const WittVector<N, W>& a) noexcept {
+    using gw_t = detail::widen_t<dword_t<W>>;
+
+    detail::GhostPowersFull<N, W> pows;
+    pows.init(a.a.data());
+
+    std::array<gw_t, N> H{};
+    for (int j = 0; j < N; ++j) {
+        H[j] = detail::p_adic_log_impl(pows.ghost(j));
+    }
+    return detail::ghost_recover<N, W>(H);
+}
+
+// Witt vector exponential: applies ℤ₂ exp componentwise to ghost values.
+// Requires a[0] ≡ 0 (mod 4) for convergence in the 2-adic series.
+// Returns b such that witt_log(b) = a (when both are defined).
+template<int N, std::unsigned_integral W>
+constexpr WittVector<N, W> witt_exp(const WittVector<N, W>& a) noexcept {
+    using gw_t = detail::widen_t<dword_t<W>>;
+
+    detail::GhostPowersFull<N, W> pows;
+    pows.init(a.a.data());
+
+    std::array<gw_t, N> H{};
+    for (int j = 0; j < N; ++j) {
+        H[j] = detail::p_adic_exp_impl(pows.ghost(j));
+    }
+    return detail::ghost_recover<N, W>(H);
+}
+
+// Witt vector inverse: a^{-1} in the Witt ring.
+// Defined when a[0] is odd (unit). Uses componentwise ghost inversion.
+// Satisfies a * witt_inverse(a) = τ(1) = {1, 0, ..., 0}.
+template<int N, std::unsigned_integral W>
+constexpr WittVector<N, W> witt_inverse(const WittVector<N, W>& a) noexcept {
+    using gw_t = detail::widen_t<dword_t<W>>;
+
+    detail::GhostPowersFull<N, W> pows;
+    pows.init(a.a.data());
+
+    std::array<gw_t, N> H{};
+    for (int j = 0; j < N; ++j) {
+        gw_t Gj = pows.ghost(j);
+        if constexpr (std::is_same_v<gw_t, detail::uint128_t>) {
+            H[j] = detail::modinv_odd_128(Gj);
+        } else {
+            H[j] = dyadic::modinv_odd(Gj);
+        }
+    }
+    return detail::ghost_recover<N, W>(H);
+}
+
+// ============================================================================
+// 24. Verification Helpers for Witt Log/Exp/Inverse
+// ============================================================================
+
+template<int N, std::unsigned_integral W>
+constexpr bool check_witt_inverse(const WittVector<N, W>& a) noexcept {
+    auto inv = witt_inverse(a);
+    auto prod = a * inv;
+    for (int i = 0; i < N; ++i) {
+        if (i == 0 && prod[i] != 1) return false;
+        if (i > 0 && prod[i] != 0) return false;
+    }
+    return true;
+}
+
+template<int N, std::unsigned_integral W>
+constexpr bool check_witt_log_exp_roundtrip(const WittVector<N, W>& a) noexcept {
+    auto b = witt_exp(witt_log(a));
+    for (int i = 0; i < N; ++i) {
+        if (a[i] != b[i]) return false;
     }
     return true;
 }

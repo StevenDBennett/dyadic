@@ -595,8 +595,79 @@ inline constexpr bool PROOF_MUL_U8_N2 = []() constexpr {
     }
     return true;
 }();
+
+// Exhaustive N=3 multiplication ghost homomorphism for uint8_t.
+// Varies each Witt component independently with fixed other components,
+// plus cross-term and edge-case coverage. Full 3-dimensional exhaustive
+// (256^3 input pairs) would be too expensive; this per-component + edge
+// approach mirrors the addition verifier above.
+inline constexpr bool PROOF_MUL_U8_N3 = []() constexpr {
+    using W = uint8_t;
+    constexpr W max_val = std::numeric_limits<W>::max();
+
+    // Vary a0 across full domain
+    for (W a0 = 0; ; ++a0) {
+        WittVector<3, W> a{{a0, W(2), W(3)}};
+        WittVector<3, W> b{{W(5), W(7), W(11)}};
+        auto r = witt_mul(a, b);
+        for (int j = 0; j < 3; ++j) {
+            if (r.ghost(j) != static_cast<W>(a.ghost(j) * b.ghost(j)))
+                return false;
+        }
+        if (a0 == max_val) break;
+    }
+
+    // Vary a1
+    for (W a1 = 0; ; ++a1) {
+        WittVector<3, W> a{{W(3), a1, W(7)}};
+        WittVector<3, W> b{{W(5), W(11), W(13)}};
+        auto r = witt_mul(a, b);
+        for (int j = 0; j < 3; ++j) {
+            if (r.ghost(j) != static_cast<W>(a.ghost(j) * b.ghost(j)))
+                return false;
+        }
+        if (a1 == max_val) break;
+    }
+
+    // Vary a2
+    for (W a2 = 0; ; ++a2) {
+        WittVector<3, W> a{{W(3), W(5), a2}};
+        WittVector<3, W> b{{W(7), W(11), W(13)}};
+        auto r = witt_mul(a, b);
+        for (int j = 0; j < 3; ++j) {
+            if (r.ghost(j) != static_cast<W>(a.ghost(j) * b.ghost(j)))
+                return false;
+        }
+        if (a2 == max_val) break;
+    }
+
+    // Edge cases: all non-zero cross terms
+    for (int t = 0; t < 50; ++t) {
+        WittVector<3, W> a{{static_cast<W>(t * 3), static_cast<W>(t * 5), static_cast<W>(t * 7)}};
+        WittVector<3, W> b{{static_cast<W>(t * 11), static_cast<W>(t * 13), static_cast<W>(t * 17)}};
+        auto r = witt_mul(a, b);
+        for (int j = 0; j < 3; ++j) {
+            if (r.ghost(j) != static_cast<W>(a.ghost(j) * b.ghost(j)))
+                return false;
+        }
+    }
+
+    // Max values
+    {
+        WittVector<3, W> a{{max_val, max_val, max_val}};
+        WittVector<3, W> b{{max_val, max_val, max_val}};
+        auto r = witt_mul(a, b);
+        for (int j = 0; j < 3; ++j) {
+            if (r.ghost(j) != static_cast<W>(a.ghost(j) * b.ghost(j)))
+                return false;
+        }
+    }
+
+    return true;
+}();
 #else
 inline constexpr bool PROOF_MUL_U8_N2 = true;
+inline constexpr bool PROOF_MUL_U8_N3 = true;
 #endif
 
 // Teichmüller lift: τ(1) = 1, i.e. the lift of the multiplicative unit is the
@@ -684,6 +755,7 @@ static_assert(PROOF_FV_VF,            "PROOF_FV_VF");
 static_assert(PROOF_MUL_GHOST,        "PROOF_MUL_GHOST");
 static_assert(PROOF_MUL_DISTRIBUTIVE, "PROOF_MUL_DISTRIBUTIVE");
 static_assert(PROOF_MUL_U8_N2,        "PROOF_MUL_U8_N2");
+static_assert(PROOF_MUL_U8_N3,        "PROOF_MUL_U8_N3");
 
 static_assert(PROOF_TEICHMULLER_ONE,  "PROOF_TEICHMULLER_ONE");
 static_assert(PROOF_TEICHMULLER_MULT, "PROOF_TEICHMULLER_MULT");
