@@ -379,6 +379,12 @@ struct PascalCache {
     }
 };
 
+template<int N, std::unsigned_integral W>
+inline constexpr StirlingCache<N, W> STIRLING_CACHE{};
+
+template<int N, std::unsigned_integral W>
+inline constexpr PascalCache<N, W> PASCAL_CACHE{};
+
 } // namespace detail
 
 template<std::unsigned_integral W, int MaxN = 64>
@@ -524,7 +530,7 @@ struct Polynomial : std::array<W, N> {
 
 template<int N, std::unsigned_integral W>
 constexpr Polynomial<N, W, FallingFactorialBasis> monomial_to_falling(const Polynomial<N, W, MonomialBasis>& p) noexcept {
-    constexpr auto cache = detail::StirlingCache<N, W>{};
+    constexpr auto& cache = detail::STIRLING_CACHE<N, W>;
     Polynomial<N, W, FallingFactorialBasis> r{};
     for (int k = 0; k < N; ++k) {
         W sum = 0;
@@ -538,7 +544,7 @@ constexpr Polynomial<N, W, FallingFactorialBasis> monomial_to_falling(const Poly
 
 template<int N, std::unsigned_integral W>
 constexpr Polynomial<N, W, MonomialBasis> falling_to_monomial(const Polynomial<N, W, FallingFactorialBasis>& p) noexcept {
-    constexpr auto cache = detail::StirlingCache<N, W>{};
+    constexpr auto& cache = detail::STIRLING_CACHE<N, W>;
     Polynomial<N, W, MonomialBasis> r{};
     for (int k = 0; k < N; ++k) {
         W sum = 0;
@@ -554,7 +560,7 @@ constexpr Polynomial<N, W, MonomialBasis> falling_to_monomial(const Polynomial<N
 // T_k wraps 2^W when FF_k ≥ 2^W / k! — see taylor_to_monomial limitation.
 template<int N, std::unsigned_integral W>
 constexpr Polynomial<N, W, TaylorBasis> monomial_to_taylor(const Polynomial<N, W, MonomialBasis>& p) noexcept {
-    constexpr auto cache = detail::StirlingCache<N, W>{};
+    constexpr auto& cache = detail::STIRLING_CACHE<N, W>;
     Polynomial<N, W, TaylorBasis> r{};
     W fact = 1;
     for (int k = 0; k < N; ++k) {
@@ -575,7 +581,7 @@ constexpr Polynomial<N, W, TaylorBasis> monomial_to_taylor(const Polynomial<N, W
 // Use small coefficients (FF_j < 2^W / j!) for exact roundtrips.
 template<int N, std::unsigned_integral W>
 constexpr Polynomial<N, W, MonomialBasis> taylor_to_monomial(const Polynomial<N, W, TaylorBasis>& p) noexcept {
-    constexpr auto cache = detail::StirlingCache<N, W>{};
+    constexpr auto& cache = detail::STIRLING_CACHE<N, W>;
     using accum_t = quad_width<W>;
     // Precompute factorials 0!..(N-1)!
     W facts[N];
@@ -697,7 +703,7 @@ constexpr Polynomial<N-1, W, FallingFactorialBasis> formal_derivative(const Poly
 
 template<int N, std::unsigned_integral W>
 constexpr Polynomial<N-1, W, MonomialBasis> forward_difference(const Polynomial<N, W, MonomialBasis>& p) noexcept {
-    constexpr auto C = detail::PascalCache<N, W>{};
+    constexpr auto& C = detail::PASCAL_CACHE<N, W>;
     Polynomial<N-1, W, MonomialBasis> r{};
     for (int i = 0; i < N - 1; ++i) {
         W sum = 0;
@@ -1356,7 +1362,7 @@ constexpr bool poly_is_square_free_cw(const Polynomial<N, W, MonomialBasis>& P) 
 
 template<int N, std::unsigned_integral W>
 constexpr Polynomial<N, W, MonomialBasis> taylor_shift(const Polynomial<N, W, MonomialBasis>& p, W delta) noexcept {
-    constexpr auto C = detail::PascalCache<N, W>{};
+    constexpr auto& C = detail::PASCAL_CACHE<N, W>;
     Polynomial<N, W, MonomialBasis> r{};
     std::array<W, N> delta_pow{};
     delta_pow[0] = 1;
@@ -1374,7 +1380,7 @@ constexpr Polynomial<N, W, MonomialBasis> taylor_shift(const Polynomial<N, W, Mo
 
 template<int N, std::unsigned_integral W>
 constexpr Polynomial<N, W, FallingFactorialBasis> taylor_shift(const Polynomial<N, W, FallingFactorialBasis>& p, W delta) noexcept {
-    constexpr auto C = detail::PascalCache<N, W>{};
+    constexpr auto& C = detail::PASCAL_CACHE<N, W>;
     Polynomial<N, W, FallingFactorialBasis> r{};
 
     std::array<W, N> fall{};
