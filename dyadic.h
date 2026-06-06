@@ -967,6 +967,13 @@ constexpr W carry_chain_word(W hi, W lo) noexcept {
 }
 
 
+// Restrict pointer annotation for auto-vectorization (GCC/Clang).
+#if defined(__GNUC__) || defined(__clang__)
+#define DYADIC_RESTRICT __restrict__
+#else
+#define DYADIC_RESTRICT
+#endif
+
 // ============================================================================
 // 15. Polynomial Multiplication
 // ============================================================================
@@ -977,11 +984,13 @@ constexpr W carry_chain_word(W hi, W lo) noexcept {
 // entries, so it scales with the word size.
 
 template<std::unsigned_integral W, typename Accum = quad_width<W>>
-constexpr void poly_mul_unsaturated(Accum* r, const W* a, int na,
-                                    const W* b, int nb) noexcept {
+constexpr void poly_mul_unsaturated(Accum* DYADIC_RESTRICT r,
+    const W* DYADIC_RESTRICT a, int na,
+    const W* DYADIC_RESTRICT b, int nb) noexcept {
     int nr = na + nb - 1;
     for (int i = 0; i < nr; ++i) r[i] = 0;
     for (int i = 0; i < na; ++i) {
+        #pragma GCC ivdep
         for (int j = 0; j < nb; ++j) {
             r[i + j] += static_cast<Accum>(a[i]) * static_cast<Accum>(b[j]);
         }
@@ -989,7 +998,8 @@ constexpr void poly_mul_unsaturated(Accum* r, const W* a, int na,
 }
 
 template<std::unsigned_integral W>
-constexpr void poly_mul(W* r, const W* a, int na, const W* b, int nb) noexcept {
+constexpr void poly_mul(W* DYADIC_RESTRICT r, const W* DYADIC_RESTRICT a, int na,
+                        const W* DYADIC_RESTRICT b, int nb) noexcept {
     using accum_t = quad_width<W>;
     constexpr int CHUNK_COUNT = 256 / sizeof(accum_t);  // ~256 bytes per chunk
     int nr = na + nb - 1;
@@ -1012,6 +1022,7 @@ constexpr void poly_mul(W* r, const W* a, int na, const W* b, int nb) noexcept {
                 int j_start = (pos > i) ? pos - i : 0;
                 int j_end = nb;
                 if (i + j_end > end) j_end = end - i;
+                #pragma GCC ivdep
                 for (int j = j_start; j < j_end; ++j) {
                     buf[i + j - pos] += static_cast<accum_t>(a[i]) * static_cast<accum_t>(b[j]);
                 }
