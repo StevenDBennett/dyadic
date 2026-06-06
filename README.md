@@ -49,12 +49,12 @@ int main() {
 | Area | What |
 |------|------|
 | **2-Adic Primitives** | `v2` (valuation), `modinv_odd`, `div_2k_adic`, `artin_schreier` (℘(x)=x²−x) |
-| **Polynomials** | `Polynomial<N,W,Basis>` with `eval`, `+`, `−`, `*`, basis conversion between Monomial / FallingFactorial / Taylor |
+| **Polynomials** | `Polynomial<N,W,Basis>` with `eval`, `+`, `−`, `*`, basis conversion (Monomial / FallingFactorial / Taylor), GCD, resultant, discriminant, pseudo-remainder, divmod, square-free check |
 | **Calculus** | `formal_derivative` (D), `forward_difference` (Δ), `taylor_shift`, `indefinite_sum` (Σ = Δ⁻¹) |
-| **Witt Vectors** | `WittVector<N,W>` with ghost map, Frobenius, Verschiebung, `+`, `*`, `adams_operation`, `teichmuller_lift` |
+| **Witt Vectors** | `WittVector<N,W>` with ghost map, Frobenius, Verschiebung, `+`, `*`, `exp`, `log`, `inverse`, `adams_operation`, `teichmueller_lift` |
 | **Carry Chain** | Full-width carry propagation `C = (I−N)⁻¹` — converges in one pass |
 | **Compose / Reversion** | Power series composition P(Q(t)) and Lagrange inversion |
-| **Compile-Time Proofs** | 20+ `static_assert` proofs verifying ring axioms, basis roundtrips, D∘Δ=Δ∘D, ghost homomorphism, carry idempotence (see `dyadic_verify.h`) |
+| **Compile-Time Proofs** | 20+ `static_assert` proofs verifying ring axioms, basis roundtrips, D∘Δ=Δ∘D, ghost homomorphism, carry idempotence, Witt exp/log roundtrip (see `dyadic_verify.h`) |
 
 ## More Examples
 
@@ -112,6 +112,13 @@ if (!check_witt_recovery_precision(w))
     // Some rⱼ ≥ 2³²⁻ʲ — ghost recovery inexact
 ```
 
+### Documentation
+
+| File | What |
+|------|------|
+| [`docs/precision.md`](docs/precision.md) | Five precision windows unified under a single principle |
+| [`docs/theory.md`](docs/theory.md) | Four-domain unified theory: operator calculus ↔ Witt ghosts ↔ Mersenne ghosts ↔ thermodynamic classification |
+
 ## Build & Integrate
 
 **As a single header** — copy `dyadic.h` into your project and `#include "dyadic.h"`.
@@ -145,6 +152,7 @@ All tests pass under GCC 14+ and Clang 17+ with ASan+UBSan. CI covers GCC (light
 
 - **Taylor basis roundtrip**: `T_k = k! · FF_k` wraps when `FF_k ≥ 2^W / k!`. Use small coefficients for exact roundtrips. FallingFactorial basis has no such limitation.
 - **Witt precision window**: Recovery `r_j = (G_j − S_j) / 2^j` requires `r_j < 2^{W−j}`.
+- **Witt exp/log term truncation**: Uses fixed 16-term series; requires `v₂(ghost_j(a)) ≥ 9` for accuracy. This holds automatically for Teichmüller lifts when `v₂(a₀) ≥ 9`. Non-Teichmüller inputs need `v₂(a_j) ≥ 9−j` for j>0.
 - **`detail::uint128_t`** is a software 128-bit pair — no `unsigned __int128` required. `__int128` is used only as an optimization in `binom()`, guarded by feature-test macros.
 
 ## License

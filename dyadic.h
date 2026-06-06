@@ -1024,6 +1024,287 @@ operator*(const Polynomial<N, W, Basis>& p, const Polynomial<M, W, Basis>& q) no
 }
 
 // ============================================================================
+// 15b. Polynomial GCD, Resultant, and Discriminant
+// ============================================================================
+// Ported from carryline (BigInteger/extras.hpp). All operations are in
+// monomial basis. Polynomial GCD uses pseudo-remainder PRS to avoid
+// division by zero divisors (even coefficients in Z/2^W Z).
+//
+// Key constraints:
+//   - poly_divmod requires an odd leading coefficient (unit mod 2^W)
+//   - pseudo_remainder works for any coefficients (no division needed)
+//   - resultant requires deg(A)+deg(B) ≤ 20 (subset DP is O(n·2^n))
+
+namespace detail {
+
+// Compute actual degree of a polynomial (index of last non-zero coeff).
+// Returns -1 for zero polynomial, 0..N-1 otherwise.
+template<int N, std::unsigned_integral W, typename Basis>
+constexpr int poly_actual_degree(const Polynomial<N, W, Basis>& p) noexcept {
+    for (int i = N - 1; i >= 0; --i) {
+        if (p[i] != W(0)) return i;
+    }
+    return -1;
+}
+
+// Formal derivative in monomial basis returning std::array for internal use.
+template<int N, std::unsigned_integral W>
+constexpr std::array<W, N> poly_diff_arr(const std::array<W, N>& a, int deg) noexcept {
+    std::array<W, N> r{};
+    for (int i = 0; i < deg; ++i) {
+        r[i] = static_cast<W>(static_cast<dword_t<W>>(i + 1) * static_cast<dword_t<W>>(a[i + 1]));
+    }
+    return r;
+}
+
+} // namespace detail
+
+// Pseudo-remainder: prem(A, B) = lc(B)^(deg(A)-deg(B)+1) * A mod B.
+// Works over any ring (no division by leading coefficient required).
+template<int N, int M, std::unsigned_integral W>
+constexpr Polynomial<N, W, MonomialBasis>
+pseudo_remainder(const Polynomial<N, W, MonomialBasis>& A,
+                 const Polynomial<M, W, MonomialBasis>& B) noexcept {
+    int da = detail::poly_actual_degree(A);
+    int db = detail::poly_actual_degree(B);
+    if (db < 0) return Polynomial<N, W, MonomialBasis>{}; // B = 0
+    if (da < db) return A;
+
+    // Copy A into a mutable std::array
+    std::array<W, N> R{};
+    for (int i = 0; i < N; ++i) R[i] = A[i];
+    int nr = da;
+
+    W lcB = B[db];
+    int e = nr - db;
+
+    for (int k = e; k >= 0; --k) {
+        int pos = db + k;
+        if (pos >= N) continue;
+        W ck = R[pos];
+        if (ck == W(0)) continue;
+
+        // Multiply all of R by lcB
+        for (int i = 0; i <= nr; ++i) R[i] = R[i] * lcB;
+
+        // Subtract ck * x^k * B
+        for (int j = 0; j <= db && k + j < N; ++j) {
+            R[k + j] = R[k + j] - ck * B[j];
+        }
+    }
+
+    Polynomial<N, W, MonomialBasis> result{};
+    for (int i = 0; i < N; ++i) result[i] = R[i];
+    return result;
+}
+
+// Polynomial division: A = Q*B + R.
+// Requires B's leading coefficient to be odd (unit modulo 2^W).
+// Returns (Q, R) where deg(R) < deg(B).
+template<int N, int M, std::unsigned_integral W>
+constexpr std::pair<Polynomial<N, W, MonomialBasis>, Polynomial<M, W, MonomialBasis>>
+poly_divmod(const Polynomial<N, W, MonomialBasis>& A,
+            const Polynomial<M, W, MonomialBasis>& B) noexcept {
+    int da = detail::poly_actual_degree(A);
+    int db = detail::poly_actual_degree(B);
+
+    // Build M-sized remainder (may be smaller than N)
+    auto make_remainder = [&](const std::array<W, N>& src) {
+        Polynomial<M, W, MonomialBasis> r{};
+        int copy_n = (M < N) ? M : N;
+        for (int i = 0; i < copy_n; ++i) r[i] = src[i];
+        return r;
+    };
+
+    if (da < db) {
+        return {Polynomial<N, W, MonomialBasis>{}, make_remainder(A)};
+    }
+
+    W lcB = B[db];
+    if ((lcB & W(1)) == W(0)) {
+        Polynomial<N, W, MonomialBasis> Q{};
+        return {Q, make_remainder(A)};
+    }
+    W inv_lcB = modinv_odd(lcB);
+
+    std::array<W, N> R{};
+    for (int i = 0; i < N; ++i) R[i] = A[i];
+
+    Polynomial<N, W, MonomialBasis> Q{};
+
+    for (int i = da - db; i >= 0; --i) {
+        int pos = db + i;
+        if (pos >= N) continue;
+        W c = R[pos];
+        if (c == W(0)) continue;
+        W q = c * inv_lcB;
+        Q[i] = q;
+        for (int j = 0; j <= db && i + j < N; ++j) {
+            R[i + j] = R[i + j] - q * B[j];
+        }
+    }
+
+    return {Q, make_remainder(R)};
+}
+
+// Polynomial GCD via pseudo-remainder PRS (Euclidean algorithm).
+// Works for any coefficients (even zero divisors) because it uses
+// pseudo_remainder instead of ordinary polynomial remainder.
+// Returns the GCD normalized to have leading coefficient 1.
+// NOTE: Internally converts to K=max(N,M)-sized arrays so the
+// Euclidean step can swap degrees without type conflicts.
+template<int N, int M, std::unsigned_integral W>
+constexpr Polynomial<(N > M ? N : M), W, MonomialBasis>
+poly_gcd(const Polynomial<N, W, MonomialBasis>& A_,
+         const Polynomial<M, W, MonomialBasis>& B_) noexcept {
+    constexpr int K = (N > M ? N : M);
+    using Poly = Polynomial<K, W, MonomialBasis>;
+
+    // Copy into K-sized internal arrays
+    Poly A{}, B{};
+    for (int i = 0; i < N; ++i) A[i] = A_[i];
+    for (int i = 0; i < M; ++i) B[i] = B_[i];
+
+    int da = detail::poly_actual_degree(A);
+    int db = detail::poly_actual_degree(B);
+
+    if (db < 0) {
+        Poly result{};
+        for (int i = 0; i <= da; ++i) result[i] = A[i];
+        if (da >= 0 && result[da] != W(1) && (result[da] & W(1)) != W(0)) {
+            W inv_lc = modinv_odd(result[da]);
+            for (int i = 0; i <= da; ++i) result[i] = result[i] * inv_lc;
+        }
+        return result;
+    }
+    if (da < db) {
+        Poly tmp = A; A = B; B = tmp;
+        int t = da; da = db; db = t;
+    }
+
+    while (db >= 0) {
+        auto R = pseudo_remainder(
+            Polynomial<K, W, MonomialBasis>(A),
+            Polynomial<K, W, MonomialBasis>(B));
+
+        A = B;
+        B = Poly{};
+        for (int i = 0; i < K; ++i) B[i] = R[i];
+
+        da = detail::poly_actual_degree(A);
+        db = detail::poly_actual_degree(B);
+    }
+
+    Poly result{};
+    for (int i = 0; i <= da; ++i) result[i] = A[i];
+    if (da >= 0 && result[da] != W(1) && (result[da] & W(1)) != W(0)) {
+        W inv_lc = modinv_odd(result[da]);
+        for (int i = 0; i <= da; ++i) result[i] = result[i] * inv_lc;
+    }
+    return result;
+}
+
+// Determinant via Laplace expansion for small matrices (dim ≤ 6).
+// Fully constexpr-friendly with no heap allocation. For larger matrices,
+// returns 0 and the caller should use a different method.
+template<std::unsigned_integral W>
+constexpr W det_laplace(const std::array<std::array<W, 6>, 6>& M, int n) noexcept {
+    if (n == 0) return W(1);
+    if (n == 1) return M[0][0];
+    if (n == 2) return M[0][0] * M[1][1] - M[0][1] * M[1][0];
+
+    W det = W(0);
+    for (int j = 0; j < n; ++j) {
+        if (M[0][j] == W(0)) continue;
+        // Build submatrix (remove row 0, column j)
+        std::array<std::array<W, 6>, 6> sub{};
+        for (int r = 1; r < n; ++r) {
+            int col = 0;
+            for (int c = 0; c < n; ++c) {
+                if (c == j) continue;
+                sub[r - 1][col] = M[r][c];
+                ++col;
+            }
+        }
+        W cofactor = det_laplace(sub, n - 1);
+        // Sign: (-1)^{0+j} = 1 if j even, -1 if j odd
+        if (j % 2 == 0) {
+            det += M[0][j] * cofactor;
+        } else {
+            det -= M[0][j] * cofactor;
+        }
+    }
+    return det;
+}
+
+// Polynomial resultant: det(Sylvester(A, B)).
+// The Sylvester matrix is (deg(A)+deg(B)) × (deg(A)+deg(B)).
+// Uses Laplace expansion (O(n!)), limited to dim ≤ 6.
+// For dyadic's typical small N (2..6), this covers all cases.
+template<int N, int M, std::unsigned_integral W>
+constexpr W polynomial_resultant(const Polynomial<N, W, MonomialBasis>& A,
+                                 const Polynomial<M, W, MonomialBasis>& B) noexcept {
+    int m = detail::poly_actual_degree(A);
+    int n = detail::poly_actual_degree(B);
+
+    if (m < 0 || n < 0) return W(0);
+    if (m == 0 && n == 0) return W(1);
+
+    int dim = m + n;
+    if (dim > 6) return W(0); // Laplace expansion limit
+
+    // Build Sylvester matrix: dim × dim
+    std::array<std::array<W, 6>, 6> Mtx{};
+
+    // First n rows: coefficients of A (descending by index), shifted right
+    for (int k = 0; k < n; ++k) {
+        for (int j = 0; j <= m; ++j) {
+            Mtx[k][k + j] = A[m - j];
+        }
+    }
+    // Last m rows: coefficients of B (descending by index), shifted right
+    for (int k = 0; k < m; ++k) {
+        for (int j = 0; j <= n; ++j) {
+            Mtx[n + k][k + j] = B[n - j];
+        }
+    }
+
+    return det_laplace<W>(Mtx, dim);
+}
+
+// Polynomial discriminant: (-1)^{d(d-1)/2} * res(P, P') / lc(P).
+// Returns 0 if the leading coefficient is even (cannot divide reliably).
+template<int N, std::unsigned_integral W>
+constexpr W poly_discriminant(const Polynomial<N, W, MonomialBasis>& P) noexcept {
+    int d = detail::poly_actual_degree(P);
+    if (d < 1) return W(0);
+    if (d == 1) return W(1);
+
+    W lc = P[d];
+    if ((lc & W(1)) == W(0)) return W(0);
+
+    // Compute P'
+    auto P_prime = formal_derivative(P);
+
+    W res = polynomial_resultant(P, P_prime);
+    int sign_exp = d * (d - 1) / 2;
+    W sign = (sign_exp & 1) ? W(W(0) - W(1)) : W(1);
+    return sign * res * modinv_odd(lc);
+}
+
+// Square-free check: gcd(P, P') of degree 0 means no repeated factors.
+// Works even when the leading coefficient is even (unlike discriminant).
+template<int N, std::unsigned_integral W>
+constexpr bool poly_is_square_free(const Polynomial<N, W, MonomialBasis>& P) noexcept {
+    int d = detail::poly_actual_degree(P);
+    if (d < 1) return false;
+
+    auto P_prime = formal_derivative(P);
+    auto g = poly_gcd(P, P_prime);
+    return detail::poly_actual_degree(g) == 0;
+}
+
+// ============================================================================
 // 16. Taylor Shift
 // ============================================================================
 // P(t) → P(t + δ) using closed-form binomial transform.
@@ -1503,6 +1784,11 @@ constexpr T p_adic_exp_impl(T x) noexcept {
 // Witt vector logarithm: applies ℤ₂ log componentwise to ghost values.
 // Defined when a[0] is odd (unit in the Witt ring).
 // Returns b such that witt_exp(b) = a (when both are defined).
+//
+// p_adic_log_impl(y) computes log(1+y). Since we want log(ghost_j(a)),
+// we pass ghost_j(a) - 1 so that log(1 + (ghost_j(a)-1)) = log(ghost_j(a)).
+// Convergence requires ghost_j(a) ≡ 1 (mod 2), which holds when a[0] is odd
+// (a[0]^{2^j} ≡ 1 mod 2 for odd a[0]).
 template<int N, std::unsigned_integral W>
 constexpr WittVector<N, W> witt_log(const WittVector<N, W>& a) noexcept {
     using gw_t = detail::widen_t<dword_t<W>>;
@@ -1512,7 +1798,7 @@ constexpr WittVector<N, W> witt_log(const WittVector<N, W>& a) noexcept {
 
     std::array<gw_t, N> H{};
     for (int j = 0; j < N; ++j) {
-        H[j] = detail::p_adic_log_impl(pows.ghost(j));
+        H[j] = detail::p_adic_log_impl(pows.ghost(j) - gw_t(1));
     }
     return detail::ghost_recover<N, W>(H);
 }

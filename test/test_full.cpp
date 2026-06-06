@@ -579,6 +579,80 @@ static int test_witt_vector() {
     // check_ghost_ring utility
     if (!check_ghost_ring(a, b)) { std::printf("FAIL check_ghost_ring\n"); f++; }
 
+    // Witt exp/log roundtrip: Teichmüller lifts with v2(a0) >= 9
+    // These provably work with 16-term exp series in 128-bit ghost precision
+    {
+        for (uint32_t a0 : {512u, 1024u, 4096u, 65536u}) {
+            WittVector<3, uint32_t> w{{a0, 0, 0}};
+            auto b = witt_exp(w);
+            auto c = witt_log(b);
+            if (c[0] != a0 || c[1] != 0 || c[2] != 0) {
+                std::printf("FAIL witt exp/log N=3 u32 a0=%u\n", a0); f++;
+            }
+        }
+    }
+    // N=2 Teichmüller roundtrip
+    {
+        for (uint32_t a0 : {512u, 1024u}) {
+            WittVector<2, uint32_t> w{{a0, 0}};
+            auto b = witt_exp(w);
+            auto c = witt_log(b);
+            if (c[0] != a0 || c[1] != 0) {
+                std::printf("FAIL witt exp/log N=2 u32 a0=%u\n", a0); f++;
+            }
+        }
+    }
+    // N=4 Teichmüller roundtrip
+    {
+        for (uint32_t a0 : {512u, 1024u}) {
+            WittVector<4, uint32_t> w{{a0, 0, 0, 0}};
+            auto b = witt_exp(w);
+            auto c = witt_log(b);
+            if (c[0] != a0 || c[1] != 0 || c[2] != 0 || c[3] != 0) {
+                std::printf("FAIL witt exp/log N=4 u32 a0=%u\n", a0); f++;
+            }
+        }
+    }
+    // uint64_t Teichmüller roundtrip (128-bit ghosts)
+    {
+        for (uint64_t a0 : {512u, 1024u}) {
+            WittVector<3, uint64_t> w{{a0, 0, 0}};
+            auto b = witt_exp(w);
+            auto c = witt_log(b);
+            if (c[0] != a0 || c[1] != 0 || c[2] != 0) {
+                std::printf("FAIL witt exp/log N=3 u64 a0=%lu\n", a0); f++;
+            }
+        }
+    }
+    // Non-Teichmüller with sufficient valuation: v2(a_j) >= 9-j
+    {
+        for (uint32_t a0 : {512u, 1024u}) {
+            for (uint32_t a1 : {0u, 256u, 512u}) {    // v2(a1) >= 8
+                WittVector<3, uint32_t> w{{a0, a1, 0}};
+                auto b = witt_exp(w);
+                auto c = witt_log(b);
+                if (c[0] != a0 || c[1] != a1 || c[2] != 0) {
+                    std::printf("FAIL witt exp/log N=3 u32 a={%u,%u,0}\n", a0, a1); f++;
+                }
+            }
+        }
+    }
+    // Witt inverse: a * witt_inverse(a) = 1 (Teichmüller lift)
+    {
+        for (uint32_t a0 : {1u, 3u, 5u, 7u, 9u, 65535u}) {
+            WittVector<3, uint32_t> w{{a0, 2, 3}};
+            auto inv = witt_inverse(w);
+            auto prod = witt_mul(w, inv);
+            auto one = WittVector<3, uint32_t>::one();
+            for (int i = 0; i < 3; ++i) {
+                if (prod[i] != one[i]) {
+                    std::printf("FAIL witt inverse a0=%u [%d]: %u != %u\n", a0, i, prod[i], one[i]); f++;
+                    break;
+                }
+            }
+        }
+    }
+
     return f;
 }
 
