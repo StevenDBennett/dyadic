@@ -13,7 +13,7 @@ jobs:
         proof: [light, heavy]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: sudo apt-get update && sudo apt-get install -y g++-14
       - name: Compile standalone headers (light proofs)
         if: matrix.proof == 'light'
@@ -34,7 +34,7 @@ jobs:
   clang:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: sudo apt-get update && sudo apt-get install -y clang++-18
       - name: Compile standalone headers
         run: |
@@ -49,7 +49,7 @@ jobs:
   sanitize:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: sudo apt-get update && sudo apt-get install -y g++-14
       - name: Build with ASan+UBSan
         run: |
@@ -61,7 +61,7 @@ jobs:
   msvc:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup MSVC dev environment
         uses: ilammy/msvc-dev-cmd@v1
       - name: Compile standalone headers
