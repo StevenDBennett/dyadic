@@ -1119,6 +1119,588 @@ static int test_precision_windows() {
 }
 
 // ---------------------------------------------------------------------------
+// Carry-save arithmetic
+// ---------------------------------------------------------------------------
+static int test_carry_save() {
+    int f = 0;
+    using Poly = Polynomial<4, uint64_t, MonomialBasis>;
+
+    // carry_save_add: a + b == combine(sum, carry)
+    {
+        Poly a{{3, 5, 7, 9}};
+        Poly b{{2, 4, 6, 8}};
+        auto cs = carry_save_add(a, b);
+        auto combined = combine_carry_save(cs.sum, cs.carry);
+        Poly expected;
+        for (int i = 0; i < 4; ++i) expected[i] = a[i] + b[i];
+        for (int i = 0; i < 4; ++i) {
+            if (combined[i] != expected[i]) { std::printf("FAIL carry_save_add at %d\n", i); f++; }
+        }
+    }
+
+    // csa3: a + b + c == combine(sum, carry)
+    {
+        Poly a{{100, 200, 300, 400}};
+        Poly b{{10, 20, 30, 40}};
+        Poly c{{1, 2, 3, 4}};
+        auto cs = csa3(a, b, c);
+        auto combined = combine_carry_save(cs.sum, cs.carry);
+        Poly expected;
+        for (int i = 0; i < 4; ++i) expected[i] = a[i] + b[i] + c[i];
+        for (int i = 0; i < 4; ++i) {
+            if (combined[i] != expected[i]) { std::printf("FAIL csa3 at %d\n", i); f++; }
+        }
+    }
+
+    // batched_add_carry_save
+    {
+        Poly ops[3]{{{1,2,3,4}}, {{5,6,7,8}}, {{9,10,11,12}}};
+        auto result = batched_add_carry_save(ops, 3);
+        Poly expected;
+        for (int i = 0; i < 4; ++i) expected[i] = ops[0][i] + ops[1][i] + ops[2][i];
+        for (int i = 0; i < 4; ++i) {
+            if (result[i] != expected[i]) { std::printf("FAIL batched_add_carry_save at %d\n", i); f++; }
+        }
+    }
+
+    // Carry-save with max-limb overflow
+    {
+        Poly a{{uint64_t(-1), uint64_t(-1), uint64_t(-1), uint64_t(-1)}};
+        Poly b{{1, 0, 0, 0}};
+        auto cs = carry_save_add(a, b);
+        auto combined = combine_carry_save(cs.sum, cs.carry);
+        Poly expected{{0, 0, 0, 0}};
+        for (int i = 0; i < 4; ++i) {
+            if (combined[i] != expected[i]) { std::printf("FAIL carry_save_add overflow at %d\n", i); f++; }
+        }
+    }
+
+    // batched_add_carry_save count=0
+    {
+        auto result = batched_add_carry_save(static_cast<const Poly*>(nullptr), 0);
+        for (int i = 0; i < 4; ++i) {
+            if (result[i] != 0) { std::printf("FAIL batched count=0 at %d\n", i); f++; }
+        }
+    }
+
+    // batched_add_carry_save count=1
+    {
+        Poly a{{10, 20, 30, 40}};
+        Poly ops[1] = {a};
+        auto result = batched_add_carry_save(ops, 1);
+        for (int i = 0; i < 4; ++i) {
+            if (result[i] != a[i]) { std::printf("FAIL batched count=1 at %d\n", i); f++; }
+        }
+    }
+
+    // batched_add_carry_save count=2
+    {
+        Poly a{{100, 200, 300, 400}};
+        Poly b{{10, 20, 30, 40}};
+        Poly ops[2] = {a, b};
+        auto result = batched_add_carry_save(ops, 2);
+        Poly expected;
+        for (int i = 0; i < 4; ++i) expected[i] = a[i] + b[i];
+        for (int i = 0; i < 4; ++i) {
+            if (result[i] != expected[i]) { std::printf("FAIL batched count=2 at %d\n", i); f++; }
+        }
+    }
+
+    // CSA3 with all max limbs
+    // 3*(2^64-1) per limb, carries propagate: r[0]=0xFD, r[1-3]=0xFF
+    {
+        Poly a{{uint64_t(-1), uint64_t(-1), uint64_t(-1), uint64_t(-1)}};
+        Poly b{{uint64_t(-1), uint64_t(-1), uint64_t(-1), uint64_t(-1)}};
+        Poly c{{uint64_t(-1), uint64_t(-1), uint64_t(-1), uint64_t(-1)}};
+        auto cs = csa3(a, b, c);
+        auto combined = combine_carry_save(cs.sum, cs.carry);
+        Poly expected{{uint64_t(-3), uint64_t(-1), uint64_t(-1), uint64_t(-1)}};
+        for (int i = 0; i < 4; ++i) {
+            if (combined[i] != expected[i]) { std::printf("FAIL csa3 max at %d\n", i); f++; }
+        }
+    }
+
+    // CSA3 with zero limbs
+    {
+        Poly a{{0, 0, 0, 0}};
+        Poly b{{0, 0, 0, 0}};
+        Poly c{{0, 0, 0, 0}};
+        auto cs = csa3(a, b, c);
+        auto combined = combine_carry_save(cs.sum, cs.carry);
+        for (int i = 0; i < 4; ++i) {
+            if (combined[i] != 0) { std::printf("FAIL csa3 zero at %d\n", i); f++; }
+        }
+    }
+
+    // carry_save_add with both operands all-ones (every limb overflows)
+    // 2*(2^64-1) per limb, carries propagate: r[0]=0xFE, r[1-3]=0xFF
+    {
+        Poly a{{uint64_t(-1), uint64_t(-1), uint64_t(-1), uint64_t(-1)}};
+        Poly b{{uint64_t(-1), uint64_t(-1), uint64_t(-1), uint64_t(-1)}};
+        auto cs = carry_save_add(a, b);
+        auto combined = combine_carry_save(cs.sum, cs.carry);
+        Poly expected{{uint64_t(-2), uint64_t(-1), uint64_t(-1), uint64_t(-1)}};
+        for (int i = 0; i < 4; ++i) {
+            if (combined[i] != expected[i]) { std::printf("FAIL carry_save_add all-ones at %d\n", i); f++; }
+        }
+    }
+
+    // carry_save_add with zero
+    {
+        Poly zero{{0, 0, 0, 0}};
+        Poly val{{1, 2, 3, 4}};
+        auto cs = carry_save_add(zero, val);
+        auto combined = combine_carry_save(cs.sum, cs.carry);
+        for (int i = 0; i < 4; ++i) {
+            if (combined[i] != val[i]) { std::printf("FAIL carry_save_add zero at %d\n", i); f++; }
+        }
+    }
+
+    return f;
+}
+
+// ---------------------------------------------------------------------------
+// Newton division
+// ---------------------------------------------------------------------------
+static int test_newton_division() {
+    int f = 0;
+
+    // Single-limb case (NR == 1)
+    {
+        Polynomial<4, uint64_t, MonomialBasis> u{{10, 0, 0, 0}};
+        Polynomial<1, uint64_t, MonomialBasis> v{{3}};
+        auto [q, r] = div_newton(u, v);
+        if (q[0] != 3 || r[0] != 1) { std::printf("FAIL div_newton NR=1\n"); f++; }
+    }
+
+    // Simple 2-limb case
+    {
+        Polynomial<2, uint64_t, MonomialBasis> u{{5, 0}};
+        Polynomial<2, uint64_t, MonomialBasis> v{{5, 0}};
+        auto [q, r] = div_newton(u, v);
+        if (q[0] != 1 || r[0] != 0) { std::printf("FAIL div_newton equal\n"); f++; }
+    }
+
+    // u < v
+    {
+        Polynomial<2, uint64_t, MonomialBasis> u{{3, 0}};
+        Polynomial<2, uint64_t, MonomialBasis> v{{5, 0}};
+        auto [q, r] = div_newton(u, v);
+        if (q[0] != 0 || r[0] != 3) { std::printf("FAIL div_newton u<v\n"); f++; }
+    }
+
+    // 2-limb divisor: (10000) / (100) = 100
+    {
+        Polynomial<2, uint64_t, MonomialBasis> u{{0, 100}};
+        Polynomial<1, uint64_t, MonomialBasis> v{{100}};
+        auto [q, r] = div_newton(u, v);
+        // u = 100*B, v = 100, so q = B = {0, 1}, r = 0
+        if (q[0] != 0 || q[1] != 1 || r[0] != 0) {
+            std::printf("FAIL div_newton simple 2/1 limb\n"); f++;
+        }
+    }
+
+    // Multi-limb: (B+5) / (B-3) = 1 remainder 8 (for B=2^64)
+    // Actually: (B+5) / (B-3) = 1 + 8/(B-3), so q=1, r=8
+    {
+        Polynomial<2, uint64_t, MonomialBasis> u{{5, 1}};
+        Polynomial<2, uint64_t, MonomialBasis> v{{uint64_t(-3), 0}}; // B-3
+        auto [q, r] = div_newton(u, v);
+        // B-3 = 0xFFFFFFFFFFFFFFFD, u = {5, 1}
+        // (1*B + 5) / (0*B + (B-3)) — wait, v = {(B-3), 0}
+        // v = (B-3) as a 2-limb value (limb 0 = B-3, limb 1 = 0)
+        // u = {5, 1} = 1*B + 5
+        // v = {B-3, 0} = 0*B + (B-3) = B-3
+        // 1*B + 5 = 1*(B-3) + 8, so q=1, r=8
+        // But wait, we already have NR=2 case earlier for u<v
+        // Here v[1]==0, so it's actually v < B. The effective NR is 1.
+        // div_unsigned will detect eff_nr = 1 and use divmod_single.
+    }
+
+    // Large division test
+    {
+        Polynomial<4, uint64_t, MonomialBasis> u{{0, 0, 0, 1}};
+        Polynomial<2, uint64_t, MonomialBasis> v{{1, 0}};
+        auto [q, r] = div_newton(u, v);
+        // u = B^3, v = 1, so q = B^3, r = 0
+        // q has 4 limbs: q[3] = 1, q[0..2] = 0
+        if (q[3] != 1 || q[0] != 0 || r[0] != 0) { std::printf("FAIL div_newton large\n"); f++; }
+    }
+
+    // Verify u = q*v + r
+    auto verify_division = [&](auto u, auto v) -> bool {
+        auto [q, r] = div_newton(u, v);
+        auto prod = detail::mul_unsigned(q, v);
+        constexpr int N = decltype(u)::max_degree + 1;
+        constexpr int M = decltype(v)::max_degree + 1;
+        constexpr int R = decltype(r)::max_degree + 1;
+        bool ok = true;
+        using dw_t = dword_t<uint64_t>;
+        constexpr int BITS = 64;
+        dw_t carry = 0;
+        for (int i = 0; i < N; ++i) {
+            dw_t sum = static_cast<dw_t>(prod[i]) +
+                       static_cast<dw_t>((i < R) ? r[i] : uint64_t(0)) + carry;
+            if (static_cast<uint64_t>(sum) != u[i]) { ok = false; break; }
+            carry = sum >> BITS;
+        }
+        if (carry != 0) ok = false;
+        // Check r < v
+        bool r_lt_v = true;
+        for (int i = M - 1; i >= 0; --i) {
+            uint64_t ri = (i < R) ? r[i] : 0;
+            if (ri != v[i]) { r_lt_v = (ri < v[i]); break; }
+        }
+        ok = ok && r_lt_v;
+        return ok;
+    };
+
+    // Various random-ish tests
+    {
+        Polynomial<2, uint64_t, MonomialBasis> u{{0x1234567890ABCDEF, 0xDEADBEEF}};
+        Polynomial<2, uint64_t, MonomialBasis> v{{0xFEDCBA9876543210, 0xCAFEBABE}};
+        if (!verify_division(u, v)) { std::printf("FAIL div_newton verify 2x2\n"); f++; }
+    }
+
+    {
+        Polynomial<4, uint64_t, MonomialBasis> u{{0, 1, 2, 3}};
+        Polynomial<2, uint64_t, MonomialBasis> v{{1, 2}};
+        if (!verify_division(u, v)) { std::printf("FAIL div_newton verify 4x2\n"); f++; }
+    }
+
+    {
+        Polynomial<8, uint64_t, MonomialBasis> u{{1,2,3,4,5,6,7,8}};
+        Polynomial<2, uint64_t, MonomialBasis> v{{3, 7}};
+        if (!verify_division(u, v)) { std::printf("FAIL div_newton verify 8x2\n"); f++; }
+    }
+
+    // u = 0
+    {
+        Polynomial<4, uint64_t, MonomialBasis> u{};
+        Polynomial<2, uint64_t, MonomialBasis> v{{3, 0}};
+        auto [q, r] = div_newton(u, v);
+        for (int i = 0; i < 4; ++i) if (q[i] != 0) { std::printf("FAIL div_newton u=0 q\n"); f++; break; }
+        for (int i = 0; i < 2; ++i) if (r[i] != 0) { std::printf("FAIL div_newton u=0 r\n"); f++; break; }
+    }
+
+    // NR=3 multi-limb divisor
+    {
+        Polynomial<6, uint64_t, MonomialBasis> u{{0, 0, 0, 1, 2, 3}};
+        Polynomial<3, uint64_t, MonomialBasis> v{{1, 2, 3}};
+        if (!verify_division(u, v)) { std::printf("FAIL div_newton NR=3\n"); f++; }
+    }
+
+    // Correction step: q decrement branch (carry==0 after u - q*v)
+    // Choose u and v such that q*B^{2n} > u when shifted (underestimates remainder via two's complement)
+    {
+        // Based on the remainder computation: rem = u_ext + ~q_times_v + 1.
+        // When u_ext < q_times_v, carry = 0 and we need to decrement q.
+        Polynomial<3, uint64_t, MonomialBasis> u{{5, 0, 0}};
+        Polynomial<2, uint64_t, MonomialBasis> v{{7, 0}};
+        auto [q, r] = div_newton(u, v);
+        if (!verify_division(u, v)) { std::printf("FAIL div_newton q-decrement\n"); f++; }
+    }
+
+    // Correction step: rem >= v branch (re-divide)
+    {
+        Polynomial<4, uint64_t, MonomialBasis> u{{0, 0, 0, 1}};
+        Polynomial<2, uint64_t, MonomialBasis> v{{1, 1}};
+        auto [q, r] = div_newton(u, v);
+        if (!verify_division(u, v)) { std::printf("FAIL div_newton rem_ge_v\n"); f++; }
+    }
+
+    return f;
+}
+
+// ---------------------------------------------------------------------------
+// Power series exp/log
+// ---------------------------------------------------------------------------
+static int test_exp_log() {
+    int f = 0;
+    using Poly = Polynomial<8, uint64_t, MonomialBasis>;
+
+    // exp(2x) should have well-known coefficients
+    {
+        Poly P{};
+        P[1] = 2;
+        auto E = poly_exp(P);
+        // exp(2x) = 1 + 2x + 2x^2 + 4/3 x^3 + 2/3 x^4 + ...
+        // mod 2^64: E[0]=1, E[1]=2, E[2]=2, E[3]=(4/3 mod 2^64)
+        // v2(3)=0, 3 is odd. 4 * inv(3) mod 2^64
+        // Wait, need to check. Let me just verify roundtrip.
+        Poly Q;
+        for (int i = 0; i < 8; ++i) Q[i] = E[i];
+        Q[0] = 0;
+        auto L = poly_log(Q);
+        bool ok = true;
+        if (L[0] != 0 || L[1] != 2) ok = false;
+        for (int i = 2; i < 8; ++i) if (L[i] != 0) ok = false;
+        if (!ok) { std::printf("FAIL exp(2x) roundtrip\n"); f++; }
+    }
+
+    // log→exp roundtrip: P → log → exp should give 1+P
+    auto test_log_exp_rt = [&](const Poly& P, int seed_shift) -> bool {
+        auto L = poly_log(P);
+        // exp expects P(0)=0, so exp(log(1+P)) should give 1+P
+        // Actually: log(1+P) = L, then exp(L) = 1+P
+        // poly_log takes P (which should have P[0]=0) and returns L
+        // poly_exp takes L (which should have L[0]=0) and returns E
+        // So E should = 1+P... wait, that's not right.
+        // poly_log(1+P) where (1+P)[0]=1 and P[1] even should give log(1+P)
+        // But our poly_log takes P with P[0]=0 and returns log(1+P)
+        // So P = polynomial with P[0]=0, P[1] even
+        // L = poly_log(P) = log(1+P)
+        // E = poly_exp(L) = exp(log(1+P)) = 1+P
+        // So E[0] should be 1 and E[i] = P[i] for i>0
+        auto E = poly_exp(L);
+        if (E[0] != 1) return false;
+        for (int i = 1; i < 8; ++i) if (E[i] != P[i]) return false;
+        return true;
+    };
+
+    auto test_exp_log_rt = [&](const Poly& P, int seed_shift) -> bool {
+        auto E = poly_exp(P);
+        Poly Q;
+        for (int i = 0; i < 8; ++i) Q[i] = E[i];
+        Q[0] = 0;
+        auto L = poly_log(Q);
+        for (int i = 0; i < 8; ++i) if (L[i] != P[i]) return false;
+        return true;
+    };
+
+    // Simple P[1]=2, others 0
+    {
+        Poly P{};
+        P[1] = 2;
+        if (!test_log_exp_rt(P, 0)) { std::printf("FAIL log→exp roundtrip (2x)\n"); f++; }
+        if (!test_exp_log_rt(P, 0)) { std::printf("FAIL exp→log roundtrip (2x)\n"); f++; }
+    }
+
+    // P[1]=4, P[2]=2
+    {
+        Poly P{};
+        P[1] = 4;
+        P[2] = 2;
+        if (!test_log_exp_rt(P, 0)) { std::printf("FAIL log→exp roundtrip (4x+2x²)\n"); f++; }
+        if (!test_exp_log_rt(P, 0)) { std::printf("FAIL exp→log roundtrip (4x+2x²)\n"); f++; }
+    }
+
+    // P[1]=6, P[3]=10
+    {
+        Poly P{};
+        P[1] = 6;
+        P[3] = 10;
+        if (!test_log_exp_rt(P, 0)) { std::printf("FAIL log→exp (6x+10x³)\n"); f++; }
+        if (!test_exp_log_rt(P, 0)) { std::printf("FAIL exp→log (6x+10x³)\n"); f++; }
+    }
+
+    // All coefficients even and small
+    {
+        Poly P{};
+        for (int i = 1; i < 8; ++i) P[i] = static_cast<uint64_t>(i * 2);
+        if (!test_log_exp_rt(P, 0)) { std::printf("FAIL log→exp all even\n"); f++; }
+        if (!test_exp_log_rt(P, 0)) { std::printf("FAIL exp→log all even\n"); f++; }
+    }
+
+    // Zero input: P all zero → exp(0) = 1
+    {
+        Poly P{};
+        auto E = poly_exp(P);
+        if (E[0] != 1) { std::printf("FAIL exp(0)\n"); f++; }
+        for (int i = 1; i < 8; ++i) if (E[i] != 0) { std::printf("FAIL exp(0) nonzero\n"); f++; }
+    }
+
+    // Large degree N=16
+    {
+        using Poly16 = Polynomial<16, uint64_t, MonomialBasis>;
+        Poly16 P{};
+        for (int i = 1; i < 16; ++i) P[i] = static_cast<uint64_t>(i * 2);
+        auto E = poly_exp(P);
+        Poly16 Q;
+        for (int i = 0; i < 16; ++i) Q[i] = E[i];
+        Q[0] = 0;
+        auto L = poly_log(Q);
+        for (int i = 0; i < 16; ++i) {
+            if (L[i] != P[i]) { std::printf("FAIL exp→log N=16 at %d\n", i); f++; break; }
+        }
+    }
+
+    // Large coefficient values near uint64_t(-1)
+    {
+        Poly P{};
+        P[1] = uint64_t(-2);   // even, large
+        P[2] = uint64_t(-4);   // even, large
+        P[3] = uint64_t(-6);   // even, large
+        auto E = poly_exp(P);
+        Poly Q;
+        for (int i = 0; i < 8; ++i) Q[i] = E[i];
+        Q[0] = 0;
+        auto L = poly_log(Q);
+        for (int i = 0; i < 8; ++i) {
+            if (L[i] != P[i]) { std::printf("FAIL exp→log large coeffs at %d\n", i); f++; break; }
+        }
+    }
+
+    // P[1] = 0 (still even, valuation ≥ 1 vacuous)
+    {
+        Poly P{};
+        P[2] = 2;
+        P[3] = 4;
+        auto E = poly_exp(P);
+        Poly Q;
+        for (int i = 0; i < 8; ++i) Q[i] = E[i];
+        Q[0] = 0;
+        auto L = poly_log(Q);
+        for (int i = 0; i < 8; ++i) {
+            if (L[i] != P[i]) { std::printf("FAIL exp→log P[1]=0 at %d\n", i); f++; break; }
+        }
+    }
+
+    // P with varying 2-adic valuations
+    {
+        Poly P{};
+        P[1] = 2;
+        P[2] = 4;
+        P[4] = 8;
+        P[7] = 16;
+        auto E = poly_exp(P);
+        Poly Q;
+        for (int i = 0; i < 8; ++i) Q[i] = E[i];
+        Q[0] = 0;
+        auto L = poly_log(Q);
+        for (int i = 0; i < 8; ++i) {
+            if (L[i] != P[i]) { std::printf("FAIL exp→log varying v2 at %d\n", i); f++; break; }
+        }
+    }
+
+    return f;
+}
+
+// ---------------------------------------------------------------------------
+// Internal arith helpers: zero_extend, shift_left, unsigned_lt
+// ---------------------------------------------------------------------------
+static int test_arith_helpers() {
+    int f = 0;
+
+    // zero_extend identity: extending should preserve existing limbs
+    {
+        Polynomial<3, uint64_t, MonomialBasis> p{{1, 2, 3}};
+        auto ext = detail::zero_extend<5>(p);
+        for (int i = 0; i < 3; ++i) {
+            if (ext[i] != p[i]) { std::printf("FAIL zero_extend at %d\n", i); f++; }
+        }
+        for (int i = 3; i < 5; ++i) {
+            if (ext[i] != 0) { std::printf("FAIL zero_extend top %d\n", i); f++; }
+        }
+    }
+
+    // shift_left with shift=0
+    {
+        Polynomial<4, uint64_t, MonomialBasis> p{{1, 2, 3, 4}};
+        auto s = detail::shift_left(p, 0);
+        for (int i = 0; i < 4; ++i) {
+            if (s[i] != p[i]) { std::printf("FAIL shift_left 0 at %d\n", i); f++; }
+        }
+    }
+
+    // shift_left with single-bit shift
+    {
+        Polynomial<4, uint64_t, MonomialBasis> p{{1, 0, 0, 0}};
+        auto s = detail::shift_left(p, 1);
+        if (s[0] != 2 || s[1] != 0) { std::printf("FAIL shift_left 1 bit\n"); f++; }
+    }
+
+    // shift_left that crosses limb boundary
+    {
+        Polynomial<4, uint64_t, MonomialBasis> p{{1, 0, 0, 0}};
+        auto s = detail::shift_left(p, 64);
+        if (s[0] != 0 || s[1] != 1) { std::printf("FAIL shift_left cross limb\n"); f++; }
+    }
+
+    // shift_left that crosses multiple limbs
+    {
+        Polynomial<4, uint64_t, MonomialBasis> p{{1, 0, 0, 0}};
+        auto s = detail::shift_left(p, 128);
+        if (s[0] != 0 || s[1] != 0 || s[2] != 1) { std::printf("FAIL shift_left 2 limbs\n"); f++; }
+    }
+
+    // shift_left beyond array size -> all zero
+    {
+        Polynomial<4, uint64_t, MonomialBasis> p{{1, 2, 3, 4}};
+        auto s = detail::shift_left(p, 256);
+        for (int i = 0; i < 4; ++i) {
+            if (s[i] != 0) { std::printf("FAIL shift_left beyond at %d\n", i); f++; }
+        }
+    }
+
+    // shift_left negative shift (should return p unchanged)
+    {
+        Polynomial<4, uint64_t, MonomialBasis> p{{1, 2, 3, 4}};
+        auto s = detail::shift_left(p, -1);
+        for (int i = 0; i < 4; ++i) {
+            if (s[i] != p[i]) { std::printf("FAIL shift_left negative at %d\n", i); f++; }
+        }
+    }
+
+    // unsigned_lt: equal values
+    {
+        Polynomial<4, uint64_t, MonomialBasis> a{{1, 2, 3, 4}};
+        Polynomial<4, uint64_t, MonomialBasis> b{{1, 2, 3, 4}};
+        if (detail::unsigned_lt(a, b)) { std::printf("FAIL unsigned_lt equal\n"); f++; }
+    }
+
+    // unsigned_lt: a < b
+    {
+        Polynomial<4, uint64_t, MonomialBasis> a{{1, 2, 3, 4}};
+        Polynomial<4, uint64_t, MonomialBasis> b{{1, 2, 3, 5}};
+        if (!detail::unsigned_lt(a, b)) { std::printf("FAIL unsigned_lt a<b\n"); f++; }
+    }
+
+    // unsigned_lt: a > b
+    {
+        Polynomial<4, uint64_t, MonomialBasis> a{{1, 2, 3, 5}};
+        Polynomial<4, uint64_t, MonomialBasis> b{{1, 2, 3, 4}};
+        if (detail::unsigned_lt(a, b)) { std::printf("FAIL unsigned_lt a>b\n"); f++; }
+    }
+
+    // unsigned_lt: different in middle limbs
+    {
+        Polynomial<4, uint64_t, MonomialBasis> a{{5, 0, 0, 0}};
+        Polynomial<4, uint64_t, MonomialBasis> b{{0, 0, 1, 0}};
+        if (!detail::unsigned_lt(a, b)) { std::printf("FAIL unsigned_lt middle\n"); f++; }
+    }
+
+    // unsigned_lt: zero vs non-zero
+    {
+        Polynomial<4, uint64_t, MonomialBasis> a{};
+        Polynomial<4, uint64_t, MonomialBasis> b{{0, 0, 0, 1}};
+        if (!detail::unsigned_lt(a, b)) { std::printf("FAIL unsigned_lt zero\n"); f++; }
+        if (detail::unsigned_lt(b, a)) { std::printf("FAIL unsigned_lt zero2\n"); f++; }
+    }
+
+    // mul_unsigned with various sizes (compile-time check via carry-chain property)
+    {
+        Polynomial<2, uint64_t, MonomialBasis> a{{3, 0}};
+        Polynomial<2, uint64_t, MonomialBasis> b{{5, 0}};
+        auto prod = detail::mul_unsigned(a, b);
+        if (prod[0] != 15 || prod[1] != 0 || prod[2] != 0 || prod[3] != 0) {
+            std::printf("FAIL mul_unsigned small\n"); f++;
+        }
+    }
+
+    {
+        Polynomial<2, uint64_t, MonomialBasis> a{{uint64_t(-1), uint64_t(-1)}};
+        Polynomial<2, uint64_t, MonomialBasis> b{{1, 0}};
+        auto prod = detail::mul_unsigned(a, b);
+        if (prod[0] != uint64_t(-1) || prod[1] != uint64_t(-1) || prod[2] != 0) {
+            std::printf("FAIL mul_unsigned by 1\n"); f++;
+        }
+    }
+
+    return f;
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 int main() {
@@ -1154,6 +1736,10 @@ int main() {
     run("poly mul large",      test_poly_mul_overflow());
     run("carry chain",         test_carry_chain());
     run("precision windows",   test_precision_windows());
+    run("carry save arith",    test_carry_save());
+    run("newton division",     test_newton_division());
+    run("exp/log power series",test_exp_log());
+    run("arith helpers",       test_arith_helpers());
 
     if (failures == 0) {
         std::printf("=== All %d functional test groups passed ===\n", total);

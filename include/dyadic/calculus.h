@@ -99,4 +99,65 @@ constexpr Polynomial<N+1, W, TaylorBasis> indefinite_sum(
     return change_basis<TaylorBasis>(sum);
 }
 
+// ============================================================================
+// Power Series Exponential — exp(P) mod x^N
+// ============================================================================
+// Recurrence: E_n = (1/n)·Σ_{k=1}^{n} k·P_k·E_{n-k}
+// Requires P[0]=0, P[1] even (valuation ≥ 1 in ℤ₂).
+// Uses dword (double-width) intermediates for the division safety.
+// Returns exp(P) as a power series truncated to degree N-1.
+
+template<int N, std::unsigned_integral W>
+constexpr Polynomial<N, W, MonomialBasis>
+poly_exp(const Polynomial<N, W, MonomialBasis>& P) noexcept {
+    using dw_t = dword_t<W>;
+    Polynomial<N, W, MonomialBasis> E;
+    E[0] = 1;
+    for (int n = 1; n < N; ++n) {
+        dw_t sum = 0;
+        for (int k = 1; k <= n; ++k) {
+            dw_t term = static_cast<dw_t>(static_cast<W>(k)) *
+                        static_cast<dw_t>(P[k]) *
+                        static_cast<dw_t>(E[n - k]);
+            sum += term;
+        }
+        int v = v2(static_cast<W>(n));
+        W odd_part = static_cast<W>(n) >> v;
+        W inv_odd = modinv_odd(odd_part);
+        E[n] = static_cast<W>((sum >> v) * static_cast<dw_t>(inv_odd));
+    }
+    return E;
+}
+
+// ============================================================================
+// Power Series Logarithm — log(1+P) mod x^N
+// ============================================================================
+// Recurrence: L_n = P_n - (1/n)·Σ_{k=1}^{n-1} k·L_k·P_{n-k}
+// Requires P[0]=0, P[1] even (valuation ≥ 1 in ℤ₂).
+// Uses dword (double-width) intermediates.
+// Returns log(1+P) as a power series truncated to degree N-1.
+
+template<int N, std::unsigned_integral W>
+constexpr Polynomial<N, W, MonomialBasis>
+poly_log(const Polynomial<N, W, MonomialBasis>& P) noexcept {
+    using dw_t = dword_t<W>;
+    Polynomial<N, W, MonomialBasis> L;
+    L[0] = 0;
+    for (int n = 1; n < N; ++n) {
+        dw_t sum = 0;
+        for (int k = 1; k < n; ++k) {
+            dw_t term = static_cast<dw_t>(static_cast<W>(k)) *
+                        static_cast<dw_t>(L[k]) *
+                        static_cast<dw_t>(P[n - k]);
+            sum += term;
+        }
+        int v = v2(static_cast<W>(n));
+        W odd_part = static_cast<W>(n) >> v;
+        W inv_odd = modinv_odd(odd_part);
+        W correction = static_cast<W>((sum >> v) * static_cast<dw_t>(inv_odd));
+        L[n] = P[n] - correction;
+    }
+    return L;
+}
+
 } // namespace dyadic

@@ -6,6 +6,7 @@
 #include <dyadic/core.h>
 #include <dyadic/basis.h>
 #include <dyadic/calculus.h>
+#include <dyadic/arith.h>
 #include <dyadic/witt.h>
 #include <dyadic/compose.h>
 #include <dyadic/gcd.h>

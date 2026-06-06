@@ -195,6 +195,7 @@ struct uint128_t {
     constexpr uint128_t& operator*=(uint128_t v) { *this = *this * v; return *this; }
     constexpr uint128_t& operator<<=(int s) { *this = *this << s; return *this; }
     constexpr uint128_t& operator>>=(int s) { *this = *this >> s; return *this; }
+    constexpr uint128_t& operator%=(uint128_t v) { *this = *this % v; return *this; }
 };
 
 // SFINAE-friendly widen: yields double_width<T>::type when available, else T.
