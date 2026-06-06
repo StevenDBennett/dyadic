@@ -5,6 +5,7 @@
 
 #include <array>
 #include <bit>
+#include <cassert>
 #include <cstdint>
 #include <functional>
 
@@ -24,11 +25,6 @@ struct Exact {};
 template<typename W> struct Modular {};
 struct Unnormalized {};
 
-template<typename T> struct RingCategory;
-
-template<typename T> concept IsExact = std::is_same_v<typename RingCategory<T>::type, Exact>;
-template<typename T> concept IsUnnormalized = std::is_same_v<typename RingCategory<T>::type, Unnormalized>;
-template<typename T> concept IsModular = std::is_same_v<typename RingCategory<T>::type, Modular<typename T::word_type>>;
 template<typename T> concept RingType = requires {
     typename T::word_type;
     { T::value } -> std::convertible_to<typename T::word_type>;
@@ -39,11 +35,6 @@ struct Ring {
     W value{};
     using word_type = W;
     using tag_type = Tag;
-};
-
-template<std::unsigned_integral W, typename Tag>
-struct RingCategory<Ring<W, Tag>> {
-    using type = Tag;
 };
 
 template<std::unsigned_integral W>
@@ -176,7 +167,7 @@ struct uint128_t {
 
     // Binary long division returning quotient.
     friend constexpr uint128_t operator/(uint128_t a, uint128_t b) {
-        if (b == uint128_t(0)) return uint128_t(0); // division by zero
+        assert(b != uint128_t(0) && "uint128_t division by zero");
         uint128_t q = 0, r = 0;
         for (int i = full_bits - 1; i >= 0; --i) {
             r = r << 1;
@@ -191,7 +182,7 @@ struct uint128_t {
     }
 
     friend constexpr uint128_t operator%(uint128_t a, uint128_t b) {
-        if (b == uint128_t(0)) return uint128_t(0);
+        assert(b != uint128_t(0) && "uint128_t modulo by zero");
         uint128_t r = 0;
         for (int i = full_bits - 1; i >= 0; --i) {
             r = r << 1;
@@ -229,6 +220,11 @@ template<typename T> using widen_t = typename widen<T>::type;
     inline constexpr U all_ones_mask_v = all_ones_mask<U>::value;
 
 } // namespace detail
+
+// 4× width alias for the common widen_t<dword_t<W>> pattern.
+// Used by ghost-map accumulation, unsaturated polynomial products.
+template<std::unsigned_integral W>
+using quad_width = detail::widen_t<dword_t<W>>;
 
 // ============================================================================
 // 3. 2-Adic Primitives
@@ -454,7 +450,15 @@ template<int N, std::unsigned_integral W, typename Basis = MonomialBasis>
 struct Polynomial : std::array<W, N> {
     using word_type = W;
     using basis_type = Basis;
-    static constexpr int degree = N - 1;
+    static constexpr int max_degree = N - 1;
+
+    // Actual degree: index of last non-zero coefficient. Returns -1 for zero poly.
+    constexpr int actual_degree() const noexcept {
+        for (int i = N - 1; i >= 0; --i) {
+            if ((*this)[i] != W(0)) return i;
+        }
+        return -1;
+    }
 
     constexpr Polynomial() = default;
     constexpr Polynomial(std::array<W, N> coeffs) noexcept : std::array<W, N>(coeffs) {}
@@ -572,7 +576,7 @@ constexpr Polynomial<N, W, TaylorBasis> monomial_to_taylor(const Polynomial<N, W
 template<int N, std::unsigned_integral W>
 constexpr Polynomial<N, W, MonomialBasis> taylor_to_monomial(const Polynomial<N, W, TaylorBasis>& p) noexcept {
     constexpr auto cache = detail::StirlingCache<N, W>{};
-    using accum_t = detail::widen_t<dword_t<W>>;
+    using accum_t = quad_width<W>;
     // Precompute factorials 0!..(N-1)!
     W facts[N];
     facts[0] = 1;
@@ -761,10 +765,11 @@ struct GhostPowers {
 
 // GhostPowersFull — gw_t-precision precomputed powers for ghost_map.
 // Like GhostPowers but stores at gw_t (= widen_t<dword_t<W>>) precision
-// to avoid truncation in log/exp/inverse recovery. Single O(N²) init.
+// Single O(N²) init.  Stores at gw_t (= quad_width<W>) precision to avoid
+// truncation in log/exp/inverse recovery.
 template<int N, std::unsigned_integral W>
 struct GhostPowersFull {
-    using gw_t = detail::widen_t<dword_t<W>>;
+    using gw_t = quad_width<W>;
     std::array<std::array<gw_t, N>, N> pow{};
 
     constexpr void init(const W* a) noexcept {
@@ -785,12 +790,12 @@ struct GhostPowersFull {
     }
 };
 
-// Ghost sum using widen_t<dword_t<W>> for extra headroom.
+// Ghost sum using quad_width<W> (widen_t<dword_t<W>>) for extra headroom.
 // For W=uint8_t this is uint32_t (4×); for larger types it's the next
 // level in the 2× chain (dword_t widened once more).
 template<int N, std::unsigned_integral W>
 constexpr auto ghost_j_widen(const GhostPowers<N, W>& pows, int j) noexcept {
-    using gw_t = detail::widen_t<dword_t<W>>;
+    using gw_t = quad_width<W>;
     gw_t sum{};
     for (int i = 0; i <= j; ++i) {
         sum += (gw_t(uint64_t(1)) << i) *
@@ -799,9 +804,11 @@ constexpr auto ghost_j_widen(const GhostPowers<N, W>& pows, int j) noexcept {
     return sum;
 }
 
-// Backward-compatible wrapper returning dword_t<W>.
-// Used by WittVector::ghost() and ghost_vector() where truncation to W
-// is acceptable. Internally widens then narrows.
+// Wrapper from quad_width<W> → dword_t<W>.
+// Ghost_j_widen accumulates at quad_width precision (4× headroom for uint8_t);
+// this wrapper narrows to dword_t<W> for the WittVector::ghost() API,
+// which further narrows to W on return. The dword_t intermediate prevents
+// spurious overflow in ghost-compare operations.
 template<int N, std::unsigned_integral W>
 constexpr dword_t<W> ghost_j_dword(const GhostPowers<N, W>& pows, int j) noexcept {
     return static_cast<dword_t<W>>(ghost_j_widen(pows, j));
@@ -958,12 +965,12 @@ constexpr W carry_chain_word(W hi, W lo) noexcept {
 // 15. Polynomial Multiplication
 // ============================================================================
 // Two-phase multiplication: unsaturated dword accumulation + carry chain.
-// For results larger than the per-specialization CHUNK, uses a tiled carry
+// For results larger than the per-specialization CHUNK_COUNT, uses a tiled carry
 // chain that processes the unsaturated product in fixed-size chunks while
-// propagating the carry between chunks. CHUNK targets ~256 bytes of accum_t
+// propagating the carry between chunks. CHUNK_COUNT targets ~256 bytes of accum_t
 // entries, so it scales with the word size.
 
-template<std::unsigned_integral W, typename Accum = detail::widen_t<dword_t<W>>>
+template<std::unsigned_integral W, typename Accum = quad_width<W>>
 constexpr void poly_mul_unsaturated(Accum* r, const W* a, int na,
                                     const W* b, int nb) noexcept {
     int nr = na + nb - 1;
@@ -977,20 +984,20 @@ constexpr void poly_mul_unsaturated(Accum* r, const W* a, int na,
 
 template<std::unsigned_integral W>
 constexpr void poly_mul(W* r, const W* a, int na, const W* b, int nb) noexcept {
-    using accum_t = detail::widen_t<dword_t<W>>;
-    constexpr int CHUNK = 256 / sizeof(accum_t);
+    using accum_t = quad_width<W>;
+    constexpr int CHUNK_COUNT = 256 / sizeof(accum_t);  // ~256 bytes per chunk
     int nr = na + nb - 1;
-    if (nr <= CHUNK) {
-        std::array<accum_t, CHUNK> buf{};
+    if (nr <= CHUNK_COUNT) {
+        std::array<accum_t, CHUNK_COUNT> buf{};
         poly_mul_unsaturated(buf.data(), a, na, b, nb);
         carry_chain(r, buf.data(), nr);
     } else {
-        std::array<accum_t, CHUNK> buf{};
+        std::array<accum_t, CHUNK_COUNT> buf{};
         accum_t carry{};
         int pos = 0;
 
         while (pos < nr) {
-            int end = pos + CHUNK;
+            int end = pos + CHUNK_COUNT;
             if (end > nr) end = nr;
             int chunk_len = end - pos;
             for (int i = 0; i < chunk_len; ++i) buf[i] = 0;
@@ -1023,6 +1030,43 @@ operator*(const Polynomial<N, W, Basis>& p, const Polynomial<M, W, Basis>& q) no
     return r;
 }
 
+// Coefficient-wise polynomial multiplication (standard ring convolution).
+// Use this to verify poly_divmod_cw/poly_gcd_cw results.
+// NOTE: This is NOT the same ring as operator* (which uses carry-chain poly_mul).
+template<int N, int M, std::unsigned_integral W, typename Basis>
+constexpr Polynomial<N+M-1, W, Basis>
+poly_mul_cw(const Polynomial<N, W, Basis>& a, const Polynomial<M, W, Basis>& b) noexcept {
+    constexpr int NR = N + M - 1;
+    Polynomial<NR, W, Basis> r{};
+    for (int i = 0; i < N; ++i) {
+        if (a[i] == W(0)) continue;
+        for (int j = 0; j < M; ++j) {
+            r[i+j] += a[i] * b[j];
+        }
+    }
+    return r;
+}
+
+// Verify A = Q*B + R in the coefficient-wise ring.
+// This is the CORRECT way to verify poly_divmod_cw / poly_gcd_cw results.
+// (Using operator* for verification gives wrong answers — it's carry-chain.)
+template<int N, int M, std::unsigned_integral W>
+constexpr bool verify_divmod_cw(
+    const Polynomial<N, W, MonomialBasis>& A,
+    const Polynomial<N, W, MonomialBasis>& Q,
+    const Polynomial<M, W, MonomialBasis>& B,
+    const Polynomial<M, W, MonomialBasis>& R) noexcept
+{
+    constexpr int NR = N + M - 1;
+    auto QB = poly_mul_cw(Q, B);
+    for (int i = 0; i < N; ++i) {
+        W rhs = QB[i];
+        if (i < M) rhs += R[i];
+        if (A[i] != rhs) return false;
+    }
+    return true;
+}
+
 // ============================================================================
 // 15b. Polynomial GCD, Resultant, and Discriminant
 // ============================================================================
@@ -1030,21 +1074,25 @@ operator*(const Polynomial<N, W, Basis>& p, const Polynomial<M, W, Basis>& q) no
 // monomial basis. Polynomial GCD uses pseudo-remainder PRS to avoid
 // division by zero divisors (even coefficients in Z/2^W Z).
 //
+// RING SEMANTICS:
+//   - Functions with `_cw` suffix operate coefficient-wise (standard ring).
+//   - operator* uses carry-chain poly_mul (2-adic ring with carry propagation).
+//   - These are DIFFERENT rings. Use poly_mul_cw() to verify _cw results.
+//   - verify_divmod_cw() is provided as a correctness checker.
+//
 // Key constraints:
-//   - poly_divmod requires an odd leading coefficient (unit mod 2^W)
-//   - pseudo_remainder works for any coefficients (no division needed)
-//   - resultant requires deg(A)+deg(B) ≤ 20 (subset DP is O(n·2^n))
+//   - poly_divmod_cw requires an odd leading coefficient (unit mod 2^W)
+//   - pseudo_remainder_cw works for any coefficients (no division needed)
+//   - polynomial_resultant_cw requires deg(A)+deg(B) ≤ 6 (Laplace O(n!))
 
 namespace detail {
 
-// Compute actual degree of a polynomial (index of last non-zero coeff).
+// Actual degree of a polynomial (index of last non-zero coeff).
 // Returns -1 for zero polynomial, 0..N-1 otherwise.
+// Delegates to the member function; kept as detail helper for convenience.
 template<int N, std::unsigned_integral W, typename Basis>
 constexpr int poly_actual_degree(const Polynomial<N, W, Basis>& p) noexcept {
-    for (int i = N - 1; i >= 0; --i) {
-        if (p[i] != W(0)) return i;
-    }
-    return -1;
+    return p.actual_degree();
 }
 
 // Formal derivative in monomial basis returning std::array for internal use.
@@ -1063,10 +1111,10 @@ constexpr std::array<W, N> poly_diff_arr(const std::array<W, N>& a, int deg) noe
 // Works over any ring (no division by leading coefficient required).
 template<int N, int M, std::unsigned_integral W>
 constexpr Polynomial<N, W, MonomialBasis>
-pseudo_remainder(const Polynomial<N, W, MonomialBasis>& A,
+pseudo_remainder_cw(const Polynomial<N, W, MonomialBasis>& A,
                  const Polynomial<M, W, MonomialBasis>& B) noexcept {
-    int da = detail::poly_actual_degree(A);
-    int db = detail::poly_actual_degree(B);
+    int da = A.actual_degree();
+    int db = B.actual_degree();
     if (db < 0) return Polynomial<N, W, MonomialBasis>{}; // B = 0
     if (da < db) return A;
 
@@ -1103,10 +1151,12 @@ pseudo_remainder(const Polynomial<N, W, MonomialBasis>& A,
 // Returns (Q, R) where deg(R) < deg(B).
 template<int N, int M, std::unsigned_integral W>
 constexpr std::pair<Polynomial<N, W, MonomialBasis>, Polynomial<M, W, MonomialBasis>>
-poly_divmod(const Polynomial<N, W, MonomialBasis>& A,
-            const Polynomial<M, W, MonomialBasis>& B) noexcept {
-    int da = detail::poly_actual_degree(A);
-    int db = detail::poly_actual_degree(B);
+poly_divmod_cw(const Polynomial<N, W, MonomialBasis>& A,
+             const Polynomial<M, W, MonomialBasis>& B) noexcept {
+    int da = A.actual_degree();
+    int db = B.actual_degree();
+    assert(db >= 0 && "poly_divmod_cw: division by zero polynomial");
+    assert((B[db] & W(1)) != W(0) && "poly_divmod_cw: leading coefficient must be odd");
 
     // Build M-sized remainder (may be smaller than N)
     auto make_remainder = [&](const std::array<W, N>& src) {
@@ -1120,12 +1170,7 @@ poly_divmod(const Polynomial<N, W, MonomialBasis>& A,
         return {Polynomial<N, W, MonomialBasis>{}, make_remainder(A)};
     }
 
-    W lcB = B[db];
-    if ((lcB & W(1)) == W(0)) {
-        Polynomial<N, W, MonomialBasis> Q{};
-        return {Q, make_remainder(A)};
-    }
-    W inv_lcB = modinv_odd(lcB);
+    W inv_lcB = modinv_odd(B[db]);
 
     std::array<W, N> R{};
     for (int i = 0; i < N; ++i) R[i] = A[i];
@@ -1149,13 +1194,13 @@ poly_divmod(const Polynomial<N, W, MonomialBasis>& A,
 
 // Polynomial GCD via pseudo-remainder PRS (Euclidean algorithm).
 // Works for any coefficients (even zero divisors) because it uses
-// pseudo_remainder instead of ordinary polynomial remainder.
+// pseudo_remainder_cw instead of ordinary polynomial remainder.
 // Returns the GCD normalized to have leading coefficient 1.
 // NOTE: Internally converts to K=max(N,M)-sized arrays so the
 // Euclidean step can swap degrees without type conflicts.
 template<int N, int M, std::unsigned_integral W>
 constexpr Polynomial<(N > M ? N : M), W, MonomialBasis>
-poly_gcd(const Polynomial<N, W, MonomialBasis>& A_,
+poly_gcd_cw(const Polynomial<N, W, MonomialBasis>& A_,
          const Polynomial<M, W, MonomialBasis>& B_) noexcept {
     constexpr int K = (N > M ? N : M);
     using Poly = Polynomial<K, W, MonomialBasis>;
@@ -1165,8 +1210,8 @@ poly_gcd(const Polynomial<N, W, MonomialBasis>& A_,
     for (int i = 0; i < N; ++i) A[i] = A_[i];
     for (int i = 0; i < M; ++i) B[i] = B_[i];
 
-    int da = detail::poly_actual_degree(A);
-    int db = detail::poly_actual_degree(B);
+    int da = A.actual_degree();
+    int db = B.actual_degree();
 
     if (db < 0) {
         Poly result{};
@@ -1183,7 +1228,7 @@ poly_gcd(const Polynomial<N, W, MonomialBasis>& A_,
     }
 
     while (db >= 0) {
-        auto R = pseudo_remainder(
+        auto R = pseudo_remainder_cw(
             Polynomial<K, W, MonomialBasis>(A),
             Polynomial<K, W, MonomialBasis>(B));
 
@@ -1191,8 +1236,8 @@ poly_gcd(const Polynomial<N, W, MonomialBasis>& A_,
         B = Poly{};
         for (int i = 0; i < K; ++i) B[i] = R[i];
 
-        da = detail::poly_actual_degree(A);
-        db = detail::poly_actual_degree(B);
+        da = A.actual_degree();
+        db = B.actual_degree();
     }
 
     Poly result{};
@@ -1242,10 +1287,10 @@ constexpr W det_laplace(const std::array<std::array<W, 6>, 6>& M, int n) noexcep
 // Uses Laplace expansion (O(n!)), limited to dim ≤ 6.
 // For dyadic's typical small N (2..6), this covers all cases.
 template<int N, int M, std::unsigned_integral W>
-constexpr W polynomial_resultant(const Polynomial<N, W, MonomialBasis>& A,
+constexpr W polynomial_resultant_cw(const Polynomial<N, W, MonomialBasis>& A,
                                  const Polynomial<M, W, MonomialBasis>& B) noexcept {
-    int m = detail::poly_actual_degree(A);
-    int n = detail::poly_actual_degree(B);
+    int m = A.actual_degree();
+    int n = B.actual_degree();
 
     if (m < 0 || n < 0) return W(0);
     if (m == 0 && n == 0) return W(1);
@@ -1275,8 +1320,8 @@ constexpr W polynomial_resultant(const Polynomial<N, W, MonomialBasis>& A,
 // Polynomial discriminant: (-1)^{d(d-1)/2} * res(P, P') / lc(P).
 // Returns 0 if the leading coefficient is even (cannot divide reliably).
 template<int N, std::unsigned_integral W>
-constexpr W poly_discriminant(const Polynomial<N, W, MonomialBasis>& P) noexcept {
-    int d = detail::poly_actual_degree(P);
+constexpr W poly_discriminant_cw(const Polynomial<N, W, MonomialBasis>& P) noexcept {
+    int d = P.actual_degree();
     if (d < 1) return W(0);
     if (d == 1) return W(1);
 
@@ -1286,7 +1331,7 @@ constexpr W poly_discriminant(const Polynomial<N, W, MonomialBasis>& P) noexcept
     // Compute P'
     auto P_prime = formal_derivative(P);
 
-    W res = polynomial_resultant(P, P_prime);
+    W res = polynomial_resultant_cw(P, P_prime);
     int sign_exp = d * (d - 1) / 2;
     W sign = (sign_exp & 1) ? W(W(0) - W(1)) : W(1);
     return sign * res * modinv_odd(lc);
@@ -1295,13 +1340,13 @@ constexpr W poly_discriminant(const Polynomial<N, W, MonomialBasis>& P) noexcept
 // Square-free check: gcd(P, P') of degree 0 means no repeated factors.
 // Works even when the leading coefficient is even (unlike discriminant).
 template<int N, std::unsigned_integral W>
-constexpr bool poly_is_square_free(const Polynomial<N, W, MonomialBasis>& P) noexcept {
-    int d = detail::poly_actual_degree(P);
+constexpr bool poly_is_square_free_cw(const Polynomial<N, W, MonomialBasis>& P) noexcept {
+    int d = P.actual_degree();
     if (d < 1) return false;
 
     auto P_prime = formal_derivative(P);
-    auto g = poly_gcd(P, P_prime);
-    return detail::poly_actual_degree(g) == 0;
+    auto g = poly_gcd_cw(P, P_prime);
+    return g.actual_degree() == 0;
 }
 
 // ============================================================================
@@ -1401,7 +1446,7 @@ namespace detail {
 // Witt components are large (e.g., after inverse/log/exp recovery).
 template<int N, std::unsigned_integral W>
 constexpr auto ghost_j_full(const W* a, int j) noexcept {
-    using gw_t = detail::widen_t<dword_t<W>>;
+    using gw_t = quad_width<W>;
     gw_t sum{};
     for (int i = 0; i <= j; ++i) {
         gw_t pow = static_cast<gw_t>(a[i]);
@@ -1417,8 +1462,8 @@ constexpr auto ghost_j_full(const W* a, int j) noexcept {
 // Witt components r[j] via r_j = (G_j - S_j) / 2^j where
 // S_j = Σ_{i<j} 2^i · r_i^{2^{j-i}}.
 template<int N, std::unsigned_integral W>
-constexpr WittVector<N, W> ghost_recover(const std::array<detail::widen_t<dword_t<W>>, N>& G) noexcept {
-    using gw_t = detail::widen_t<dword_t<W>>;
+constexpr WittVector<N, W> ghost_recover(const std::array<quad_width<W>, N>& G) noexcept {
+    using gw_t = quad_width<W>;
     WittVector<N, W> r;
     r[0] = static_cast<W>(G[0]);
 
@@ -1451,7 +1496,7 @@ template<int N, std::unsigned_integral W, typename Combine>
 constexpr WittVector<N, W> ghost_op(const WittVector<N, W>& a,
                                     const WittVector<N, W>& b,
                                     Combine combine) noexcept {
-    using gw_t = detail::widen_t<dword_t<W>>;
+    using gw_t = quad_width<W>;
 
     detail::GhostPowersFull<N, W> a_pows, b_pows;
     a_pows.init(a.a.data());
@@ -1470,28 +1515,28 @@ constexpr WittVector<N, W> ghost_op(const WittVector<N, W>& a,
 template<int N, std::unsigned_integral W>
 constexpr WittVector<N, W> witt_add(const WittVector<N, W>& a,
                                     const WittVector<N, W>& b) noexcept {
-    using gw_t = detail::widen_t<dword_t<W>>;
+    using gw_t = quad_width<W>;
     return detail::ghost_op<N>(a, b, std::plus<gw_t>{});
 }
 
 template<int N, std::unsigned_integral W>
 constexpr WittVector<N, W> witt_mul(const WittVector<N, W>& a,
                                     const WittVector<N, W>& b) noexcept {
-    using gw_t = detail::widen_t<dword_t<W>>;
+    using gw_t = quad_width<W>;
     return detail::ghost_op<N>(a, b, std::multiplies<gw_t>{});
 }
 
 // Adams operation ψ^n: ghost_j(ψ^n(a)) = ghost_j(a)^n (componentwise power).
 // A ring endomorphism on Witt vectors; ψ^p = Frobenius for prime p.
 // ψ^{mn} = ψ^m ∘ ψ^n, ψ^1 = identity. Requires n ≥ 1.
-// Ghost power uses widen_t<dword_t<W>> for extra headroom (4× for uint8_t,
+// Ghost power uses quad_width<W> for extra headroom (4× for uint8_t,
 // 2× of dword_t for others). For W=uint64, dword_t=uint128_t and no wider
 // type exists, so overflow may occur for large ghost values with n ≥ 2.
 template<int N, std::unsigned_integral W>
 constexpr WittVector<N, W> adams_operation(const WittVector<N, W>& a, int n) noexcept {
     if (n <= 1) return a;
 
-    using gw_t = detail::widen_t<dword_t<W>>;
+    using gw_t = quad_width<W>;
 
     detail::GhostPowersFull<N, W> pows;
     pows.init(a.a.data());
@@ -1559,7 +1604,7 @@ template<int N, std::unsigned_integral W>
 constexpr Polynomial<N, W, MonomialBasis>
 reversion(const Polynomial<N, W, MonomialBasis>& P) noexcept {
     // Precondition: P[1] is odd (invertible mod 2^{8*sizeof(W)}). P[0] is assumed 0.
-    if (P[1] % 2 == 0) return Polynomial<N, W, MonomialBasis>{};
+    assert((P[1] & W(1)) != W(0) && "reversion: requires P[1] odd");
     W p1_inv = modinv_odd(P[1]);
 
     Polynomial<N, W, MonomialBasis> R{};
@@ -1664,8 +1709,8 @@ constexpr bool check_taylor_roundtrip_precision(const Polynomial<N, W, MonomialB
 template<int N, std::unsigned_integral W>
 constexpr bool check_witt_recovery_precision(const WittVector<N, W>& w) noexcept {
     auto gv = w.ghost_vector();
-    std::array<detail::widen_t<dword_t<W>>, N> G{};
-    for (int j = 0; j < N; ++j) G[j] = static_cast<detail::widen_t<dword_t<W>>>(gv[j]);
+    std::array<quad_width<W>, N> G{};
+    for (int j = 0; j < N; ++j) G[j] = static_cast<quad_width<W>>(gv[j]);
     auto recovered = detail::ghost_recover<N, W>(G);
     auto rgv = recovered.ghost_vector();
     for (int j = 0; j < N; ++j) {
@@ -1684,7 +1729,7 @@ constexpr bool check_witt_recovery_precision(const WittVector<N, W>& w) noexcept
 //   - witt_exp(a): requires a[0] ≡ 0 (mod 4) for convergence in ℤ₂
 //   - witt_inverse(a): requires a[0] odd
 //
-// Ghost map operations run at gw_t (= widen_t<dword_t<W>>) precision, which
+// Ghost map operations run at gw_t (= quad_width<W>) precision, which
 // for uint64_t is uint128_t. The 2-adic primitives (v2, modinv_odd, div_2k_adic)
 // are overloaded for uint128_t in the detail namespace.
 
@@ -1738,38 +1783,52 @@ constexpr T div_by_int_generic(T val, int n) noexcept {
     }
 }
 
-// ℤ₂ logarithm: log(1 + y) = Σ_{n=1}^{∞} (-1)^{n+1} y^n / n
-// Converges when v₂(y) ≥ 1 (y even). Works on any type with basic arithmetic.
+// 2-adic valuation for the generic types used in p-adic series.
 template<typename T>
-constexpr T p_adic_log_impl(T y) noexcept {
-    T sum = T(0);
+constexpr int p_adic_val(T x) noexcept {
+    if constexpr (std::is_same_v<T, uint128_t>) {
+        return v2_128(x);
+    } else {
+        return dyadic::v2(x);
+    }
+}
+
+// ℤ₂ logarithm: log(1+y) = Σ_{n=1}^{∞} (-1)^{n+1} y^n / n
+// Converges when v₂(y) ≥ 1 (y even). Terms have valuation n·v₂(y) − v₂(n),
+// vanishing when this reaches the bit width of T.
+// For v₂(y) = 1, needs ~bits + log₂(bits) terms (135 for 128-bit).
+// Uses a 2× budget to cover the v₂(y) = 1 case.
+// NOTE: This computes log(1+y), NOT log(y). For log(y), pass y-1.
+template<typename T>
+constexpr T p_adic_log_1plus_impl(T y) noexcept {
+    if (y == T(0)) return T(0);
+    int bits = 8 * int(sizeof(T));
+    int max_terms = 2 * bits;  // generous budget for v₂=1 inputs
+    T sum = y;
     T term = y;
-    if (term == T(0)) return T(0);
-    sum = term;
-    int max_terms = 8 * int(sizeof(y));
-    if (max_terms < 2) max_terms = 2;
     for (int n = 2; n <= max_terms; ++n) {
         term = term * y;
         term = term * T(static_cast<uint64_t>(n - 1));
         term = div_by_int_generic(term, n);
         if (term == T(0)) break;
-        if (n % 2 == 1) {
-            sum = sum + term;
-        } else {
-            sum = sum - term;
-        }
+        sum = (n & 1) ? (sum + term) : (sum - term);
     }
     return sum;
 }
 
 // ℤ₂ exponential: exp(x) = Σ_{n=0}^{∞} x^n / n!
-// Converges when v₂(x) ≥ 2 (x ≡ 0 mod 4). Iterates until term vanishes.
+// Converges when v₂(x) ≥ 2 (x ≡ 0 mod 4). Terms have valuation
+// n·(v₂(x)−1) + s₂(n), vanishing when this reaches the bit width of T.
+// For v₂(x) = 1, the series never converges at finite precision
+// (s₂(n) ≤ log₂(n)+1). Uses a 2× budget and early-exits on vanishing terms.
 template<typename T>
 constexpr T p_adic_exp_impl(T x) noexcept {
+    int bits = 8 * int(sizeof(T));
+    int v = p_adic_val(x);
+    int max_terms = (v < 2) ? (2 * bits) : ((bits + v - 3) / (v - 1) + 1);
+    if (max_terms > 2 * bits) max_terms = 2 * bits;
     T sum = T(1);
     T term = T(1);
-    int max_terms = 8 * int(sizeof(x));
-    if (max_terms < 2) max_terms = 2;
     for (int n = 1; n <= max_terms; ++n) {
         term = term * x;
         term = div_by_int_generic(term, n);
@@ -1785,20 +1844,21 @@ constexpr T p_adic_exp_impl(T x) noexcept {
 // Defined when a[0] is odd (unit in the Witt ring).
 // Returns b such that witt_exp(b) = a (when both are defined).
 //
-// p_adic_log_impl(y) computes log(1+y). Since we want log(ghost_j(a)),
+// p_adic_log_1plus_impl(y) computes log(1+y). We want log(ghost_j(a)),
 // we pass ghost_j(a) - 1 so that log(1 + (ghost_j(a)-1)) = log(ghost_j(a)).
 // Convergence requires ghost_j(a) ≡ 1 (mod 2), which holds when a[0] is odd
 // (a[0]^{2^j} ≡ 1 mod 2 for odd a[0]).
 template<int N, std::unsigned_integral W>
 constexpr WittVector<N, W> witt_log(const WittVector<N, W>& a) noexcept {
-    using gw_t = detail::widen_t<dword_t<W>>;
+    assert((a[0] & W(1)) != W(0) && "witt_log: requires a[0] odd (unit in Witt ring)");
+    using gw_t = quad_width<W>;
 
     detail::GhostPowersFull<N, W> pows;
     pows.init(a.a.data());
 
     std::array<gw_t, N> H{};
     for (int j = 0; j < N; ++j) {
-        H[j] = detail::p_adic_log_impl(pows.ghost(j) - gw_t(1));
+        H[j] = detail::p_adic_log_1plus_impl(pows.ghost(j) - gw_t(1));
     }
     return detail::ghost_recover<N, W>(H);
 }
@@ -1808,7 +1868,8 @@ constexpr WittVector<N, W> witt_log(const WittVector<N, W>& a) noexcept {
 // Returns b such that witt_log(b) = a (when both are defined).
 template<int N, std::unsigned_integral W>
 constexpr WittVector<N, W> witt_exp(const WittVector<N, W>& a) noexcept {
-    using gw_t = detail::widen_t<dword_t<W>>;
+    assert((a[0] & W(3)) == W(0) && "witt_exp: requires a[0] ≡ 0 (mod 4), v₂(a[0]) ≥ 2");
+    using gw_t = quad_width<W>;
 
     detail::GhostPowersFull<N, W> pows;
     pows.init(a.a.data());
@@ -1825,7 +1886,8 @@ constexpr WittVector<N, W> witt_exp(const WittVector<N, W>& a) noexcept {
 // Satisfies a * witt_inverse(a) = τ(1) = {1, 0, ..., 0}.
 template<int N, std::unsigned_integral W>
 constexpr WittVector<N, W> witt_inverse(const WittVector<N, W>& a) noexcept {
-    using gw_t = detail::widen_t<dword_t<W>>;
+    assert((a[0] & W(1)) != W(0) && "witt_inverse: requires a[0] odd (unit in Witt ring)");
+    using gw_t = quad_width<W>;
 
     detail::GhostPowersFull<N, W> pows;
     pows.init(a.a.data());
@@ -1857,8 +1919,10 @@ constexpr bool check_witt_inverse(const WittVector<N, W>& a) noexcept {
     return true;
 }
 
+// Check exp∘log = identity on the multiplicative domain (odd a[0]).
+// For the additive roundtrip (log∘exp = id on v₂(a₀) ≥ 2), see PROOF_WITT_LOG_EXP.
 template<int N, std::unsigned_integral W>
-constexpr bool check_witt_log_exp_roundtrip(const WittVector<N, W>& a) noexcept {
+constexpr bool check_witt_exp_log_roundtrip(const WittVector<N, W>& a) noexcept {
     auto b = witt_exp(witt_log(a));
     for (int i = 0; i < N; ++i) {
         if (a[i] != b[i]) return false;

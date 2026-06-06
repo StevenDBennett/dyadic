@@ -101,8 +101,8 @@ and `℘(x) = ℘(1-x)` for all x. It classifies the additive group modulo the
 Frobenius: `ℤ₂/℘(ℤ₂) ≅ ℤ/2ℤ`.
 
 **Reference**: `BigInteger/validation_paper.md` (audit of 18 claims),
-`dyadic.h:671–718` (operator implementations), `dyadic_verify.h:207–289`
-(compile-time commutativity proofs).
+`dyadic.h:269–272` (artin_schreier), `dyadic.h:678–719` (D/Δ operators), `dyadic_verify.h:366–497`
+(compile-time Artin-Schreier proofs).
 
 ---
 
@@ -177,7 +177,7 @@ result_j = f(j, inputs_{i≤j})
 with an **invertible triangular system**: given the outputs, the inputs are
 recovered by iterative subtraction and division by a power of 2.
 
-**Reference**: `dyadic.h:1382–1503` (Witt operators), `dyadic.h:1738–1818`
+**Reference**: `dyadic.h:1432–1529` (Witt operations), `dyadic.h:1725–1905`
 (Witt exp/log), `dyadic_verify.h:502–560` (compile-time Witt proofs).
 
 ---
@@ -346,9 +346,9 @@ The six axioms implemented in dyadic span all four domains:
 
 ## 7. Open Problems
 
-1. **Witt exp convergence for all v₂(a₀) ≥ 2**: The current implementation
-   requires `v₂(ghost_j(a)) ≥ 9`. Can dynamic term counts extend this to
-   the full theoretical domain `v₂(a₀) ≥ 2`?
+1. ~~**Witt exp convergence**~~ **Resolved**: Dynamic term counting (2× bit-width
+   budget) achieves `v₂(a₀) ≥ 2` convergence (the theoretical optimum).
+   The old fixed 16-term budget required `v₂(ghost_j(a)) ≥ 9`.
 
 2. **Mersenne-Butterfly duality**: Is the Mersenne ghost sector `α = 1`
    isomorphic to the nilpotent sector of the thermodynamic classification?

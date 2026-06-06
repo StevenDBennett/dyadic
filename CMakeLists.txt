@@ -36,9 +36,10 @@ if(DYADIC_BUILD_TESTS AND (NOT DEFINED PROJECT_IS_SUBMODULE OR NOT PROJECT_IS_SU
         add_test(NAME ${name} COMMAND ${name})
     endfunction()
 
-add_dyadic_test(test_verify  test/test_verify.cpp)
-add_dyadic_test(test_property  test/test_property.cpp)
-add_dyadic_test(test_full      test/test_full.cpp)
+    add_dyadic_test(test_verify    test/test_verify.cpp)
+    add_dyadic_test(test_property  test/test_property.cpp)
+    add_dyadic_test(test_full      test/test_full.cpp)
+    add_dyadic_test(test_negatives test/test_negatives.cpp)  # POSIX-only (fork); Windows stub returns 0
 
     # Benchmark (not part of default CTest — run manually)
     add_executable(benchmark test/benchmark.cpp)

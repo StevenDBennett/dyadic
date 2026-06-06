@@ -54,7 +54,7 @@ int main() {
 | **Witt Vectors** | `WittVector<N,W>` with ghost map, Frobenius, Verschiebung, `+`, `*`, `exp`, `log`, `inverse`, `adams_operation`, `teichmueller_lift` |
 | **Carry Chain** | Full-width carry propagation `C = (I−N)⁻¹` — converges in one pass |
 | **Compose / Reversion** | Power series composition P(Q(t)) and Lagrange inversion |
-| **Compile-Time Proofs** | 20+ `static_assert` proofs verifying ring axioms, basis roundtrips, D∘Δ=Δ∘D, ghost homomorphism, carry idempotence, Witt exp/log roundtrip (see `dyadic_verify.h`) |
+| **Compile-Time Proofs** | 22 named `static_assert` proofs (~55 total assertions) verifying ring axioms, basis roundtrips, D∘Δ=Δ∘D, ghost homomorphism, carry idempotence, Witt exp/log roundtrip (see `dyadic_verify.h`) |
 
 ## More Examples
 
@@ -79,6 +79,22 @@ auto tau = teichmueller_lift<4>(uint64_t{7});
 // ghost_j(τ(ab)) = ghost_j(τ(a)) · ghost_j(τ(b))  — verified at compile time
 ```
 
+### Polynomial GCD, divmod, and ring semantics
+
+```cpp
+// NOTE: operator* uses carry-chain (2-adic ring).
+// poly_divmod_cw / poly_gcd_cw use coefficient-wise (standard ring).
+// Use poly_mul_cw() and verify_divmod_cw() for verification.
+
+Polynomial<3, uint64_t> A{{1, 2, 1}};  // (x+1)²
+Polynomial<2, uint64_t> B{{1, 1}};     // (x+1)
+
+auto [Q, R] = poly_divmod_cw(A, B);       // Q=(x+1), R=0
+bool ok = verify_divmod_cw(A, Q, B, R);   // true: A=Q·B+R ✓
+
+auto G = poly_gcd_cw(A, B);               // G=(x+1) — divides both
+```
+
 ### Polynomial composition and reversion
 
 ```cpp
@@ -95,7 +111,7 @@ auto R  = reversion(P);   // Lagrange inverse: P(R(t)) = t
 
 ```cpp
 #include "dyadic_verify.h"  // triggers all static_asserts at compile time
-// If it compiles, all 20+ proofs passed.
+// If it compiles, all 22 named static_assert proofs passed.
 ```
 
 Day-to-day compiles include a sampled subset. For the full exhaustive suite (256² cases, 8K+ multiplication cases), define `DYADIC_HEAVY_PROOFS`.
@@ -141,18 +157,26 @@ Optional: `-DDYADIC_HEAVY_PROOFS=ON` for exhaustive compile-time proofs.
 
 | File | What |
 |------|------|
-| `test_verify.cpp` | 20+ compile-time proofs + runtime verification across 9 (N,W) combos |
-| `test_property.cpp` | Randomized property-based tests: 7 invariants × 10 (N,W) combos |
-| `test_full.cpp` | 16 functional test groups covering the entire API surface |
+| `test_verify.cpp` | 22 named compile-time proofs (~55 assertions) + runtime verification across 9 (N,W) combos |
+| `test_property.cpp` | Randomized property-based tests: 15 invariants × 10 (N,W) combos |
+| `test_full.cpp` | 17 functional test groups covering the entire API surface |
+| `test_negatives.cpp` | Fork-based assertion verification (6 precondition checks) |
 | `benchmark.cpp` | Runtime benchmarks for key operations (build manually: `g++ -O2 -std=c++20 -I.. benchmark.cpp`) |
 
 All tests pass under GCC 14+ and Clang 17+ with ASan+UBSan. CI covers GCC (light + heavy proofs), Clang, and MSVC on Windows.
 
+## Design Notes
+
+- **Two ring semantics**: `operator*` uses carry-chain `poly_mul` (correct ℤ₂ arithmetic with overflow propagation). Functions with `_cw` suffix (`poly_divmod_cw`, `poly_gcd_cw`, `poly_mul_cw`) operate coefficient-wise (standard ring). These are **different rings** — use `poly_mul_cw()` and `verify_divmod_cw()` to verify divmod/gcd results.
+- **`quad_width<W>` alias**: Shorthand for `widen_t<dword_t<W>>` (up to 4× word width), used by ghost-map accumulation and unsaturated polynomial products.
+- **`assert` preconditions**: All silent-failure points (`poly_divmod_cw` with zero/even divisor, `witt_exp` with v₂(a₀) < 2, `witt_log`/`witt_inverse` with even a₀, `reversion` with even P[1]) now use `assert()`. Invalid inputs trigger `SIGABRT` in debug builds.
+
 ## Known Limitations
 
+- **`Polynomial::degree()` renamed to `max_degree()`**: The old name was misleading (it returned `N−1`, the maximum possible degree, not the actual degree). Added `actual_degree()` member function.
 - **Taylor basis roundtrip**: `T_k = k! · FF_k` wraps when `FF_k ≥ 2^W / k!`. Use small coefficients for exact roundtrips. FallingFactorial basis has no such limitation.
 - **Witt precision window**: Recovery `r_j = (G_j − S_j) / 2^j` requires `r_j < 2^{W−j}`.
-- **Witt exp/log term truncation**: Uses fixed 16-term series; requires `v₂(ghost_j(a)) ≥ 9` for accuracy. This holds automatically for Teichmüller lifts when `v₂(a₀) ≥ 9`. Non-Teichmüller inputs need `v₂(a_j) ≥ 9−j` for j>0.
+- **Witt exp/log term truncation**: Uses valuation-aware dynamic term counting with 2× bit-width budget. Requires `v₂(x) ≥ 2` for exp convergence (mathematical limit — `v₂(x) = 1` stalls at `≤ log₂(n)+1`). Log converges for `v₂(y) ≥ 1` (~135 terms at 128-bit).
 - **`detail::uint128_t`** is a software 128-bit pair — no `unsigned __int128` required. `__int128` is used only as an optimization in `binom()`, guarded by feature-test macros.
 
 ## License

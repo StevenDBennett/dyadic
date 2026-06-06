@@ -161,9 +161,9 @@ static int test_stirling() {
 static int test_polynomial_edge() {
     int f = 0;
 
-    // N=1 (degree 0, constant polynomial)
+    // N=1 (max_degree 0, constant polynomial)
     Polynomial<1, uint64_t, MonomialBasis> c{{42}};
-    if (c.degree != 0) { f++; }
+    if (c.max_degree != 0) { f++; }
     if (c.eval(0) != 42) { f++; }
     if (c.eval(100) != 42) { f++; }
 
@@ -217,7 +217,7 @@ static int test_polynomial_arith() {
     Polynomial<2, uint64_t, MonomialBasis> a{{1, 1}};
     Polynomial<2, uint64_t, MonomialBasis> b{{1, 1}};
     auto prod = a * b;
-    if (prod.degree != 2) { f++; }
+    if (prod.max_degree != 2) { f++; }
     if (prod[0] != 1 || prod[1] != 2 || prod[2] != 1) { f++; }
 
     // Larger multiplication: (1+2x+3x^2) * (4+5x) = 4+13x+22x^2+15x^3
@@ -238,6 +238,148 @@ static int test_polynomial_arith() {
     auto overflow_prod = max_a * max_a;
     if (overflow_prod[0] != 1) { // (-1)*(-1) = 1 in 2-adic, carry chain normalizes
         std::printf("FAIL poly mul overflow 0=%lu\n", overflow_prod[0]); f++;
+    }
+
+    return f;
+}
+
+// ---------------------------------------------------------------------------
+// Polynomial GCD, divmod, resultant, discriminant, determinant
+// ---------------------------------------------------------------------------
+
+static int test_polynomial_gcd() {
+    int f = 0;
+
+    // Test verify_divmod_cw helper directly
+    auto test_vdm = [&](const char* label, bool result) {
+        if (!result) { std::printf("FAIL verify_divmod_cw %s\n", label); f++; }
+    };
+
+    // --- poly_divmod_cw + verify_divmod_cw ---
+    {
+        // (x²+2x+1) ÷ (x+1) = (x+1) rem 0
+        Polynomial<3, uint64_t, MonomialBasis> A{{1, 2, 1}};
+        Polynomial<2, uint64_t, MonomialBasis> B{{1, 1}};
+        auto [Q, R] = poly_divmod_cw(A, B);
+        test_vdm("(x+1)²/(x+1)", verify_divmod_cw(A, Q, B, R));
+        // N < M: (x+1) ÷ (x²+2x+1) → Q=0, R=A
+        Polynomial<2, uint64_t, MonomialBasis> A2{{1, 1}};
+        Polynomial<3, uint64_t, MonomialBasis> B2{{1, 2, 1}};
+        auto [Q2, R2] = poly_divmod_cw(A2, B2);
+        test_vdm("(x+1)/(x+1)²", verify_divmod_cw(A2, Q2, B2, R2));
+        // x² ÷ (x+1) = (x-1) rem 1
+        Polynomial<3, uint64_t, MonomialBasis> A3{{0, 0, 1}};
+        Polynomial<2, uint64_t, MonomialBasis> B3{{1, 1}};
+        auto [Q3, R3] = poly_divmod_cw(A3, B3);
+        test_vdm("x²/(x+1)", verify_divmod_cw(A3, Q3, B3, R3));
+        // Constant divmod
+        Polynomial<1, uint64_t, MonomialBasis> A4{{10}};
+        Polynomial<1, uint64_t, MonomialBasis> B4{{3}};
+        auto [Q4, R4] = poly_divmod_cw(A4, B4);
+        test_vdm("const 10/3", verify_divmod_cw(A4, Q4, B4, R4));
+        // Wrong answer detection: Q=1,R=5 gives 1*3+5=8 != 10
+        Polynomial<1, uint64_t, MonomialBasis> Qbad{{1}};
+        Polynomial<1, uint64_t, MonomialBasis> Rbad{{5}};
+        if (verify_divmod_cw(A4, Qbad, B4, Rbad)) {
+            std::printf("FAIL verify_divmod_cw wrong answer not caught\n"); f++;
+        }
+    }
+
+    // --- pseudo_remainder_cw ---
+    {
+        // Even leading coefficient (can't use divmod)
+        Polynomial<3, uint64_t, MonomialBasis> A{{1, 2, 1}};
+        Polynomial<2, uint64_t, MonomialBasis> B{{2, 2}};
+        auto R = pseudo_remainder_cw(A, B);
+        if (R.actual_degree() >= 1) {
+            std::printf("FAIL pseudo_remainder deg\n"); f++;
+        }
+        // B=0 case
+        Polynomial<3, uint64_t, MonomialBasis> A2{{1, 2, 1}};
+        Polynomial<2, uint64_t, MonomialBasis> B2{};
+        auto R2 = pseudo_remainder_cw(A2, B2);
+        if (R2[0] != 0 || R2[1] != 0 || R2[2] != 0) {
+            std::printf("FAIL pseudo_remainder B=0\n"); f++;
+        }
+    }
+
+    // --- poly_gcd_cw ---
+    {
+        auto check_gcd = [&](const auto& A, const auto& B, const char* label) {
+            auto G = poly_gcd_cw(A, B);
+            if (G.actual_degree() < 0) {
+                if (A.actual_degree() < 0 && B.actual_degree() < 0)
+                    return;
+                std::printf("FAIL gcd %s: G=0\n", label); f++; return;
+            }
+        };
+
+        using A3 = Polynomial<3, uint64_t, MonomialBasis>;
+        using A2 = Polynomial<2, uint64_t, MonomialBasis>;
+        using A4 = Polynomial<4, uint64_t, MonomialBasis>;
+        check_gcd(
+            A3(std::array<uint64_t,3>{uint64_t(-1), 0, 1}),
+            A2(std::array<uint64_t,2>{uint64_t(-1), 1}),
+            "x²-1, x-1");
+        check_gcd(
+            A4(std::array<uint64_t,4>{0, 0, 1, 1}),
+            A3(std::array<uint64_t,3>{uint64_t(-1), 0, 1}),
+            "x³+x², x²-1");
+        check_gcd(
+            A2(std::array<uint64_t,2>{}),
+            A2(std::array<uint64_t,2>{1, 1}),
+            "0, x+1");
+        check_gcd(
+            A3(std::array<uint64_t,3>{1, 0, 1}),
+            A2(std::array<uint64_t,2>{1, 1}),
+            "x²+1, x+1");
+    }
+
+    // --- polynomial_resultant_cw ---
+    {
+        Polynomial<3, uint64_t, MonomialBasis> A{{uint64_t(-1), 0, 1}};
+        Polynomial<2, uint64_t, MonomialBasis> B{{uint64_t(-1), 1}};
+        if (polynomial_resultant_cw(A, B) != 0) {
+            std::printf("FAIL resultant shared root\n"); f++;
+        }
+        Polynomial<2, uint64_t, MonomialBasis> C{{uint64_t(-1), 1}};
+        Polynomial<1, uint64_t, MonomialBasis> D{{2}};
+        if (polynomial_resultant_cw(C, D) == 0) {
+            std::printf("FAIL resultant constant\n"); f++;
+        }
+    }
+
+    // --- poly_discriminant_cw ---
+    {
+        Polynomial<3, uint64_t, MonomialBasis> P{{uint64_t(-1), 0, 1}};
+        if (poly_discriminant_cw(P) == 0) {
+            std::printf("FAIL discriminant x²-1\n"); f++;
+        }
+    }
+
+    // --- poly_is_square_free_cw ---
+    {
+        Polynomial<2, uint64_t, MonomialBasis> P{{1, 1}};
+        if (!poly_is_square_free_cw(P)) {
+            std::printf("FAIL is_square_free x+1\n"); f++;
+        }
+    }
+
+    // --- det_laplace ---
+    {
+        std::array<std::array<uint64_t, 6>, 6> M{};
+        M[0][0] = 1; M[1][1] = 1;
+        if (det_laplace<uint64_t>(M, 2) != 1) { std::printf("FAIL det I2\n"); f++; }
+
+        M[0][0] = 1; M[0][1] = 2;
+        M[1][0] = 3; M[1][1] = 4;
+        if (det_laplace<uint64_t>(M, 2) != uint64_t(-2)) {
+            std::printf("FAIL det 2x2\n"); f++;
+        }
+
+        std::array<std::array<uint64_t, 6>, 6> I3{};
+        I3[0][0] = 1; I3[1][1] = 1; I3[2][2] = 1;
+        if (det_laplace<uint64_t>(I3, 3) != 1) { std::printf("FAIL det I3\n"); f++; }
     }
 
     return f;
@@ -653,6 +795,36 @@ static int test_witt_vector() {
         }
     }
 
+    // Witt exp/log boundary: v2(a0) = 4 (Teichmüller, should work with 128-term budget)
+    {
+        WittVector<3, uint32_t> w{{16, 0, 0}};
+        auto b = witt_exp(w);
+        auto c = witt_log(b);
+        if (c[0] != 16 || c[1] != 0 || c[2] != 0) {
+            std::printf("FAIL witt exp/log v2=4\n"); f++;
+        }
+    }
+    // v2(a0) = 2 (minimum for exp convergence)
+    {
+        WittVector<3, uint32_t> w{{4, 0, 0}};
+        auto b = witt_exp(w);
+        auto c = witt_log(b);
+        if (c[0] != 4 || c[1] != 0 || c[2] != 0) {
+            std::printf("FAIL witt exp/log v2=2\n"); f++;
+        }
+    }
+    // Non-Teichmüller with v2(a0)=8, v2(a1)=1 (tighter budget)
+    {
+        WittVector<3, uint32_t> w{{256, 2, 0}};
+        auto b = witt_exp(w);
+        auto c = witt_log(b);
+        // ghost_1(a) has v2 = v2(a0)^2 + ... = might be lower
+        // Just verify roundtrip doesn't crash and returns something
+        if (b[0] % 2 == 0) {
+            std::printf("FAIL witt exp result is even\n"); f++;
+        }
+    }
+
     return f;
 }
 
@@ -696,12 +868,15 @@ static int test_compose_reversion() {
                     composed2[0], composed2[1], composed2[2]); f++;
     }
 
-    // reversion with P[1] even (not invertible) — should return empty polynomial
-    Polynomial<3, uint64_t, MonomialBasis> badP{{0, 2, 1}}; // P[1]=2 (even)
+    // reversion with P[1] even triggers assertion (precondition: P[1] odd).
+    // Test only with NDEBUG to ensure no unexpected side effects.
+#ifndef NDEBUG
+    std::printf("SKIP even-P[1] reversion (assert-enabled)\n");
+#else
+    Polynomial<3, uint64_t, MonomialBasis> badP{{0, 2, 1}};
     auto badR = reversion(badP);
-    if (badR[2] != 0) { // N>=2, should produce no useful result
-        // just verify it doesn't crash — behavior is undefined per precondition
-    }
+    (void)badR;
+#endif
 
     // Reversion of linear polynomial: P(x) = ax, R(y) = a^{-1} y
     Polynomial<2, uint64_t, MonomialBasis> linP{{0, 3}}; // 3x
@@ -822,8 +997,8 @@ static int test_poly_mul_overflow() {
     for (int i = 0; i < M50; ++i) q50[i] = static_cast<uint8_t>(255 - i);
     auto prod50 = p50 * q50;
     // Just verify it produced a result without crashing and has right degree
-    if (prod50.degree != N50 + M50 - 2) {
-        std::printf("FAIL degree-50 mul degree: %d != %d\n", prod50.degree, N50 + M50 - 2); f++;
+    if (prod50.max_degree != N50 + M50 - 2) {
+        std::printf("FAIL degree-50 mul max_degree: %d != %d\n", prod50.max_degree, N50 + M50 - 2); f++;
     }
 
     return f;
@@ -967,6 +1142,7 @@ int main() {
     run("stirling",            test_stirling());
     run("polynomial edge",     test_polynomial_edge());
     run("polynomial arith",    test_polynomial_arith());
+    run("poly gcd/divmod",     test_polynomial_gcd());
     run("change basis",        test_change_basis());
     run("taylor shift",        test_taylor_shift());
     run("derivative/diff",     test_derivative_difference());

@@ -69,6 +69,6 @@ All polynomials and Witt vectors are templated on N. For applications needing va
 
 The carry chain is a linear scan — O(N) per pass. Modern x86-64 offers `addc` (add with carry) via `_addcarry_u64`, which the carry chain could use directly. The current implementation decomposes into dword accumulation then carry propagation, which is correct but not optimal. A `constexpr` path using `std::array` and a runtime path using BMI2/ADX intrinsics would cover both compile-time and maximum-throughput use cases.
 
-### Witt vector logarithm and exponential
+~~### Witt vector logarithm and exponential~~ **Done**
 
-The library now includes both Witt addition and multiplication, completing the full ring structure. The multiplication uses the same ghost-map-and-recovery strategy: compute the componentwise product of ghost values (via `ghost_j_dword` for exact arithmetic) and recover Witt components by Newton iteration. Ring axioms (distributivity, associativity, commutativity, identity) are verified by compile-time proofs and runtime property tests. Future extensions could include the logarithm and exponential maps, and full Teichmüller lift theory.
+~~Future extensions could include the logarithm and exponential maps~~ — both `witt_log`, `witt_exp`, and `witt_inverse` are now implemented, with full ghost-map recovery. Ring axioms verified by compile-time proofs and property tests.
