@@ -170,6 +170,8 @@ All tests pass under GCC 14+ and Clang 17+ with ASan+UBSan. CI covers GCC (light
 - **Two ring semantics**: `operator*` uses carry-chain `poly_mul` (correct ℤ₂ arithmetic with overflow propagation). Functions with `_cw` suffix (`poly_divmod_cw`, `poly_gcd_cw`, `poly_mul_cw`) operate coefficient-wise (standard ring). These are **different rings** — use `poly_mul_cw()` and `verify_divmod_cw()` to verify divmod/gcd results.
 - **`quad_width<W>` alias**: Shorthand for `widen_t<dword_t<W>>` (up to 4× word width), used by ghost-map accumulation and unsaturated polynomial products.
 - **`assert` preconditions**: All silent-failure points (`poly_divmod_cw` with zero/even divisor, `witt_exp` with v₂(a₀) < 2, `witt_log`/`witt_inverse` with even a₀, `reversion` with even P[1]) now use `assert()`. Invalid inputs trigger `SIGABRT` in debug builds.
+- **Compile-time cached Stirling/Pascal tables**: `detail::STIRLING_CACHE<N,W>` and `detail::PASCAL_CACHE<N,W>` are `inline constexpr` globals — computed once per (N,W) at compile time, shared across all basis conversion and difference calls.
+- **Auto-vectorization hints**: `poly_mul_unsaturated` and `poly_mul` use `DYADIC_RESTRICT` (`__restrict__`) and `#pragma GCC ivdep` on their inner multiply-accumulate loops, enabling the compiler to generate SIMD code for runtime invocations without breaking `constexpr`.
 
 ## Known Limitations
 

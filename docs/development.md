@@ -43,6 +43,36 @@ Several additional hotspots were identified and fixed:
 
 - **Stirling functions: O(N²) space → O(N)** — `stirling_2`, `stirling_1`, and `stirling_1_unsigned` originally allocated full 2D `std::array<std::array<W, MaxN>, MaxN>` tables (32KB for MaxN=64, uint64_t) even for small `n`. Refactored to 1D in-place DP using the backward-iteration pattern `dp[j] = dp[j-1] + j * dp[j]`, reducing stack to `std::array<W, MaxN + 1>` (520 bytes).
 
+## Recent additions (Phases A–C)
+
+### Phase A: Compile-time cached Stirling/Pascal tables
+
+Basis conversion functions (`monomial_to_falling`, `falling_to_monomial`, `monomial_to_taylor`, `taylor_to_monomial`) and difference/shift operators (`forward_difference`, `taylor_shift`) previously constructed a new `StirlingCache<N,W>` or `PascalCache<N,W>` on every call. In `constexpr` context the compiler would evaluate this once; at runtime the O(N²) table was rebuilt each invocation.
+
+Fixed by adding `inline constexpr` variable templates:
+```cpp
+template<int N, std::unsigned_integral W>
+inline constexpr StirlingCache<N, W> STIRLING_CACHE{};
+```
+These are evaluated once per (N,W) at program initialization (compile-time folded when possible) and shared across all calls.
+
+### Phase B: Discrete hedging example
+
+Added `31_discrete_hedging.cpp` to dyadic-examples demonstrating the Δ/Σ operator calculus in a financial context:
+- Stock price modelled as polynomial in cents
+- `forward_difference` computes daily returns (ΔS)
+- Second `forward_difference` gives discrete gamma (Δ²S)
+- `indefinite_sum` recovers cumulative P&L (Σ = Δ⁻¹)
+- Δ = e^D − I identity connects discrete hedge ratios to continuous delta
+
+### Phase C: Auto-vectorization hints for poly_mul
+
+The inner multiply-accumulate loop of `poly_mul_unsaturated` and the tiled `poly_mul` are textbook dense FMAs — independent iterations with no loop-carried dependencies. Added:
+- `DYADIC_RESTRICT` macro (`__restrict__` on GCC/Clang) on all pointer parameters
+- `#pragma GCC ivdep` on the inner convolution loops
+
+These hints let the compiler generate SIMD (SSE/AVX2) code for runtime invocations while remaining valid in `constexpr` context (the pragma and restrict are ignored during constexpr evaluation).
+
 ## Future Directions
 
 ### Wider coefficient types
