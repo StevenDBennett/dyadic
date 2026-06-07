@@ -228,6 +228,34 @@ div_unsigned_knuth(const Polynomial<NL, W, MonomialBasis>& u,
     return {q_full, r};
 }
 
+// Truncated schoolbook multiply: r = low K limbs of a * b.
+// Uses row-by-row incremental carry so each inner step adds at most
+// one product + one existing value + one carry — always fitting in
+// dword_t<W> (128 bits for uint64_t). Only O(K²) — used by modinv_pow2.
+template<int N, std::unsigned_integral W>
+constexpr void mul_low(Polynomial<N, W, MonomialBasis>& r,
+                       const Polynomial<N, W, MonomialBasis>& a,
+                       const Polynomial<N, W, MonomialBasis>& b,
+                       int K) noexcept {
+    using dw_t = dword_t<W>;
+    if (K > N) K = N;
+    if (K <= 0) return;
+    std::array<W, N> tmp{};
+    for (int i = 0; i < K; ++i) {
+        W ai = a[i];
+        if (ai == 0) continue;
+        dw_t carry = 0;
+        int max_j = K - i;
+        for (int j = 0; j < max_j; ++j) {
+            dw_t sum = static_cast<dw_t>(ai) * static_cast<dw_t>(b[j])
+                     + static_cast<dw_t>(tmp[i + j]) + carry;
+            tmp[i + j] = static_cast<W>(sum);
+            carry = sum >> (8 * sizeof(W));
+        }
+    }
+    for (int i = 0; i < K; ++i) r[i] = tmp[i];
+}
+
 } // namespace detail
 
 // ============================================================================
@@ -570,6 +598,54 @@ div_newton(const Polynomial<NL, W, MonomialBasis>& u,
     for (int i = 0; i < NR; ++i) r_final[i] = rem[i];
 
     return {q, r_final};
+}
+
+// ============================================================================
+// modinv_pow2 — modular inverse modulo 2^(N * 8 * sizeof(W))
+//
+// Computes a^{-1} mod 2^{N*BITS} for odd a using Newton's method.
+// Phase 1 (single-limb): table-driven modinv_odd gives BITS-bit precision.
+// Phase 2 (multi-limb): Newton steps with truncated multiplication.
+// Each step doubles precision; total cost is O(N²), dominated by the final
+// full-size product.
+// ============================================================================
+
+template<int N, std::unsigned_integral W>
+constexpr Polynomial<N, W, MonomialBasis>
+modinv_pow2(const Polynomial<N, W, MonomialBasis>& a) noexcept {
+    using dw_t = dword_t<W>;
+    constexpr int BITS = 8 * sizeof(W);
+    constexpr int TOTAL_BITS = N * BITS;
+
+    Polynomial<N, W, MonomialBasis> x{};
+    x[0] = modinv_odd(a[0]);
+    int cur_bits = BITS;
+
+    while (cur_bits < TOTAL_BITS) {
+        int next_bits = cur_bits * 2;
+        if (next_bits > TOTAL_BITS) next_bits = TOTAL_BITS;
+        int next_limbs = (next_bits + BITS - 1) / BITS;
+
+        Polynomial<N, W, MonomialBasis> ax;
+        detail::mul_low(ax, a, x, next_limbs);
+
+        Polynomial<N, W, MonomialBasis> t{};
+        t[0] = W(2);
+        dw_t borrow = 0;
+        for (int i = 0; i < next_limbs; ++i) {
+            dw_t diff = static_cast<dw_t>(t[i]) - static_cast<dw_t>(ax[i]) - borrow;
+            t[i] = static_cast<W>(diff);
+            borrow = (diff >> (2 * BITS - 1)) & 1;
+        }
+
+        Polynomial<N, W, MonomialBasis> xt;
+        detail::mul_low(xt, x, t, next_limbs);
+
+        for (int i = 0; i < next_limbs; ++i) x[i] = xt[i];
+        cur_bits = next_bits;
+    }
+
+    return x;
 }
 
 } // namespace dyadic

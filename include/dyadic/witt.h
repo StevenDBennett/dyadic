@@ -330,11 +330,16 @@ constexpr int v2_128(uint128_t x) noexcept {
 }
 
 constexpr uint128_t modinv_odd_128(uint128_t a) noexcept {
-    uint128_t x = 1;
-    constexpr int iterations = std::bit_width(128u) - 1;
-    for (int i = 0; i < iterations; ++i) {
-        x = x * (uint128_t(2) - a * x);
-    }
+    // 8-bit seed from table lookup (same LUT as core.h)
+    constexpr uint8_t table[16] = {
+        2, 174, 210, 190, 66, 174, 210, 254,
+        2,  46,  82, 190, 66,  46,  82, 254,
+    };
+    uint128_t x = uint128_t(static_cast<uint64_t>(table[(a.lo >> 1) & 15]) - a.lo);
+    x = x * (uint128_t(2) - a * x);  // 16-bit
+    x = x * (uint128_t(2) - a * x);  // 32-bit
+    x = x * (uint128_t(2) - a * x);  // 64-bit
+    x = x * (uint128_t(2) - a * x);  // 128-bit
     return x;
 }
 

@@ -1697,6 +1697,175 @@ static int test_arith_helpers() {
         }
     }
 
+    // mul_low with uint64_t — spot-check identity and zero cases
+    {
+        auto check_u64_prop = [&](const char* label, int N, int K) {
+            using W = uint64_t;
+            Polynomial<8, W, MonomialBasis> r{};
+
+            // a * 0 == 0
+            {
+                Polynomial<8, W, MonomialBasis> a{{1, 2, 3, 4, 5, 6, 7, 8}};
+                Polynomial<8, W, MonomialBasis> z{};
+                detail::mul_low(r, a, z, K);
+                for (int i = 0; i < K; ++i) {
+                    if (r[i] != 0) { std::printf("FAIL mul_low (u64) %s a*0 at %d\n", label, i); f++; return; }
+                }
+            }
+
+            // 1 * b == b (low K limbs)
+            {
+                Polynomial<8, W, MonomialBasis> one{{1}};
+                Polynomial<8, W, MonomialBasis> b{{101, 202, 303, 404, 505, 606, 707, 808}};
+                detail::mul_low(r, one, b, K);
+                for (int i = 0; i < K; ++i) {
+                    if (r[i] != b[i]) { std::printf("FAIL mul_low (u64) %s 1*b at %d\n", label, i); f++; return; }
+                }
+            }
+
+            // a * 1 == a (low K limbs)
+            {
+                Polynomial<8, W, MonomialBasis> a{{101, 202, 303, 404, 505, 606, 707, 808}};
+                Polynomial<8, W, MonomialBasis> one{{1}};
+                detail::mul_low(r, a, one, K);
+                for (int i = 0; i < K; ++i) {
+                    if (r[i] != a[i]) { std::printf("FAIL mul_low (u64) %s a*1 at %d\n", label, i); f++; return; }
+                }
+            }
+
+            // a * 2 == a << 1
+            {
+                Polynomial<8, W, MonomialBasis> a{{0xAAAAAAAAAAAAAAAA, 0xBBBBBBBBBBBBBBBB}};
+                Polynomial<8, W, MonomialBasis> two{{2}};
+                detail::mul_low(r, a, two, K);
+                for (int i = 0; i < K; ++i) {
+                    W expected = (a[i] << 1) | (i > 0 ? (a[i-1] >> 63) : W(0));
+                    if (r[i] != expected) { std::printf("FAIL mul_low (u64) %s a*2 at %d\n", label, i); f++; return; }
+                }
+            }
+        };
+
+        for (int N : {2, 4, 8}) {
+            for (int K : {1, N/2, N}) {
+                if (K < 1) continue;
+                check_u64_prop("a*0,1*a,a*1,a*2", N, K);
+            }
+        }
+    }
+
+    // mul_low — compare against mul_unsigned for various N and K using uint32_t
+    // (safe because quad_width<uint32_t> = uint128_t, which handles 16 products per
+    //  position without overflow)
+    {
+        auto check_mul_low = [&](int N, int K, auto make_a, auto make_b, const char* label) {
+            using W = uint32_t;
+            Polynomial<16, W, MonomialBasis> a{};
+            Polynomial<16, W, MonomialBasis> b{};
+            for (int i = 0; i < N; ++i) { a[i] = make_a(i, N); b[i] = make_b(i, N); }
+
+            auto full = detail::mul_unsigned(a, b);
+
+            Polynomial<16, W, MonomialBasis> r{};
+            detail::mul_low(r, a, b, K);
+            for (int i = 0; i < K; ++i) {
+                if (r[i] != full[i]) {
+                    std::printf("FAIL mul_low %s N=%d K=%d limb[%d]: %08x != %08x\n",
+                                label, N, K, i, (unsigned)r[i], (unsigned)full[i]);
+                    f++; return;
+                }
+            }
+        };
+
+        auto all_ff = [](int, int) { return uint32_t(-1); };
+        auto inc = [](int i, int) { return uint32_t(i + 1); };
+        auto dec = [](int i, int n) { return uint32_t(n - i); };
+        auto alt = [](int i, int) { return uint32_t((i % 2) ? 0xFF : 0x1); };
+
+        for (int N : {2, 4, 6, 8, 12, 16}) {
+            for (int K : {1, 2, N/2, N-1, N}) {
+                if (K < 1) continue;
+                check_mul_low(N, K, all_ff, all_ff, "all_ff");
+                check_mul_low(N, K, inc, inc, "inc");
+                check_mul_low(N, K, dec, dec, "dec");
+                check_mul_low(N, K, alt, alt, "alt");
+            }
+        }
+    }
+
+    // modinv_pow2 with uint32_t — verify a * inv ≡ 1 (mod 2^(N*BITS))
+    // using safe mul_unsigned (quad_width<uint32_t> = uint128_t, no overflow for N ≤ 16)
+    {
+        auto check_modinv32 = [&](int N, auto make_a, const char* label) {
+            using W = uint32_t;
+            Polynomial<16, W, MonomialBasis> a{};
+            for (int i = 0; i < N; ++i) a[i] = make_a(i, N);
+
+            auto inv = modinv_pow2(a);
+
+            auto prod = detail::mul_unsigned(a, inv);
+
+            bool ok = prod[0] == W(1);
+            for (int i = 1; i < N && ok; ++i) ok = prod[i] == W(0);
+
+            if (!ok) {
+                std::printf("FAIL modinv_pow2 (u32) %s N=%d\n", label, N);
+                std::printf("  a =");
+                for (int i = 0; i < N; ++i) std::printf(" %08x", (unsigned)a[i]);
+                std::printf("\n  inv =");
+                for (int i = 0; i < N; ++i) std::printf(" %08x", (unsigned)inv[i]);
+                std::printf("\n  prod =");
+                for (int i = 0; i < N; ++i) std::printf(" %08x", (unsigned)prod[i]);
+                std::printf("\n");
+                f++;
+            }
+        };
+
+        for (int N : {1, 2, 3, 4, 5, 6, 8}) {
+            auto all_ff = [](int, int) { return uint32_t(-1); };
+            auto inc_mod = [](int i, int) { return uint32_t((i * 12345U + 1) | 1); };
+            check_modinv32(N, all_ff, "all_ff");
+            check_modinv32(N, inc_mod, "inc_mod");
+        }
+    }
+
+    // modinv_pow2 with uint64_t — verify by checking a * inv ≡ 1 (mod 2^(N*BITS))
+    // using mul_low as the verification multiplier (same algorithm used internally by
+    // modinv_pow2, testing both together end-to-end)
+    {
+        auto verify_modinv64 = [&](int N, auto make_a, const char* label) {
+            using W = uint64_t;
+            Polynomial<16, W, MonomialBasis> a{};
+            for (int i = 0; i < N; ++i) a[i] = make_a(i, N);
+
+            auto inv = modinv_pow2(a);
+
+            Polynomial<16, W, MonomialBasis> prod{};
+            detail::mul_low(prod, a, inv, N);
+
+            bool ok = prod[0] == W(1);
+            for (int i = 1; i < N && ok; ++i) ok = prod[i] == W(0);
+
+            if (!ok) {
+                std::printf("FAIL modinv_pow2 (u64) %s N=%d\n", label, N);
+                std::printf("  a =");
+                for (int i = 0; i < N; ++i) std::printf(" %016lx", (unsigned long)a[i]);
+                std::printf("\n  inv =");
+                for (int i = 0; i < N; ++i) std::printf(" %016lx", (unsigned long)inv[i]);
+                std::printf("\n  prod =");
+                for (int i = 0; i < N; ++i) std::printf(" %016lx", (unsigned long)prod[i]);
+                std::printf("\n");
+                f++;
+            }
+        };
+
+        for (int N : {1, 2, 3, 4, 5, 6, 8}) {
+            auto all_ff = [](int, int) { return uint64_t(-1); };
+            auto inc_mod = [](int i, int) { return uint64_t((i * 12345ULL + 1) | 1); };
+            verify_modinv64(N, all_ff, "all_ff");
+            verify_modinv64(N, inc_mod, "inc_mod");
+        }
+    }
+
     return f;
 }
 
