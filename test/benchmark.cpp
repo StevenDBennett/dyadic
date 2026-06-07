@@ -160,6 +160,21 @@ static void bench_adams(int reps) {
     t.report("adams_operation N=4 n=3", reps);
 }
 
+template<int N>
+static void bench_modinv_pow2(int reps) {
+    Timer t;
+    Polynomial<N, uint64_t, MonomialBasis> a;
+    a[0] = 0xDEADBEEFCAFEBABEULL | 1;
+    for (int i = 1; i < N; ++i) a[i] = 0xCAFEBABEDEADBEEFULL + i;
+    for (int r = 0; r < reps; ++r) {
+        auto inv = modinv_pow2(a);
+        sink(inv[0]);
+    }
+    char buf[64];
+    std::sprintf(buf, "modinv_pow2 N=%-2d (%d bits)", N, N * 64);
+    t.report(buf, reps);
+}
+
 static void bench_indefinite_sum(int reps) {
     Timer t;
     Polynomial<10, uint64_t, MonomialBasis> p{{1,2,3,4,5,6,7,8,9,10}};
@@ -187,6 +202,16 @@ int main() {
     bench_reversion(REPS);
     bench_adams(REPS);
     bench_indefinite_sum(REPS);
+
+    std::printf("\n--- modinv_pow2 ---\n");
+    bench_modinv_pow2<1>(200000);
+    bench_modinv_pow2<2>(100000);
+    bench_modinv_pow2<4>(50000);
+    bench_modinv_pow2<8>(20000);
+    bench_modinv_pow2<16>(5000);
+    bench_modinv_pow2<32>(2000);
+    bench_modinv_pow2<64>(500);
+    bench_modinv_pow2<128>(200);
 
     std::printf("\n=== Done ===\n");
     return 0;
