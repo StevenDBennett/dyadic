@@ -3,6 +3,7 @@
 
 #include "dyadic.h"
 #include <cstdio>
+#include <dyadic/prng.h>
 
 using namespace dyadic;
 
@@ -1866,38 +1867,35 @@ static int test_arith_helpers() {
         }
     }
 
-    // recover_bezout_y — verify a*x + 2^k*y = 1 for N=1..8
-    // Using uint32_t where quad_width (uint64_t) is safe for the cross-check.
+    // recover_bezout_y — verify a*x + 2^(N*BITS)*y = 1 for N=1..8
+    // Uses uint32_t with compile-time N so indices match Polynomial<N>.
     {
-        auto check_bezout = [&](int N, auto make_a, const char* label) {
-            using W = uint32_t;
-            constexpr int BITS = 8 * sizeof(W);
-            Polynomial<16, W, MonomialBasis> a{};
+        using W = uint32_t;
+        constexpr int BITS = 8 * sizeof(W);
+
+        auto check_bezout = [&]<int N>(auto make_a, const char* label) -> void {
+            Polynomial<N, W, MonomialBasis> a{};
             for (int i = 0; i < N; ++i) a[i] = make_a(i, N);
 
             auto x = modinv_pow2(a);
             auto y = recover_bezout_y(a, x);
 
-            // Verify via mul_unsigned (safe for uint32_t up to N=16)
+            // Full product a*x — yields 2N limbs, low N are [1,0,..], high N = q
             auto ax = detail::mul_unsigned(a, x);
 
-            // Check ax + y*2^k == 1
             using dw_t = dword_t<W>;
-            dw_t carry = 0;
             bool ok = true;
-            // Position 0: should be 1 (from a*x, since x is the modular inverse)
             if (ax[0] != W(1)) ok = false;
-            // Positions 1..N-1: should be 0
             for (int i = 1; i < N && ok; ++i)
                 if (ax[i] != W(0)) ok = false;
-            // Positions N..2N-1: add y and verify sum wraps to 0
+            // Check ax[N..2N-1] + y[0..N-1] = 0 (mod 2^BITS)
+            // (carry beyond 2N limbs is expected when a ≠ 1)
+            dw_t carry = 0;
             for (int i = 0; i < N && ok; ++i) {
                 dw_t s = static_cast<dw_t>(ax[N + i]) + static_cast<dw_t>(y[i]) + carry;
                 if (static_cast<W>(s) != W(0)) ok = false;
                 carry = s >> BITS;
             }
-            // Final carry should also be 0 (no overflow beyond 2N limbs)
-            if (carry != 0) ok = false;
 
             if (!ok) {
                 std::printf("FAIL recover_bezout_y %s N=%d\n", label, N);
@@ -1905,12 +1903,20 @@ static int test_arith_helpers() {
             }
         };
 
-        for (int N : {1, 2, 3, 4, 5, 6, 8}) {
-            auto all_ff = [](int, int) { return uint32_t(-1); };
-            auto inc_mod = [](int i, int) { return uint32_t((i * 12345U + 1) | 1); };
-            check_bezout(N, all_ff, "all_ff");
-            check_bezout(N, inc_mod, "inc_mod");
-        }
+        check_bezout.operator()<1>([](int, int) { return W(-1); }, "all_ff");
+        check_bezout.operator()<1>([](int i, int) { return W((i * 12345U + 1) | 1); }, "inc_mod");
+        check_bezout.operator()<2>([](int, int) { return W(-1); }, "all_ff");
+        check_bezout.operator()<2>([](int i, int) { return W((i * 12345U + 1) | 1); }, "inc_mod");
+        check_bezout.operator()<3>([](int, int) { return W(-1); }, "all_ff");
+        check_bezout.operator()<3>([](int i, int) { return W((i * 12345U + 1) | 1); }, "inc_mod");
+        check_bezout.operator()<4>([](int, int) { return W(-1); }, "all_ff");
+        check_bezout.operator()<4>([](int i, int) { return W((i * 12345U + 1) | 1); }, "inc_mod");
+        check_bezout.operator()<5>([](int, int) { return W(-1); }, "all_ff");
+        check_bezout.operator()<5>([](int i, int) { return W((i * 12345U + 1) | 1); }, "inc_mod");
+        check_bezout.operator()<6>([](int, int) { return W(-1); }, "all_ff");
+        check_bezout.operator()<6>([](int i, int) { return W((i * 12345U + 1) | 1); }, "inc_mod");
+        check_bezout.operator()<8>([](int, int) { return W(-1); }, "all_ff");
+        check_bezout.operator()<8>([](int i, int) { return W((i * 12345U + 1) | 1); }, "inc_mod");
     }
 
     // recover_bezout_y with uint64_t — spot-check N=1 (trivial) and N=2 (small)
@@ -1922,9 +1928,9 @@ static int test_arith_helpers() {
         // q = (a*x - 1) / 2^64. Since a and x are both < 2^64, a*x < 2^128.
         // q is the high 64 bits of the 128-bit product.
         {
-            std::mt19937_64 rng(42);
+            detail::XorShift64 rng(42);
             for (int t = 0; t < 20; ++t) {
-                W av = rng() | 1;
+                W av = rng.next() | 1;
                 Polynomial<1, W> a{{av}};
                 auto x = modinv_pow2(a);
                 auto y = recover_bezout_y(a, x);
@@ -1945,9 +1951,9 @@ static int test_arith_helpers() {
 
         // N=2: verify y = -(a*x-1) / 2^128 using safe full product
         {
-            std::mt19937_64 rng(123);
+            detail::XorShift64 rng(123);
             for (int t = 0; t < 20; ++t) {
-                Polynomial<2, W> a{{rng() | 1, rng()}};
+                Polynomial<2, W> a{{rng.next() | 1, rng.next()}};
                 auto x = modinv_pow2(a);
                 auto y = recover_bezout_y(a, x);
 
@@ -1968,6 +1974,7 @@ static int test_arith_helpers() {
                 }
 
                 // q = ax[2..3], y = -q = ~q + 1
+                using dw_t = dword_t<W>;
                 dw_t carry = 1;
                 bool ok = true;
                 for (int i = 0; i < 2; ++i) {
