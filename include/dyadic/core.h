@@ -239,11 +239,15 @@ constexpr int v2(W x) noexcept {
 
 template<std::unsigned_integral W>
 constexpr W modinv_odd(W a) noexcept {
-    W x = 1;
-    constexpr int iterations = std::bit_width(8 * sizeof(W)) - 1;
-    for (int i = 0; i < iterations; ++i) {
-        x = x * (W(2) - a * x);
-    }
+    // 8-bit seed from table lookup (Newton's method: each iteration doubles precision)
+    constexpr uint8_t table[16] = {
+        2, 174, 210, 190, 66, 174, 210, 254,
+        2,  46,  82, 190, 66,  46,  82, 254,
+    };
+    W x = static_cast<W>(table[(a >> 1) & 15]) - a;
+    if constexpr (sizeof(W) >= 2) x = x * (W(2) - a * x);
+    if constexpr (sizeof(W) >= 4) x = x * (W(2) - a * x);
+    if constexpr (sizeof(W) >= 8) x = x * (W(2) - a * x);
     return x;
 }
 
