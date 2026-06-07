@@ -174,8 +174,8 @@ All conversions are triangular matrix-vector products using Stirling number cach
 
 | Function | Time | Space | Notes |
 |---|---|---|---|
-| `p_adic_log_1plus_impl` | O(B) | O(1) | T = 2·B ≈ 128–256 terms; Σ (−1)ⁿ⁺¹yⁿ/n; early exit on vanishing |
-| `p_adic_exp_impl` | O(B) | O(1) | T ≤ 2·B terms; Σ xⁿ/n!; valuation-aware budget; early exit |
+| `p_adic_log_1plus_impl` | O(B) | O(1) | T = 2·B ≈ 128–256 terms; Σ (−1)ⁿ⁺¹yⁿ/n; early exit on vanishing. For W=uint64_t with `__SIZEOF_INT128__` uses hardware `unsigned __int128` multiply-accumulate and `modinv_odd_128` (full 128-bit inverse) for ~4× speedup over software `detail::uint128_t` |
+| `p_adic_exp_impl` | O(B) | O(1) | T ≤ 2·B terms; Σ xⁿ/n!; valuation-aware budget; early exit. Same `unsigned __int128` optimization as `p_adic_log` |
 | `witt_log` | O(N² + N·B) | O(N²) | `GhostPowersFull::init` + N × `p_adic_log` + `ghost_recover`; requires a[0] odd |
 | `witt_exp` | O(N² + N·B) | O(N²) | `GhostPowersFull::init` + N × `p_adic_exp` + `ghost_recover`; requires a[0] ≡ 0 mod 4 |
 | `witt_inverse` | O(N²) | O(N²) | `GhostPowersFull::init` + N × `modinv_odd` on ghost + `ghost_recover` |
@@ -241,14 +241,14 @@ All conversions are triangular matrix-vector products using Stirling number cach
 
 | Function | Time | Space | Notes |
 |---|---|---|---|
-| `mul_unsigned` | O(N·M) | O(N+M) | `quad_width` unsaturated convolution + single carry-chain; produces N+M limbs |
+| `mul_unsigned` | O(N·M) | O(1) chunked | `quad_width` or `unsigned __int128` unsaturated convolution + per-chunk carry chain; produces N+M limbs. For uint64_t with `__SIZEOF_INT128__` uses hardware `unsigned __int128` (same chunked pattern as `poly_mul`); else falls back to software `quad_width<W>` full-buffer accumulation |
 
 ### Unsigned Division
 
 | Function | Time | Space | Notes |
 |---|---|---|---|
 | `divmod_single` | O(NL) | O(NL) | Schoolbook long division by single-word divisor; `dword_t` accum |
-| `div_unsigned_knuth` | O(NL·NR) | O(NL+NR) | Knuth Algorithm D (TAOCP §4.3.1); normalization, per-digit quotient estimation with correction, denormalization |
+| `div_unsigned_knuth` | O(NL·NR) | O(NL+NR) | Knuth Algorithm D (TAOCP §4.3.1); normalization, per-digit quotient estimation with correction, denormalization. For W=uint64_t with `__SIZEOF_INT128__` uses hardware `unsigned __int128` for `dw_t` (trial division, multiply-subtract inner loop) giving ~3-4× speedup over software `detail::uint128_t` |
 | `div_unsigned` | O(NL·NR) worst / O(NL) (NR=1) | O(NL+NR) | Dispatch wrapper; strips leading zeros; delegates to `divmod_single` or `div_unsigned_knuth` |
 
 ### Newton Division
@@ -366,9 +366,9 @@ All complexity in terms of dimensions M, N, P. All matrices are compile-time siz
 
 5. **Stirling/Pascal caches at compile time**: Both are computed at compile time via `inline constexpr` globals computed once per (N,W). This avoids redundant O(N²) recomputation across multiple basis conversions.
 
-6. **Chunked stack buffer in `poly_mul`**: Constant stack space O(1) regardless of polynomial size, using a `CHUNK_COUNT`-sized buffer (≤ 32 elements for uint64).
+6. **Chunked stack buffer in `poly_mul` and `mul_unsigned`**: Constant stack space O(1) regardless of polynomial size, using a `CHUNK_COUNT`-sized buffer (≤ 32 elements for uint64). Eliminates full-size `quad_width` array allocation for large products.
 
-7. **`quad_width<W>` accumulator precision**: Used for ghost-map accumulation and unsaturated polynomial products. Provides 4× word width headroom, preventing overflow in intermediate sums.
+7. **`quad_width<W>` accumulator precision**: Used for ghost-map accumulation and unsaturated polynomial products. Provides 4× word width headroom, preventing overflow in intermediate sums. On uint64_t hot paths (`poly_mul`, `mul_unsigned`, `div_unsigned_knuth`, p-adic series), `unsigned __int128` replaces `detail::uint128_t` where available for 3-4× hardware-accelerated arithmetic.
 
 8. **All `constexpr`**: No runtime-only code paths. The entire library, including `poly_mul`, carry chains, Witt arithmetic, and division, supports compile-time evaluation.
 
@@ -378,6 +378,7 @@ All complexity in terms of dimensions M, N, P. All matrices are compile-time siz
 
 - **Polynomial storage**: `Polynomial<N,W>` is `std::array<W,N>` — exactly `N × sizeof(W)` bytes embedded in the object. No heap allocation.
 - **Compile-time caches**: `StirlingCache<N,W>` = `2 × N × N × sizeof(W)` bytes in `.rodata`. `PascalCache<N,W>` = `N × N × sizeof(W)` bytes in `.rodata`. Both are `inline constexpr` shared across all TUs.
+- **`poly_mul` / `mul_unsigned` chunked buffer**: `CHUNK_COUNT × sizeof(accum_t)` bytes on stack. For uint64_t with `unsigned __int128`: 32 × 16 = 512 bytes. For smaller word widths: proportionally less.
 - **Witt ghost_recover**: Allocates `N × N × sizeof(quad_width<W>)` on the stack for the power table. For (N=32, W=uint64, quad_width=uint128_t): 32×32×16 = 16 KiB.
 - **`compose`**: Allocates `3 × result_degree × sizeof(W)` on the stack. Result degree max 4095, so up to ~96 KiB for uint64_t.
 - **`reciprocal_newton`**: Allocates `4 × NR` limbs on the stack, capped at 65536 bytes by `static_assert`.

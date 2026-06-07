@@ -192,7 +192,8 @@ See [`docs/complexity.md`](docs/complexity.md) for a complete function-by-functi
 | `indefinite_sum` (FF) | O(N) | O(N) | Σ(FFₙ₋₁) = FFₙ / n |
 | `indefinite_sum` (Monomial / Taylor) | O(N²) | O(N) | Converts to FF, sums, converts back |
 | `poly_exp` / `poly_log` | O(N²) | O(N) | Double-loop recurrence with dword intermediates |
-| `poly_mul` / `operator*` | O(N·M) | O(1) chunked | Naive convolution + carry chain; chunked 256-bit buffer |
+| `poly_mul` / `operator*` | O(N·M) | O(1) chunked | Naive convolution + carry chain; chunked 256-bit buffer; `unsigned __int128` for uint64_t (~2.7× speedup deg 63) |
+| `mul_unsigned` | O(N·M) | O(1) chunked | Big-integer unsigned multiply (N+M limbs); same chunked `unsigned __int128` pattern as `poly_mul` |
 | `poly_mul_cw` | O(N·M) | O(N+M) | Standard coefficient-wise convolution |
 | `compose` | O(N²·M²) | O(N·M) | Naive power-series accumulation; result ≤ 4095 coeffs |
 | `reversion` | O(N³) | O(N²) | Incremental Lagrange inversion (not Newton) |
@@ -218,7 +219,7 @@ See [`docs/complexity.md`](docs/complexity.md) for a complete function-by-functi
 | `binom` / `stirling_2` / `stirling_1` | O(k·log n) / O(n²) | O(1) / O(n) | GCD-multiplicative / DP recurrence |
 | `StirlingCache` / `PascalCache` ctor | O(N²) compile-time | O(N²) | `inline constexpr` cached once per (N,W) |
 
-All operations are constexpr; runtime performance matches compile-time complexity bounds. The carry-chain `poly_mul` is auto-vectorized with SIMD hints (`#pragma GCC ivdep`, `DYADIC_RESTRICT`).
+All operations are constexpr; runtime performance matches compile-time complexity bounds. The carry-chain `poly_mul` and `mul_unsigned` are auto-vectorized with SIMD hints (`#pragma GCC ivdep`, `DYADIC_RESTRICT`) and use hardware `unsigned __int128` accumulation for uint64_t where available.
 
 ## Known Limitations
 
@@ -226,7 +227,7 @@ All operations are constexpr; runtime performance matches compile-time complexit
 - **Taylor basis roundtrip**: `T_k = k! · FF_k` wraps when `FF_k ≥ 2^W / k!`. Use small coefficients for exact roundtrips. FallingFactorial basis has no such limitation.
 - **Witt precision window**: Recovery `r_j = (G_j − S_j) / 2^j` requires `r_j < 2^{W−j}`.
 - **Witt exp/log term truncation**: Uses valuation-aware dynamic term counting with 2× bit-width budget. Requires `v₂(x) ≥ 2` for exp convergence (mathematical limit — `v₂(x) = 1` stalls at `≤ log₂(n)+1`). Log converges for `v₂(y) ≥ 1` (~135 terms at 128-bit).
-- **`detail::uint128_t`** is a software 128-bit pair — no `unsigned __int128` required. `__int128` is used as an optimization in `binom()` (`dyadic/combinatorial.h`) and `poly_mul()` (`dyadic/core.h`, ~2.7× speedup at deg=63 for uint64_t), both guarded by `__SIZEOF_INT128__`.
+- **`detail::uint128_t`** is a software 128-bit pair — no `unsigned __int128` required. `__int128` is used as a hot-path optimization in `binom()` (`dyadic/combinatorial.h`), `poly_mul()` and `mul_unsigned()` (`dyadic/core.h`/`arith.h`, ~2.7× speedup at deg=63 for uint64_t), `div_unsigned_knuth()` (`dyadic/arith.h`, hardware trial-division / multiply-subtract for ~3-4× speedup), and the p-adic series in `witt_log`/`witt_exp` (`dyadic/witt.h`, hardware multiply-accumulate). All paths guarded by `__SIZEOF_INT128__`.
 
 ## License
 
