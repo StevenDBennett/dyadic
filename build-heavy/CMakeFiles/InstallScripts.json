@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/steve/AnarchyIrelandSource/dyadic/build-heavy/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

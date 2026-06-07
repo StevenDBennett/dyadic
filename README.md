@@ -54,7 +54,7 @@ int main() {
 | **Witt Vectors** | `WittVector<N,W>` with ghost map, Frobenius, Verschiebung, `+`, `*`, `exp`, `log`, `inverse`, `adams_operation`, `teichmueller_lift` |
 | **Carry Chain** | Full-width carry propagation `C = (I−N)⁻¹` — converges in one pass |
 | **Compose / Reversion** | Power series composition P(Q(t)) and Lagrange inversion |
-| **Compile-Time Proofs** | 22 named `static_assert` proofs (~55 total assertions) verifying ring axioms, basis roundtrips, D∘Δ=Δ∘D, ghost homomorphism, carry idempotence, Witt exp/log roundtrip (see `dyadic/verify.h`) |
+| **Compile-Time Proofs** | 24 named `static_assert` proofs (~55 total assertions) verifying ring axioms, basis roundtrips, D∘Δ=Δ∘D, ghost homomorphism, carry idempotence, Witt exp/log roundtrip (see `dyadic/verify.h`) |
 | **Combinatorial** | `binom`, `stirling_2`, `stirling_1`, `stirling_1_unsigned` — all `constexpr`, cached at compile time |
 
 ## More Examples

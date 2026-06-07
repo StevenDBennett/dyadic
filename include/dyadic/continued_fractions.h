@@ -12,17 +12,11 @@ namespace dyadic {
 
 template<std::unsigned_integral W>
 std::vector<W> cf_expand(const DynamicPolynomial<W, MonomialBasis>& series, int max_terms) {
+    int n = std::min(max_terms, series.size());
     std::vector<W> result;
-    auto s = series;
-    for (int k = 0; k < max_terms; ++k) {
-        if (s.size() == 0) break;
-        result.push_back(s[0]);
-        if (s.size() == 1) break;
-        DynamicPolynomial<W, MonomialBasis> next(s.size() - 2);
-        for (int i = 0; i < next.size(); ++i)
-            next[i] = s[i + 1];
-        s = std::move(next);
-    }
+    result.reserve(n);
+    for (int i = 0; i < n; ++i)
+        result.push_back(series[i]);
     return result;
 }
 

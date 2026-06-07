@@ -299,6 +299,17 @@ forward_difference(const DynamicPolynomial<W, FallingFactorialBasis>& p) {
     return r;
 }
 
+template<std::unsigned_integral W>
+DynamicPolynomial<W, TaylorBasis>
+forward_difference(const DynamicPolynomial<W, TaylorBasis>& p) {
+    int sz = p.size();
+    if (sz <= 1) return DynamicPolynomial<W, TaylorBasis>{};
+    DynamicPolynomial<W, TaylorBasis> r(sz - 2);
+    for (int i = 1; i < sz; ++i)
+        r[i - 1] = p[i];
+    return r;
+}
+
 // Semantic alias for the six-axiom naming scheme.
 template<std::unsigned_integral W>
 DynamicPolynomial<W, MonomialBasis>
@@ -309,6 +320,12 @@ exact_formal_derivative(const DynamicPolynomial<W, MonomialBasis>& p) {
 template<std::unsigned_integral W>
 DynamicPolynomial<W, MonomialBasis>
 exact_forward_difference(const DynamicPolynomial<W, MonomialBasis>& p) {
+    return forward_difference(p);
+}
+
+template<std::unsigned_integral W>
+DynamicPolynomial<W, TaylorBasis>
+exact_forward_difference(const DynamicPolynomial<W, TaylorBasis>& p) {
     return forward_difference(p);
 }
 

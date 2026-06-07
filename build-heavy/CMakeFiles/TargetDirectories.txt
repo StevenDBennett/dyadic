@@ -1,0 +1,14 @@
+/home/steve/AnarchyIrelandSource/dyadic/build-heavy/CMakeFiles/test_core.dir
+/home/steve/AnarchyIrelandSource/dyadic/build-heavy/CMakeFiles/test_verify.dir
+/home/steve/AnarchyIrelandSource/dyadic/build-heavy/CMakeFiles/test_property.dir
+/home/steve/AnarchyIrelandSource/dyadic/build-heavy/CMakeFiles/test_full.dir
+/home/steve/AnarchyIrelandSource/dyadic/build-heavy/CMakeFiles/test_negatives.dir
+/home/steve/AnarchyIrelandSource/dyadic/build-heavy/CMakeFiles/benchmark.dir
+/home/steve/AnarchyIrelandSource/dyadic/build-heavy/CMakeFiles/test_verify_san.dir
+/home/steve/AnarchyIrelandSource/dyadic/build-heavy/CMakeFiles/test.dir
+/home/steve/AnarchyIrelandSource/dyadic/build-heavy/CMakeFiles/edit_cache.dir
+/home/steve/AnarchyIrelandSource/dyadic/build-heavy/CMakeFiles/rebuild_cache.dir
+/home/steve/AnarchyIrelandSource/dyadic/build-heavy/CMakeFiles/list_install_components.dir
+/home/steve/AnarchyIrelandSource/dyadic/build-heavy/CMakeFiles/install.dir
+/home/steve/AnarchyIrelandSource/dyadic/build-heavy/CMakeFiles/install/local.dir
+/home/steve/AnarchyIrelandSource/dyadic/build-heavy/CMakeFiles/install/strip.dir
