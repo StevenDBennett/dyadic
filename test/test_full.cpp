@@ -1866,6 +1866,124 @@ static int test_arith_helpers() {
         }
     }
 
+    // recover_bezout_y — verify a*x + 2^k*y = 1 for N=1..8
+    // Using uint32_t where quad_width (uint64_t) is safe for the cross-check.
+    {
+        auto check_bezout = [&](int N, auto make_a, const char* label) {
+            using W = uint32_t;
+            constexpr int BITS = 8 * sizeof(W);
+            Polynomial<16, W, MonomialBasis> a{};
+            for (int i = 0; i < N; ++i) a[i] = make_a(i, N);
+
+            auto x = modinv_pow2(a);
+            auto y = recover_bezout_y(a, x);
+
+            // Verify via mul_unsigned (safe for uint32_t up to N=16)
+            auto ax = detail::mul_unsigned(a, x);
+
+            // Check ax + y*2^k == 1
+            using dw_t = dword_t<W>;
+            dw_t carry = 0;
+            bool ok = true;
+            // Position 0: should be 1 (from a*x, since x is the modular inverse)
+            if (ax[0] != W(1)) ok = false;
+            // Positions 1..N-1: should be 0
+            for (int i = 1; i < N && ok; ++i)
+                if (ax[i] != W(0)) ok = false;
+            // Positions N..2N-1: add y and verify sum wraps to 0
+            for (int i = 0; i < N && ok; ++i) {
+                dw_t s = static_cast<dw_t>(ax[N + i]) + static_cast<dw_t>(y[i]) + carry;
+                if (static_cast<W>(s) != W(0)) ok = false;
+                carry = s >> BITS;
+            }
+            // Final carry should also be 0 (no overflow beyond 2N limbs)
+            if (carry != 0) ok = false;
+
+            if (!ok) {
+                std::printf("FAIL recover_bezout_y %s N=%d\n", label, N);
+                f++;
+            }
+        };
+
+        for (int N : {1, 2, 3, 4, 5, 6, 8}) {
+            auto all_ff = [](int, int) { return uint32_t(-1); };
+            auto inc_mod = [](int i, int) { return uint32_t((i * 12345U + 1) | 1); };
+            check_bezout(N, all_ff, "all_ff");
+            check_bezout(N, inc_mod, "inc_mod");
+        }
+    }
+
+    // recover_bezout_y with uint64_t — spot-check N=1 (trivial) and N=2 (small)
+    {
+        using W = uint64_t;
+        constexpr int BITS = 8 * sizeof(W);
+
+        // N=1: y = -(a*x-1)/2^64. For a odd, x = modinv_odd(a), a*x = 1 + q*2^64.
+        // q = (a*x - 1) / 2^64. Since a and x are both < 2^64, a*x < 2^128.
+        // q is the high 64 bits of the 128-bit product.
+        {
+            std::mt19937_64 rng(42);
+            for (int t = 0; t < 20; ++t) {
+                W av = rng() | 1;
+                Polynomial<1, W> a{{av}};
+                auto x = modinv_pow2(a);
+                auto y = recover_bezout_y(a, x);
+
+                // a*x = 1 + q*2^64 → q = (a*x - 1) >> 64
+                using wide_t = unsigned __int128;
+                wide_t prod_w = wide_t(av) * wide_t(x[0]);
+                W q = static_cast<W>(prod_w >> 64);
+                W expected_y = W(0) - q;  // -q mod 2^64
+
+                if (y[0] != expected_y) {
+                    std::printf("FAIL recover_bezout_y u64 N=1: y=%016lx expected %016lx\n",
+                                (unsigned long)y[0], (unsigned long)expected_y);
+                    f++;
+                }
+            }
+        }
+
+        // N=2: verify y = -(a*x-1) / 2^128 using safe full product
+        {
+            std::mt19937_64 rng(123);
+            for (int t = 0; t < 20; ++t) {
+                Polynomial<2, W> a{{rng() | 1, rng()}};
+                auto x = modinv_pow2(a);
+                auto y = recover_bezout_y(a, x);
+
+                // Safe full product using incremental carry
+                Polynomial<4, W> ax{};
+                for (int i = 0; i < 2; ++i) {
+                    W ai = a[i];
+                    if (ai == 0) continue;
+                    using dw_t = dword_t<W>;
+                    dw_t carry = 0;
+                    for (int j = 0; j < 2; ++j) {
+                        dw_t sum = static_cast<dw_t>(ai) * static_cast<dw_t>(x[j])
+                                 + static_cast<dw_t>(ax[i + j]) + carry;
+                        ax[i + j] = static_cast<W>(sum);
+                        carry = sum >> BITS;
+                    }
+                    ax[2 + i] = static_cast<W>(carry);
+                }
+
+                // q = ax[2..3], y = -q = ~q + 1
+                dw_t carry = 1;
+                bool ok = true;
+                for (int i = 0; i < 2; ++i) {
+                    carry = static_cast<dw_t>(~ax[2 + i]) + carry;
+                    if (y[i] != static_cast<W>(carry)) ok = false;
+                    carry >>= BITS;
+                }
+
+                if (!ok) {
+                    std::printf("FAIL recover_bezout_y u64 N=2\n");
+                    f++;
+                }
+            }
+        }
+    }
+
     return f;
 }
 
