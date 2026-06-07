@@ -1,5 +1,6 @@
 build/
 build_h/
+build-heavy/
 Testing/
 *.csv
 AGENTS.md

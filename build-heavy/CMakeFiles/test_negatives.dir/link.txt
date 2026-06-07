@@ -1,1 +1,0 @@
-/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/test_negatives.dir/link.d CMakeFiles/test_negatives.dir/test/test_negatives.cpp.o -o test_negatives
