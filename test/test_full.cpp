@@ -1936,9 +1936,9 @@ static int test_arith_helpers() {
                 auto y = recover_bezout_y(a, x);
 
                 // a*x = 1 + q*2^64 → q = (a*x - 1) >> 64
-                using wide_t = unsigned __int128;
-                wide_t prod_w = wide_t(av) * wide_t(x[0]);
-                W q = static_cast<W>(prod_w >> 64);
+                using dw_t = dword_t<W>;
+                dw_t prod_w = static_cast<dw_t>(av) * static_cast<dw_t>(x[0]);
+                W q = static_cast<W>(prod_w >> BITS);
                 W expected_y = W(0) - q;  // -q mod 2^64
 
                 if (y[0] != expected_y) {
