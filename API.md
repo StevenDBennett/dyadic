@@ -68,7 +68,7 @@ struct Polynomial : std::array<W, N> { … };
 - `basis_type` — aliases `Basis`
 - `static constexpr int max_degree = N - 1`
 - `constexpr int actual_degree()` — highest index with non-zero coefficient, or -1
-- `eval(x)` — Horner evaluation (**monomial only**; FF/Taylor via `dyadic/eval.h` or `change_basis`)
+- `eval(x)` — Horner evaluation (**monomial only**; FF/Taylor via `dyadic/basis.h` or `change_basis`)
 - `operator+(…)`, `operator-(…)` — coefficient-wise addition/subtraction
 - `operator*(…)` — **carry-chain multiplication** (big-integer semantic); see `poly_mul_cw` for standard ring
 
@@ -231,7 +231,7 @@ Polynomial<N-1, W, FallingFactorialBasis> forward_difference(…);
 Polynomial<N-1, W, TaylorBasis> forward_difference(…);
 ```
 
-In FF basis: `Δᵢ = i·p[i]` (simple shift). In Taylor/monomial: converts.
+In FF basis: `Δᵢ = i·p[i]` (simple shift). In Taylor basis: `Δᵢ = p[i+1]` (shift, since `Δ[binom(x,k)] = binom(x,k-1)`). Monomial basis uses the binomial transform.
 
 ---
 
@@ -780,16 +780,23 @@ of polynomial degrees `NN…` and word widths `WW…`. Each proof value is a
 `static_assert`. Controlled by `DYADIC_HEAVY_PROOFS` to enable/disable
 exhaustive checks.
 
-### Compile-Time Proofs (24 named proofs, ~55 assertions)
+### Compile-Time Proofs (24 named proofs, guarded by `static_assert`)
 
-Covers:
-- `PROOF_GHOST_HOM_*` — ghost-ring addition homomorphism (various N, W)
-- `PROOF_TAYLOR_ROUNDTRIP_*` — Taylor basis roundtrip for small coefficients
-- `PROOF_BINOM_*` — binomial identity `C(n,k) = C(n-1,k) + C(n-1,k-1)`
-- `PROOF_STIRLING_2_*`, `PROOF_STIRLING_1_*` — Stirling number recurrence identities
-- `PROOF_WITT_INVERSE_*` — Witt vector inverse
-- `PROOF_WITT_LOG_EXP_*` — Witt exp(log(·)) roundtrip
-- `PROOF_ADAMS_TEICH_*` — Adams operation on Teichmüller lifts
-- `PROOF_CARRY_*` — carry-chain idempotency
-- `PROOF_SYNTHETIC_DIVIDE_*` — synthetic divide properties
-- `PROOF_ARTIN_SCHREIER_*` — Artin-Schreier symmetry verification
+| Proof | Verified property |
+|-------|------------------|
+| `PROOF_GHOST_HOM_2_32`, `_U8_N2`, `_U8_N3` | Ghost-ring addition homomorphism |
+| `PROOF_D_DELTA_ALL`, `_U8_N2` | D ∘ Δ = Δ ∘ D for all degree-1 uint8 polynomials |
+| `PROOF_D_NILPOTENT_ALL` | D^N = 0 for N = 2..6 |
+| `PROOF_ROUNDTRIP_1`, `_2` | Monomial ↔ FF ↔ Monomial roundtrip |
+| `PROOF_AS_KERNEL`, `_SYMMETRY_8` | Artin-Schreier: ℘(0)=℘(1)=0, ℘(x)=℘(1−x) for all uint8 |
+| `PROOF_C_IDEMPOTENT` | Carry-chain idempotency C∘C = C |
+| `PROOF_DELTA_EXP` | Δ = e^D − I identity |
+| `PROOF_FV_VF` | Frobenius ∘ Verschiebung = Verschiebung ∘ Frobenius |
+| `PROOF_MUL_GHOST` | Witt ghost-multiplication homomorphism |
+| `PROOF_MUL_DISTRIBUTIVE` | Witt distributivity a·(b+c) = a·b + a·c |
+| `PROOF_MUL_U8_N2`, `_U8_N3` | Witt mul ghost homomorphism for uint8 (heavy) |
+| `PROOF_TEICHMULLER_ONE`, `_MULT` | Teichmüller lift: τ(1)=1, τ(a)·τ(b)=τ(ab) |
+| `PROOF_ADAMS_IDENTITY`, `_GHOST` | Adams ψ¹ = id, ghost power identity |
+| `PROOF_WITT_LOG_EXP` | exp ∘ log roundtrip |
+| `PROOF_WITT_INVERSE` | a·a⁻¹ = 1 for odd a₀ |
+| `PROOF_WITT_EXP_LOG_ROUNDTRIP` | exp(log(a)) = a for odd a₀ |

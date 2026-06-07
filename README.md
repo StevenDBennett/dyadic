@@ -177,20 +177,46 @@ All tests pass under GCC 14+ and Clang 17+ with ASan+UBSan. CI covers GCC (light
 
 ## Complexity
 
-| Operation | Complexity | Notes |
-|-----------|-----------|-------|
-| `eval` | O(N) | Horner's method in monomial basis |
-| `formal_derivative` | O(N) | Direct coefficient scaling |
-| `forward_difference` | O(N²) | Pascal-cache binomial transform |
-| `taylor_shift` | O(N²) | Pascal-cache binomial transform |
-| `poly_mul` (operator*) | O(N²) | Naive convolution + carry chain. No FFT (infeasible over ℤ₂ with carries) |
-| `compose` | O(N²·M²) | Naive power-series accumulation |
-| `reversion` | O(N³) | Incremental power update (vs O(N⁴) naive) |
-| `change_basis` | O(N²) | Stirling-cache matrix multiply |
-| `witt_add` / `witt_mul` | O(N²) | Ghost-map + Newton recovery |
-| `witt_log` / `witt_exp` | O(N² + N·T) | T = ghost-series terms (~2× bit width) |
-| `poly_gcd_cw` | O(N²) | Pseudo-remainder PRS Euclidean algorithm |
-| `polynomial_resultant_cw` | O(dim!) | Laplace expansion — limited to dim ≤ 6 |
+See [`docs/complexity.md`](docs/complexity.md) for a complete function-by-function breakdown.
+
+| Operation | Time | Space | Notes |
+|-----------|------|-------|-------|
+| `v2`, `modinv_odd`, `exact_divide`, `div_2k_adic` | O(1) | O(1) | Single-instruction or fixed-iteration 2-adic primitives |
+| `eval` (Monomial) | O(N) | O(1) | Horner's method |
+| `eval` (FF / Taylor) | O(N) | O(1) | Incremental falling product / binomial coefficient |
+| `formal_derivative` (Monomial) | O(N) | O(N) | Direct coefficient scaling |
+| `formal_derivative` (FF / Taylor) | O(N²) | O(N) | Convert → monomial D → convert back |
+| `forward_difference` (FF / Taylor) | O(N) | O(N) | FF diagonalizes Δ: scale+shift; Taylor: pure shift |
+| `forward_difference` (Monomial) | O(N²) | O(N) | Pascal-cache binomial transform |
+| `taylor_shift` | O(N²) | O(N) | Pascal-cache / falling-factorial binomial transform |
+| `indefinite_sum` (FF) | O(N) | O(N) | Σ(FFₙ₋₁) = FFₙ / n |
+| `indefinite_sum` (Monomial / Taylor) | O(N²) | O(N) | Converts to FF, sums, converts back |
+| `poly_exp` / `poly_log` | O(N²) | O(N) | Double-loop recurrence with dword intermediates |
+| `poly_mul` / `operator*` | O(N·M) | O(1) chunked | Naive convolution + carry chain; chunked 256-bit buffer |
+| `poly_mul_cw` | O(N·M) | O(N+M) | Standard coefficient-wise convolution |
+| `compose` | O(N²·M²) | O(N·M) | Naive power-series accumulation; result ≤ 4095 coeffs |
+| `reversion` | O(N³) | O(N²) | Incremental Lagrange inversion (not Newton) |
+| `change_basis` | O(N²) | O(N) | Stirling-cache triangular matrix multiply; 1–2 conversions per call |
+| `witt_add` / `witt_mul` | O(N²) | O(N²) | Ghost-map + Newton recovery; `quad_width` accumulators |
+| `witt_log` / `witt_exp` | O(N² + N·T) | O(N²) | T ≈ 2·bit_width (ghost p-adic series terms) |
+| `witt_inverse` | O(N²) | O(N²) | Ghost inverse via `modinv_odd` per component |
+| `adams_operation` | O(N² + N·n) | O(N²) | Ghost ^ n powering |
+| `poly_divmod_cw` | O(N·(N+M)) | O(max(N,M)) | Long division (requires odd lc) |
+| `pseudo_remainder_cw` | O(N·(N+M)) | O(N) | Subresultant PRS (no lc requirement) |
+| `poly_gcd_cw` | O(K³) worst | O(K) | Euclidean PRS; K = max(N,M) |
+| `polynomial_resultant_cw` | O(1) bounded | O(1) | Sylvester matrix (dim ≤ 6) + Laplace det (≤ 6! = 720) |
+| `poly_discriminant_cw` | O(N) + O(1) | O(N) | Derivative + resultant |
+| `poly_is_square_free_cw` | O(N³) | O(N) | gcd(P, P′) |
+| `Matrix::operator*` (M×N × N×P) | O(M·N·P) | O(M·P) | i-k-j loop with zero-skip |
+| `Matrix::determinant` | O(M³) | O(M·N) | Bareiss fraction-free elimination |
+| `Matrix::inverse` / `solve` / `rref` | O(M³) | O(M²) | Gauss–Jordan with odd-pivot `modinv_odd` |
+| `pade_approximant` [M/N] | O(N³ + M·N) | O(N² + M+N) | Gaussian elimination on N×N Toeplitz system |
+| `cf_convergent` | O(n²) | O(n) | Classical recurrence; degree grows linearly |
+| `div_unsigned` | O(NL·NR) | O(NL+NR) | Knuth Algorithm D (NR ≥ 2) or `divmod_single` (NR=1) |
+| `reciprocal_newton` | O(NR²·log NR) | O(NR) | Newton iteration; ceil(log₂((NR+1)·W)) iterations |
+| `div_newton` | O(NR²·log NR + NL·NR) | O(NL+NR) | Newton reciprocal division with correction step |
+| `binom` / `stirling_2` / `stirling_1` | O(k·log n) / O(n²) | O(1) / O(n) | GCD-multiplicative / DP recurrence |
+| `StirlingCache` / `PascalCache` ctor | O(N²) compile-time | O(N²) | `inline constexpr` cached once per (N,W) |
 
 All operations are constexpr; runtime performance matches compile-time complexity bounds. The carry-chain `poly_mul` is auto-vectorized with SIMD hints (`#pragma GCC ivdep`, `DYADIC_RESTRICT`).
 
