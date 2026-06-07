@@ -59,7 +59,10 @@ shift_left(const Polynomial<N, W, Basis>& p, int shift) noexcept {
     return r;
 }
 
-// Full-width unsigned multiplication returning N+M limbs.
+// Full-width unsigned multiplication returning N+M limbs (with final carry).
+// Contrast with poly_mul (core.h) which truncates to N+M-1 limbs by discarding
+// the final carry (carry-chain ring truncation). This function preserves the
+// full carry for use cases that need the complete product.
 // Uses quad_width accumulators for unsaturated convolution, then a
 // full carry-chain that can produce a carry into the (N+M-1)-th limb.
 template<int N, int M, std::unsigned_integral W, typename Basis>

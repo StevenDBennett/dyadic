@@ -16,6 +16,7 @@ constexpr std::pair<
     Polynomial<N+1, W, MonomialBasis>
 >
 pade_approximant(const Polynomial<M+N+1, W, MonomialBasis>& series) noexcept {
+    static_assert(N <= 32, "pade_approximant: N > 32 causes large stack allocation (N*(N+1) matrix)");
     using P = Polynomial<M+1, W, MonomialBasis>;
     using Q = Polynomial<N+1, W, MonomialBasis>;
 

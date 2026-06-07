@@ -110,6 +110,7 @@ constexpr Polynomial<N+1, W, TaylorBasis> indefinite_sum(
 template<int N, std::unsigned_integral W>
 constexpr Polynomial<N, W, MonomialBasis>
 poly_exp(const Polynomial<N, W, MonomialBasis>& P) noexcept {
+    assert((P[1] & W(1)) == W(0) && "poly_exp: P[1] must be even");
     using dw_t = dword_t<W>;
     Polynomial<N, W, MonomialBasis> E;
     E[0] = 1;
@@ -140,6 +141,7 @@ poly_exp(const Polynomial<N, W, MonomialBasis>& P) noexcept {
 template<int N, std::unsigned_integral W>
 constexpr Polynomial<N, W, MonomialBasis>
 poly_log(const Polynomial<N, W, MonomialBasis>& P) noexcept {
+    assert((P[1] & W(1)) == W(0) && "poly_log: P[1] must be even");
     using dw_t = dword_t<W>;
     Polynomial<N, W, MonomialBasis> L;
     L[0] = 0;

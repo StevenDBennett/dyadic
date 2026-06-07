@@ -22,7 +22,20 @@ constexpr T binom_gcd(T a, T b) {
 
 } // namespace detail
 
-template<std::unsigned_integral W, int MaxN = 67>
+namespace detail {
+
+template<std::unsigned_integral W>
+struct binom_default_max {
+    // Safe upper bound: largest n where C(n, n/2) fits in W.
+    static constexpr int value =
+        8 * sizeof(W) >= 64 ? 67 :
+        8 * sizeof(W) >= 32 ? 34 :
+        8 * sizeof(W) >= 16 ? 18 : 12;
+};
+
+} // namespace detail
+
+template<std::unsigned_integral W, int MaxN = detail::binom_default_max<W>::value>
 constexpr W binom(int n, int k) noexcept {
     if (k < 0 || k > n || n > MaxN) return W(0);
     if (k == 0 || k == n) return W(1);
@@ -67,6 +80,9 @@ constexpr W stirling_2(int n, int k) noexcept {
     return dp[k];
 }
 
+// Signed Stirling numbers of the first kind, stored as unsigned wrapping
+// (e.g., s1(4,1) = -6 is returned as 2^W - 6). For the unsigned variant,
+// use stirling_1_unsigned instead.
 template<std::unsigned_integral W, int MaxN = 64>
 constexpr W stirling_1(int n, int k) noexcept {
     if (n < 0 || k < 0 || n > MaxN) return W(0);

@@ -337,7 +337,7 @@ The six axioms implemented in dyadic span all four domains:
 | 1 | Carry chain = synthetic division | Operator | `synthetic_divide` in `core.h` |
 | 2 | Formal derivative D | Operator | `formal_derivative` in `core.h` |
 | 3 | Forward difference Δ | Operator | `forward_difference` in `core.h` |
-| 4 | Exact D | Operator | `exact_derivative` in `core.h` |
+| 4 | Exact D | Operator | `exact_formal_derivative` in `core.h` |
 | 5 | Exact Δ | Operator | `exact_forward_diff` in `core.h` |
 | 6 | Basis change | Unification | `change_basis` in `basis.h` |
 

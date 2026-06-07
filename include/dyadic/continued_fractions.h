@@ -55,6 +55,9 @@ cf_convergent(const std::vector<W>& c, int n) {
     return {DP(P0), DP(Q0)};
 }
 
+// Returns a DynamicPolynomial containing a single constant term (the evaluated
+// convergent at x). This is not a full polynomial — the return type is an artifact
+// of reusing cf_convergent's internal machinery.
 template<std::unsigned_integral W>
 DynamicPolynomial<W, MonomialBasis>
 cf_eval(const std::vector<W>& c, int max_terms, W x) {

@@ -26,7 +26,7 @@ All symbols live in `namespace dyadic`. The umbrella header is `dyadic.h`.
 ### `detail::uint128_t`
 
 Software 128-bit unsigned pair (`{lo, hi}`). Full constexpr arithmetic:
-`+`, `-`, `*`, `<<`, `>>`, `|`, `&`, `^`, `~`, `/`, `%`, `+=`, `-=`, `*=`, `<<=`, `>>=`, `%=`,
+`+`, `-`, `*`, `<<`, `>>`, `|`, `&`, `^`, `~`, `/`, `%`, `+=`, `-=`, `*=`, `<<=`, `>>=`, `%=`, `&=`, `|=`, `^=`,
 comparisons, `explicit operator unsigned __int128()` (where available).
 
 Division and modulo use bit-by-bit long division (slow but constexpr-safe).
@@ -600,7 +600,7 @@ W polynomial_resultant_cw(const Polynomial<N, W, MonomialBasis>& A,
                           const Polynomial<M, W, MonomialBasis>& B);
 ```
 
-Sylvester matrix resultant. Returns 0 for shared roots. Maximum dimension 6.
+Sylvester matrix resultant. Asserts on shared roots (debug). Maximum dimension 6.
 
 ### `poly_discriminant_cw`
 
@@ -608,7 +608,7 @@ Sylvester matrix resultant. Returns 0 for shared roots. Maximum dimension 6.
 W poly_discriminant_cw(const Polynomial<N, W, MonomialBasis>& P);
 ```
 
-The discriminant `Δ(P) = res(P, D(P)) / lc(P)`. Returns 0 for non-odd leading coefficient.
+The discriminant `Δ(P) = res(P, D(P)) / lc(P)`. Asserts on non-odd leading coefficient (debug).
 
 ### `poly_is_square_free_cw`
 
@@ -625,12 +625,12 @@ Checks if `gcd(P, D(P))` is constant.
 ### `binom`
 
 ```cpp
-template<std::unsigned_integral W, int MaxN = 67>
+template<std::unsigned_integral W, int MaxN = W(-1) < 0xFFFFFFFF ? 32 : 67>
 constexpr W binom(int n, int k);
 ```
 
 Binomial coefficient `C(n, k)` using multiplicative GCD-based reduction.
-MaxN=67 (fits in uint64) or 100 (with `__int128`). Out-of-range returns 0.
+Default MaxN is type-dependent (67 for uint64/uint32, 32 for uint16, 16 for uint8). Out-of-range returns 0.
 
 ### `stirling_2`
 

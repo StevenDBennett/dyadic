@@ -4,24 +4,14 @@
 // Usage: test_verify [--seed <uint64>]
 
 #include <dyadic/verify.h>
+#include "test_util.h"
 #include <cstdio>
-#include <cstdlib>
 
 using namespace dyadic;
 using namespace dyadic::verify;
 
 int main(int argc, char** argv) {
-    uint64_t base_seed = 0xDEADBEEF;
-    for (int i = 1; i < argc; ++i) {
-        if (argv[i][0] == '-' && argv[i][1] == '-' && argv[i][2] == 's' &&
-            argv[i][3] == 'e' && argv[i][4] == 'e' && argv[i][5] == 'd' &&
-            argv[i][6] == '=') {
-            base_seed = static_cast<uint64_t>(std::atoll(argv[i] + 7));
-        } else if (argv[i][0] == '-' && argv[i][1] == '-' && argv[i][2] == 's' &&
-                   argv[i][3] == 'e' && argv[i][4] == 'e' && argv[i][5] == 'd') {
-            if (i + 1 < argc) base_seed = static_cast<uint64_t>(std::atoll(argv[++i]));
-        }
-    }
+    uint64_t base_seed = dyadic_test::parse_seed(argc, argv, 0xDEADBEEF);
 
     int failures = 0;
     int total = 0;

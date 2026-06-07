@@ -12,11 +12,6 @@ namespace dyadic {
 
 namespace detail {
 
-template<int N, std::unsigned_integral W, typename Basis>
-constexpr int poly_actual_degree(const Polynomial<N, W, Basis>& p) noexcept {
-    return p.actual_degree();
-}
-
 template<int N, std::unsigned_integral W>
 constexpr std::array<W, N> poly_diff_arr(const std::array<W, N>& a, int deg) noexcept {
     std::array<W, N> r{};
@@ -169,6 +164,8 @@ poly_gcd_cw(const Polynomial<N, W, MonomialBasis>& A_,
 
 namespace detail {
 
+// Laplace determinant expansion (dim ≤ 6 only — stack-allocated 6×6 matrix).
+// For larger dimensions, use Matrix::determinant (Bareiss algorithm) from dyadic/matrix.h.
 template<std::unsigned_integral W>
 constexpr W det_laplace(const std::array<std::array<W, 6>, 6>& M, int n) noexcept {
     if (n == 0) return W(1);
@@ -213,7 +210,7 @@ constexpr W polynomial_resultant_cw(const Polynomial<N, W, MonomialBasis>& A,
     if (m == 0 && n == 0) return W(1);
 
     int dim = m + n;
-    if (dim > 6) return W(0);
+    assert(dim <= 6 && "polynomial_resultant_cw: Sylvester matrix dimension > 6; use determinant_cw (Bareiss) instead");
 
     std::array<std::array<W, 6>, 6> Mtx{};
 
@@ -238,11 +235,11 @@ constexpr W polynomial_resultant_cw(const Polynomial<N, W, MonomialBasis>& A,
 template<int N, std::unsigned_integral W>
 constexpr W poly_discriminant_cw(const Polynomial<N, W, MonomialBasis>& P) noexcept {
     int d = P.actual_degree();
-    if (d < 1) return W(0);
+    assert(d >= 1 && "poly_discriminant_cw: degree must be at least 1");
     if (d == 1) return W(1);
 
     W lc = P[d];
-    if ((lc & W(1)) == W(0)) return W(0);
+    assert((lc & W(1)) != W(0) && "poly_discriminant_cw: leading coefficient must be odd");
 
     auto P_prime = formal_derivative(P);
     W res = polynomial_resultant_cw(P, P_prime);

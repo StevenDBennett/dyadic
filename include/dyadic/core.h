@@ -196,6 +196,9 @@ struct uint128_t {
     constexpr uint128_t& operator<<=(int s) { *this = *this << s; return *this; }
     constexpr uint128_t& operator>>=(int s) { *this = *this >> s; return *this; }
     constexpr uint128_t& operator%=(uint128_t v) { *this = *this % v; return *this; }
+    constexpr uint128_t& operator&=(uint128_t v) { *this = *this & v; return *this; }
+    constexpr uint128_t& operator|=(uint128_t v) { *this = *this | v; return *this; }
+    constexpr uint128_t& operator^=(uint128_t v) { *this = *this ^ v; return *this; }
 };
 
 // SFINAE-friendly widen: yields double_width<T>::type when available, else T.
@@ -217,7 +220,10 @@ inline constexpr U all_ones_mask_v = all_ones_mask<U>::value;
 
 } // namespace detail
 
-// 4x width alias for the common widen_t<dword_t<W>> pattern.
+// "Quad-width" alias: widen_t<dword_t<W>>.
+// For uint8/16/32_t: yields a type 4× the width (uint32/64/128).
+// For uint64_t: only 2× (uint128_t — no wider native type exists).
+// See docs/precision.md for the full precision-window analysis.
 template<std::unsigned_integral W>
 using quad_width = detail::widen_t<dword_t<W>>;
 
@@ -548,7 +554,7 @@ constexpr W carry_chain_word(W hi, W lo) noexcept {
 
 namespace detail {
 
-template<std::unsigned_integral W, typename Accum = quad_width<W>>
+template<std::unsigned_integral W, typename Accum>
 constexpr void poly_mul_unsaturated(Accum* DYADIC_RESTRICT r,
     const W* DYADIC_RESTRICT a, int na,
     const W* DYADIC_RESTRICT b, int nb) noexcept {
@@ -568,6 +574,10 @@ constexpr void poly_mul_unsaturated(Accum* DYADIC_RESTRICT r,
 
 } // namespace detail
 
+// Carry-chain polynomial multiplication.
+// Produces na + nb - 1 output limbs. The final carry is intentionally discarded
+// (carry-chain ring truncation). For full-width multiplication (na + nb limbs
+// with complete carry propagation), use mul_unsigned from dyadic/arith.h.
 template<std::unsigned_integral W>
 constexpr void poly_mul(W* DYADIC_RESTRICT r, const W* DYADIC_RESTRICT a, int na,
                         const W* DYADIC_RESTRICT b, int nb) noexcept {
@@ -590,6 +600,7 @@ constexpr void poly_mul(W* DYADIC_RESTRICT r, const W* DYADIC_RESTRICT a, int na
             for (int i = 0; i < chunk_len; ++i) buf[i] = 0;
 
             for (int i = 0; i < na; ++i) {
+                if (i >= end) continue;
                 int j_start = (pos > i) ? pos - i : 0;
                 int j_end = nb;
                 if (i + j_end > end) j_end = end - i;
@@ -639,6 +650,7 @@ poly_mul_cw(const Polynomial<N, W, Basis>& a, const Polynomial<M, W, Basis>& b) 
 }
 
 // Verify A = Q*B + R in the coefficient-wise (standard) ring.
+// MonomialBasis only — use change_basis first if working in another basis.
 template<int N, int M, std::unsigned_integral W>
 constexpr bool verify_divmod_cw(
     const Polynomial<N, W, MonomialBasis>& A,

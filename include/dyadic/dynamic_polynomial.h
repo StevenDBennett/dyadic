@@ -48,9 +48,9 @@ struct DynamicPolynomial {
     DynamicPolynomial(const Polynomial<N, W, Basis>& p) : coeff(p.begin(), p.end()) {}
 
     W& operator[](int i) { return coeff[i]; }
-    constexpr W operator[](int i) const { return coeff[i]; }
-    constexpr int size() const { return static_cast<int>(coeff.size()); }
-    constexpr int degree() const {
+    W operator[](int i) const { return coeff[i]; }
+    int size() const { return static_cast<int>(coeff.size()); }
+    int degree() const {
         if (coeff.empty()) return -1;
         int d = static_cast<int>(coeff.size()) - 1;
         while (d > 0 && coeff[d] == 0) --d;
@@ -71,7 +71,7 @@ struct DynamicPolynomial {
         return *this;
     }
 
-    constexpr W eval(W x) const noexcept {
+    W eval(W x) const noexcept {
         if (coeff.empty()) return 0;
         if constexpr (std::is_same_v<Basis, MonomialBasis>) {
             W r = 0;
@@ -299,6 +299,7 @@ forward_difference(const DynamicPolynomial<W, FallingFactorialBasis>& p) {
     return r;
 }
 
+// Semantic alias for the six-axiom naming scheme.
 template<std::unsigned_integral W>
 DynamicPolynomial<W, MonomialBasis>
 exact_formal_derivative(const DynamicPolynomial<W, MonomialBasis>& p) {

@@ -45,13 +45,13 @@ namespace detail {
 template<auto Pred, int N, typename W>
 struct ProofInstance {
     static constexpr bool value = Pred.template operator()<N, W>();
-    static_assert(value, "Proof failed");
+    static_assert(value, "Proof failed — see template context for (N, W)");
 };
 
 template<auto Pred, int N>
 struct ProofInstanceN {
     static constexpr bool value = Pred.template operator()<N>();
-    static_assert(value, "Proof failed");
+    static_assert(value, "Proof failed — see template context for N");
 };
 
 template<auto Pred, typename W, int... NN>

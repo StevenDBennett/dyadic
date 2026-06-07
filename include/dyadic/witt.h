@@ -11,8 +11,6 @@
 #pragma once
 
 #include <dyadic/core.h>
-#include <cstdio>
-#include <functional>
 
 namespace dyadic {
 
@@ -234,6 +232,7 @@ template<int N, std::unsigned_integral W, typename Combine>
 constexpr WittVector<N, W> ghost_op(const WittVector<N, W>& a,
                                     const WittVector<N, W>& b,
                                     Combine combine) noexcept {
+    static_assert(N <= 32, "ghost_op: N > 32 causes large stack allocation in ghost_recover");
     using gw_t = quad_width<W>;
 
     detail::GhostPowersFull<N, W> a_pows, b_pows;
@@ -253,15 +252,13 @@ constexpr WittVector<N, W> ghost_op(const WittVector<N, W>& a,
 template<int N, std::unsigned_integral W>
 constexpr WittVector<N, W> witt_add(const WittVector<N, W>& a,
                                     const WittVector<N, W>& b) noexcept {
-    using gw_t = quad_width<W>;
-    return detail::ghost_op<N>(a, b, std::plus<gw_t>{});
+    return detail::ghost_op<N>(a, b, [](auto x, auto y) { return x + y; });
 }
 
 template<int N, std::unsigned_integral W>
 constexpr WittVector<N, W> witt_mul(const WittVector<N, W>& a,
                                     const WittVector<N, W>& b) noexcept {
-    using gw_t = quad_width<W>;
-    return detail::ghost_op<N>(a, b, std::multiplies<gw_t>{});
+    return detail::ghost_op<N>(a, b, [](auto x, auto y) { return x * y; });
 }
 
 // Adams operation ψ^n: ghost_j(ψ^n(a)) = ghost_j(a)^n (componentwise power).
@@ -272,7 +269,9 @@ constexpr WittVector<N, W> witt_mul(const WittVector<N, W>& a,
 // type exists, so overflow may occur for large ghost values with n ≥ 2.
 template<int N, std::unsigned_integral W>
 constexpr WittVector<N, W> adams_operation(const WittVector<N, W>& a, int n) noexcept {
+    static_assert(N <= 32, "adams_operation: N > 32 causes large stack allocation in ghost_recover");
     if (n <= 1) return a;
+    assert(n <= 65536 && "adams_operation: n out of reasonable range");
 
     using gw_t = quad_width<W>;
 
@@ -304,6 +303,7 @@ constexpr WittVector<N, W> teichmueller_lift(W x) noexcept {
 
 template<int N, std::unsigned_integral W>
 constexpr bool check_witt_recovery_precision(const WittVector<N, W>& w) noexcept {
+    static_assert(N <= 32, "check_witt_recovery_precision: N > 32 causes large stack allocation");
     auto gv = w.ghost_vector();
     std::array<quad_width<W>, N> G{};
     for (int j = 0; j < N; ++j) G[j] = static_cast<quad_width<W>>(gv[j]);
@@ -385,6 +385,7 @@ constexpr int p_adic_val(T x) noexcept {
 template<typename T>
 constexpr T p_adic_log_1plus_impl(T y) noexcept {
     if (y == T(0)) return T(0);
+    assert(p_adic_val(y) >= 1 && "p_adic_log_1plus: v2(y) must be >= 1");
     int bits = 8 * int(sizeof(T));
     int max_terms = 2 * bits;  // generous budget for v₂=1 inputs
     T sum = y;
@@ -408,6 +409,7 @@ template<typename T>
 constexpr T p_adic_exp_impl(T x) noexcept {
     int bits = 8 * int(sizeof(T));
     int v = p_adic_val(x);
+    assert(v >= 2 && "p_adic_exp: v2(x) must be >= 2");
     int max_terms = (v < 2) ? (2 * bits) : ((bits + v - 3) / (v - 1) + 1);
     if (max_terms > 2 * bits) max_terms = 2 * bits;
     T sum = T(1);
@@ -433,6 +435,7 @@ constexpr T p_adic_exp_impl(T x) noexcept {
 // (a[0]^{2^j} ≡ 1 mod 2 for odd a[0]).
 template<int N, std::unsigned_integral W>
 constexpr WittVector<N, W> witt_log(const WittVector<N, W>& a) noexcept {
+    static_assert(N <= 32, "witt_log: N > 32 causes large stack allocation in ghost_recover");
     assert((a[0] & W(1)) != W(0) && "witt_log: requires a[0] odd (unit in Witt ring)");
     using gw_t = quad_width<W>;
 
@@ -451,6 +454,7 @@ constexpr WittVector<N, W> witt_log(const WittVector<N, W>& a) noexcept {
 // Returns b such that witt_log(b) = a (when both are defined).
 template<int N, std::unsigned_integral W>
 constexpr WittVector<N, W> witt_exp(const WittVector<N, W>& a) noexcept {
+    static_assert(N <= 32, "witt_exp: N > 32 causes large stack allocation in ghost_recover");
     assert((a[0] & W(3)) == W(0) && "witt_exp: requires a[0] ≡ 0 (mod 4), v₂(a[0]) ≥ 2");
     using gw_t = quad_width<W>;
 
@@ -469,6 +473,7 @@ constexpr WittVector<N, W> witt_exp(const WittVector<N, W>& a) noexcept {
 // Satisfies a * witt_inverse(a) = τ(1) = {1, 0, ..., 0}.
 template<int N, std::unsigned_integral W>
 constexpr WittVector<N, W> witt_inverse(const WittVector<N, W>& a) noexcept {
+    static_assert(N <= 32, "witt_inverse: N > 32 causes large stack allocation in ghost_recover");
     assert((a[0] & W(1)) != W(0) && "witt_inverse: requires a[0] odd (unit in Witt ring)");
     using gw_t = quad_width<W>;
 
