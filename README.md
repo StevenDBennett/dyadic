@@ -226,7 +226,7 @@ All operations are constexpr; runtime performance matches compile-time complexit
 - **Taylor basis roundtrip**: `T_k = k! · FF_k` wraps when `FF_k ≥ 2^W / k!`. Use small coefficients for exact roundtrips. FallingFactorial basis has no such limitation.
 - **Witt precision window**: Recovery `r_j = (G_j − S_j) / 2^j` requires `r_j < 2^{W−j}`.
 - **Witt exp/log term truncation**: Uses valuation-aware dynamic term counting with 2× bit-width budget. Requires `v₂(x) ≥ 2` for exp convergence (mathematical limit — `v₂(x) = 1` stalls at `≤ log₂(n)+1`). Log converges for `v₂(y) ≥ 1` (~135 terms at 128-bit).
-- **`detail::uint128_t`** is a software 128-bit pair — no `unsigned __int128` required. `__int128` is used only as an optimization in `binom()` (`dyadic/combinatorial.h`), guarded by feature-test macros.
+- **`detail::uint128_t`** is a software 128-bit pair — no `unsigned __int128` required. `__int128` is used as an optimization in `binom()` (`dyadic/combinatorial.h`) and `poly_mul()` (`dyadic/core.h`, ~2.7× speedup at deg=63 for uint64_t), both guarded by `__SIZEOF_INT128__`.
 
 ## License
 

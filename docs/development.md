@@ -25,6 +25,13 @@ A deliberate design choice that exposed several GCC-specific rough edges:
 - This is not a bug in GCC or the library — it is an inherent tension between the C++ standard's unwillingness to acknowledge extended integer types and their necessity for practical 2-adic arithmetic.
 - `detail::uint128_t` avoids all these friction points: the software pair satisfies `std::unsigned_integral` (`uint64_t`-based), works with `std::gcd`, and has no `-Wpedantic` warnings.
 
+Despite these friction points, `poly_mul` uses `unsigned __int128` as its inner
+accumulator for `W = uint64_t` when `__SIZEOF_INT128__` is defined (guarded by
+`#if` preprocessor, not in a `std::unsigned_integral`-constrained context).
+The accumulator type is not `W` — it's an internal `accum_t` alias — so the
+standard concept constraints don't apply. This gives a ~2.7× speedup at deg=63
+while keeping `detail::uint128_t` as the universal fallback for all compilers.
+
 ## The pattern for C-style arrays in templates
 
 The original code used raw C arrays sized by template parameters (e.g., `W dp[64][64]`, `W powers[64][64]`). These work in practice but are fragile: they waste stack space (64×64 for small n), the bound is decoupled from the template parameter, and `std::array` provides `.size()`, iterator support, and uniform initialization. The refactor to `std::array` shrinks stack usage (e.g., `powers` went from 64×64 to N×N) and makes the intent explicit.

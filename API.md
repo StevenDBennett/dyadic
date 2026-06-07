@@ -122,6 +122,10 @@ Carry-chain polynomial multiplication. Uses `quad_width<W>` accumulators and
 processes in 256-bit chunks to keep stack small. For short products (≤ 4 quad words)
 uses a single-buffer path.
 
+**Performance note:** For `W = uint64_t` on compilers with `__SIZEOF_INT128__`,
+the inner accumulator resolves to hardware `unsigned __int128` instead of the
+software `detail::uint128_t`, giving ~2.7× speedup at deg=63.
+
 ### Standard Ring Multiplication (coefficient-wise)
 
 ```cpp

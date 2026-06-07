@@ -71,8 +71,8 @@ Both are `inline constexpr` globals — zero runtime cost after instantiation.
 
 | Function | Time | Space | Notes |
 |---|---|---|---|
-| `poly_mul_unsaturated` (detail) | O(na·nb) | O(na+nb) | `quad_width` accumulators, `#pragma GCC ivdep` for auto-vectorization |
-| `poly_mul(r, a, na, b, nb)` | O(na·nb) | O(1) chunked | `CHUNK_COUNT = 256/sizeof(quad_width<W>)`; ≤ 32 elements buffer; single-pass + one carry_chain per chunk |
+| `poly_mul_unsaturated` (detail) | O(na·nb) | O(na+nb) | `quad_width` accumulators (hw `unsigned __int128` for uint64_t when available), `#pragma GCC ivdep` for auto-vectorization |
+| `poly_mul(r, a, na, b, nb)` | O(na·nb) | O(1) chunked | `CHUNK_COUNT = 256/sizeof(accum_t)`; for uint64_t with `__SIZEOF_INT128__` uses hw `unsigned __int128` (~2.7× speedup deg 63 vs software); single-pass + one carry_chain per chunk |
 | `poly_mul_cw` | O(N·M) | O(N+M) | Coefficient-wise convolution (standard ring); zero-skip for sparsity |
 | `verify_divmod_cw` | O(N·M) | O(N+M) | One `poly_mul_cw` + verification loop |
 
